@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Data & models (large files, don't commit)
+data/raw/*.csv
+backend/models/*.joblib
+backend/models/*.pt
+backend/models/*.bin
+backend/models/distilbert/*.safetensors
+backend/models/distilbert/*.json
+
+# Env & secrets
+.env
+*.env.local
+
+# OS
+.DS_Store

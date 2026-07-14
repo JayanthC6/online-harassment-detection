@@ -1,0 +1,23 @@
+flask==3.0.3
+flask-cors==4.0.1
+pandas==2.2.2
+scikit-learn==1.4.2
+nltk==3.8.1
+joblib==1.4.2
+gunicorn==22.0.0
+
+# DistilBERT (predict_transformer.py). Training itself needs a GPU --
+# use notebooks/02_train_distilbert.ipynb on Colab. These are needed
+# locally too, just to LOAD the trained model for inference.
+torch
+transformers
+datasets
+
+# Audio/video transcription (transcribe.py). First run downloads the
+# Whisper model (~150MB), needs internet.
+openai-whisper
+
+# Add when you move to Sprint 3 (real database instead of in-memory store):
+# pymongo==4.7.2
+# sqlalchemy==2.0.30
+# pymysql==1.1.1

@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend/models:/app/models
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+# Add when you reach Sprint 3 (persistent storage instead of in-memory logs):
+#   mongo:
+#     image: mongo:7.0
+#     ports:
+#       - "27017:27017"
+#     volumes:
+#       - mongo_data:/data/db
+#
+# volumes:
+#   mongo_data:
