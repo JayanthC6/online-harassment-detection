@@ -34,11 +34,21 @@ from predict import predict_message as predict_baseline
 import predict_transformer
 import db
 
+# Explainability — only available for the baseline model
+try:
+    import explain as explain_module
+    _explain_available = True
+except Exception:
+    _explain_available = False
+
 app = Flask(__name__)
 CORS(app)  # allow the React dev server to call this API
 
 ALLOWED_AUDIO_EXTENSIONS = {"mp3", "wav", "m4a", "mp4", "mov", "webm", "ogg"}
 MAX_AUDIO_SIZE_MB = 50
+
+# Map category string -> class index for explain.py
+CATEGORY_TO_CLASS = {"hate_speech": 0, "offensive_language": 1, "none": 2}
 
 
 def classify_text(text: str) -> dict:
@@ -47,6 +57,14 @@ def classify_text(text: str) -> dict:
         return predict_transformer.predict_message(text)
     result = predict_baseline(text)
     result["model"] = "baseline"
+
+    # Explainability: attach word-level contributions for baseline model
+    if _explain_available and result.get("category"):
+        class_idx = CATEGORY_TO_CLASS.get(result["category"])
+        if class_idx is not None:
+            result["explanation"] = explain_module.explain_prediction(
+                text, class_idx, top_n=5
+            )
     return result
 
 
