@@ -29,7 +29,7 @@ def is_available() -> bool:
     try:
         import torch  # noqa: F401
         import transformers  # noqa: F401
-    except ImportError:
+    except (ImportError, OSError):
         return False
     return True
 
