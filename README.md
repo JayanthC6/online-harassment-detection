@@ -6,9 +6,7 @@ dashboard for reviewing flagged content.
 
 **Current status:** baseline model (TF-IDF + Logistic Regression) trained
 and working end-to-end, full stack tested (Flask + React + dashboard).
-DistilBERT and audio/video transcription are built and wired in, but need
-one thing this dev environment can't do: download model weights from the
-open internet. See "What's tested vs. what needs your machine" below.
+DistilBERT, audio/video transcription, and screenshot text extraction (OCR) are built and wired in. Note that transcription and OCR will download model weights on their first run.
 See `docs/sprint_plan.md` for the week-by-week plan.
 
 ## Quick start (local dev, no Docker)
@@ -51,7 +49,7 @@ before building the Docker image, so `backend/models/*.joblib` exists
 
 ```
 backend/
-  app.py                    Flask API — predict, predict/audio, health, admin stats/recent
+  app.py                    Flask API — predict, predict/audio, predict/screenshot, health, admin stats/recent
   ml/
     preprocess.py            Text cleaning, shared by baseline training + inference
     train_baseline.py        TF-IDF + Logistic Regression training script
@@ -59,14 +57,16 @@ backend/
     train_transformer.py      DistilBERT fine-tuning (local/GPU-machine version)
     predict_transformer.py    Loads DistilBERT model, classifies text
     transcribe.py              Whisper transcription -> classifier pipeline
+    ocr.py                     EasyOCR text extraction -> classifier pipeline
   models/                    Saved model artifacts (gitignored, regenerate locally)
     distilbert/               DistilBERT goes here after training (see below)
 frontend/
   src/
     App.jsx
     components/
-      AnalyzeForm.jsx         User-facing text analysis form
-      Dashboard.jsx            Admin stats + chart + recent flagged messages
+      AnalyzeForm.jsx           User-facing text analysis form
+      ScreenshotAnalyzeForm.jsx User-facing screenshot analysis form
+      Dashboard.jsx             Admin stats + chart + recent flagged messages
 data/
   raw/                        Source dataset + notes on label mapping
 notebooks/
@@ -96,14 +96,15 @@ Everything below was actually run and verified, not just written:
 - `/predict/audio` — file validation and error handling (confirmed it fails
   cleanly on missing/wrong-type files, and reaches the transcription step
   correctly on a valid file)
+- `/predict/screenshot` — extracts text via OCR and routes to the classifier. Gracefully handles blurry/unreadable images.
 
 What's written and syntax-checked, but needs you to run it once with real
-internet access (Hugging Face and Whisper's model host are both blocked in
-the sandbox that built this repo):
+internet access (Hugging Face, Whisper, and EasyOCR models need downloading):
 - `train_transformer.py` / `02_train_distilbert.ipynb` — standard HuggingFace
   Trainer API, but not test-run end-to-end here
 - `transcribe.py` — Whisper's package installs and imports fine; the actual
   model weight download (~150MB, one-time) needs to happen on your machine
+- `ocr.py` — EasyOCR will download detection and recognition models (~30MB) on first run
 
 Run these yourself the first time rather than assuming they're bug-free the
 way `train_baseline.py` is — that one was actually executed and verified.
