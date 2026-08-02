@@ -20,6 +20,13 @@ training step.
 """
 import os
 import sys
+
+# Import torch first on Windows to avoid DLL conflicts with other libraries
+try:
+    import torch
+except Exception:
+    pass
+
 import tempfile
 from datetime import datetime
 
@@ -34,6 +41,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "ml"))
 from predict import predict_message as predict_baseline
 import predict_transformer
 import db
+from ocr import extract_and_classify
 
 # Explainability — only available for the baseline model
 try:
@@ -183,6 +191,50 @@ def predict_audio():
     return jsonify(result)
 
 
+ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+MAX_IMAGE_SIZE_MB = 10
+
+@app.route("/predict/screenshot", methods=["POST"])
+def predict_screenshot():
+    """
+    Accepts an uploaded image file, extracts text via OCR, then
+    classifies the extracted text.
+    """
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded. Send it as multipart/form-data under key 'file'."}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename."}), 400
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        return jsonify({"error": f"Unsupported file type '.{ext}'. Allowed: {sorted(ALLOWED_IMAGE_EXTENSIONS)}"}), 400
+
+    filename = secure_filename(file.filename)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = os.path.join(tmp_dir, filename)
+        file.save(tmp_path)
+
+        size_mb = os.path.getsize(tmp_path) / (1024 * 1024)
+        if size_mb > MAX_IMAGE_SIZE_MB:
+            return jsonify({"error": f"File too large ({size_mb:.1f}MB). Limit is {MAX_IMAGE_SIZE_MB}MB."}), 400
+
+        try:
+            classifier = "distilbert" if predict_transformer.is_available() else "baseline"
+            result = extract_and_classify(tmp_path, classifier=classifier)
+        except Exception as e:
+            return jsonify({"error": f"OCR extraction failed: {str(e)}"}), 500
+
+    result["timestamp"] = datetime.utcnow().isoformat()
+    result["source_filename"] = filename
+
+    if result["label"] == "harassing":
+        db.log_flagged_message({**result, "text_preview": result.get("extracted_text", "")[:120]})
+
+    return jsonify(result)
+
+
 @app.route("/admin/stats", methods=["GET"])
 def admin_stats():
     stats = db.get_stats()
@@ -197,4 +249,4 @@ def admin_recent():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)

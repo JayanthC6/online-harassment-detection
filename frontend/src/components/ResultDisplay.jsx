@@ -96,6 +96,16 @@ function ResultDisplay({ result }) {
         </div>
       )}
 
+      {/* ── Extracted text (from OCR) ── */}
+      {result.extracted_text && (
+        <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4 mt-4">
+          <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-2">
+            <span>📝</span> Extracted Text (OCR)
+          </p>
+          <p className="text-sm text-gray-300 leading-relaxed">{result.extracted_text}</p>
+        </div>
+      )}
+
       {/* ── Meta info ── */}
       <div className="flex items-center justify-between text-[11px] text-gray-600 pt-2 border-t border-white/[0.04]">
         <span>Model: <strong className="text-gray-400">{result.model || 'baseline'}</strong></span>

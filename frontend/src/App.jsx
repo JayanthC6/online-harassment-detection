@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import AnalyzeForm from './components/AnalyzeForm'
+import ScreenshotAnalyzeForm from './components/ScreenshotAnalyzeForm'
 import Dashboard from './components/Dashboard'
 
 const TABS = [
@@ -44,7 +45,10 @@ export default function App() {
         {/* ── Content ── */}
         <main className="animate-fade-in">
           {activeTab === 'analyze' && (
-            <AnalyzeForm onNewResult={() => setRefreshKey((k) => k + 1)} />
+            <>
+              <AnalyzeForm onNewResult={() => setRefreshKey((k) => k + 1)} />
+              <ScreenshotAnalyzeForm onNewResult={() => setRefreshKey((k) => k + 1)} />
+            </>
           )}
           {activeTab === 'dashboard' && (
             <Dashboard refreshKey={refreshKey} />
