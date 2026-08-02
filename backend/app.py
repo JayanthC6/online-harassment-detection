@@ -3,19 +3,20 @@ Flask backend for the Online Harassment Detection System.
 
 Endpoints:
     GET  /health              -> liveness check, also reports DB connection status
-    POST /predict              -> classify a single text message
-    POST /predict/audio         -> transcribe an audio/video file, then classify it
-    GET  /admin/stats           -> summary stats for the dashboard
-    GET  /admin/recent          -> recently flagged messages
+    POST /predict             -> classify a single text message
+    POST /predict/batch       -> classify multiple text messages at once
+    POST /predict/audio       -> transcribe an audio/video file, then classify it
+    GET  /admin/stats         -> summary stats for the dashboard
+    GET  /admin/recent        -> recently flagged messages
 
-Storage: uses MongoDB if MONGODB_URI is set in a .env file (see db.py and
-.env.example), otherwise falls back to in-memory storage automatically so
-the app still works without a database configured.
+Storage: uses MongoDB if MONGODB_URI is set in a .env file (see db.py),
+otherwise falls back to in-memory storage automatically so the app still
+works without a database configured.
 
 Model selection: uses DistilBERT automatically if you've trained one and
-dropped it in backend/models/distilbert/ (see notebooks/02_train_distilbert.ipynb).
-Falls back to the TF-IDF baseline otherwise, so the app always works even
-before you've done the transformer training step.
+dropped it in backend/models/distilbert/. Falls back to the TF-IDF baseline
+otherwise, so the app always works even before you've done the transformer
+training step.
 """
 import os
 import sys
@@ -51,6 +52,11 @@ MAX_AUDIO_SIZE_MB = 50
 CATEGORY_TO_CLASS = {"hate_speech": 0, "offensive_language": 1, "none": 2}
 
 
+def _active_model_name() -> str:
+    """Return the name of the currently active model."""
+    return "distilbert" if predict_transformer.is_available() else "baseline"
+
+
 def classify_text(text: str) -> dict:
     """Routes to DistilBERT if trained, else the baseline model."""
     if predict_transformer.is_available():
@@ -74,6 +80,7 @@ def health():
         "status": "ok",
         "time": datetime.utcnow().isoformat(),
         "database": "mongodb" if db.is_persistent() else "in-memory (not persistent)",
+        "model": _active_model_name(),
     })
 
 
@@ -96,6 +103,40 @@ def predict():
         db.log_flagged_message(result)
 
     return jsonify(result)
+
+
+@app.route("/predict/batch", methods=["POST"])
+def predict_batch():
+    """Classify multiple messages in one request.
+
+    Body: {"texts": ["msg1", "msg2", ...]}   (max 50)
+    Returns: {"results": [{...}, {...}, ...]}
+    """
+    data = request.get_json(silent=True) or {}
+    texts = data.get("texts", [])
+
+    if not isinstance(texts, list) or len(texts) == 0:
+        return jsonify({"error": "Provide a non-empty 'texts' array."}), 400
+    if len(texts) > 50:
+        return jsonify({"error": "Batch limit is 50 messages."}), 400
+
+    results = []
+    for text in texts:
+        if not isinstance(text, str) or not text.strip():
+            results.append({"error": "Empty or invalid text", "text_preview": str(text)[:120]})
+            continue
+        if len(text) > 2000:
+            results.append({"error": "Text exceeds 2000 character limit", "text_preview": text[:120]})
+            continue
+
+        r = classify_text(text)
+        r["text_preview"] = text[:120]
+        r["timestamp"] = datetime.utcnow().isoformat()
+        if r["label"] == "harassing":
+            db.log_flagged_message(r)
+        results.append(r)
+
+    return jsonify({"results": results, "count": len(results)})
 
 
 @app.route("/predict/audio", methods=["POST"])
@@ -144,7 +185,9 @@ def predict_audio():
 
 @app.route("/admin/stats", methods=["GET"])
 def admin_stats():
-    return jsonify(db.get_stats())
+    stats = db.get_stats()
+    stats["model"] = _active_model_name()
+    return jsonify(stats)
 
 
 @app.route("/admin/recent", methods=["GET"])

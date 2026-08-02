@@ -1,9 +1,11 @@
 flask==3.0.3
 flask-cors==4.0.1
+python-dotenv==1.0.1
 pandas==2.2.2
 scikit-learn==1.4.2
 nltk==3.8.1
 joblib==1.4.2
+numpy
 gunicorn==22.0.0
 
 # DistilBERT (predict_transformer.py). Training itself needs a GPU --
@@ -17,7 +19,5 @@ datasets
 # Whisper model (~150MB), needs internet.
 openai-whisper
 
-# Add when you move to Sprint 3 (real database instead of in-memory store):
-# pymongo==4.7.2
-# sqlalchemy==2.0.30
-# pymysql==1.1.1
+# MongoDB persistence (optional — app falls back to in-memory if not configured)
+pymongo[srv]==4.7.2
