@@ -25,3 +25,10 @@ opencv-python-headless
 
 # MongoDB persistence (optional — app falls back to in-memory if not configured)
 pymongo[srv]==4.7.2
+
+# Duplicate/similar report detection (similarity.py).
+# First run downloads all-MiniLM-L6-v2 (~22MB).
+sentence-transformers
+
+# Groq API for complaint summarization (summarize.py).
+groq

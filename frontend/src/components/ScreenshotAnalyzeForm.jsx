@@ -49,7 +49,7 @@ export default function ScreenshotAnalyzeForm({ onNewResult }) {
         </div>
 
         <div
-          className={`drop-zone ${imageFile ? 'border-emerald-500/30 bg-emerald-500/5' : ''}`}
+          className={`drop-zone ${imageFile ? '!border-emerald-400 !bg-emerald-50/50' : ''}`}
           onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('dragover') }}
           onDragLeave={(e) => e.currentTarget.classList.remove('dragover')}
           onDrop={handleFileDrop}
@@ -64,14 +64,14 @@ export default function ScreenshotAnalyzeForm({ onNewResult }) {
           />
           {imageFile ? (
             <div className="space-y-1">
-              <p className="text-sm text-emerald-300 font-medium">📁 {imageFile.name}</p>
+              <p className="text-sm text-emerald-700 font-medium">📁 {imageFile.name}</p>
               <p className="text-xs text-gray-500">{(imageFile.size / (1024 * 1024)).toFixed(1)} MB — click to change</p>
             </div>
           ) : (
             <div className="space-y-2">
               <p className="text-2xl">🖼️</p>
-              <p className="text-sm text-gray-400">Drop a screenshot here or click to browse</p>
-              <p className="text-xs text-gray-600">Supported: PNG, JPG, WEBP (max 10MB)</p>
+              <p className="text-sm text-gray-500">Drop a screenshot here or click to browse</p>
+              <p className="text-xs text-gray-400">Supported: PNG, JPG, WEBP (max 10MB)</p>
             </div>
           )}
         </div>
@@ -81,7 +81,7 @@ export default function ScreenshotAnalyzeForm({ onNewResult }) {
             onClick={handleImageAnalyze}
             disabled={loading || !imageFile}
             className="btn-primary"
-            style={!loading && imageFile ? { background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' } : {}}
+            style={!loading && imageFile ? { background: '#059669' } : {}}
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -94,8 +94,8 @@ export default function ScreenshotAnalyzeForm({ onNewResult }) {
       </div>
 
       {error && (
-        <div className="glass-card p-4 !border-red-500/30 animate-slide-up">
-          <p className="text-sm text-red-400 flex items-center gap-2">
+        <div className="glass-card p-4 !border-red-300 !bg-red-50 animate-slide-up">
+          <p className="text-sm text-red-700 flex items-center gap-2">
             <span>⚠️</span> {error}
           </p>
         </div>

@@ -4,8 +4,8 @@ import ScreenshotAnalyzeForm from './components/ScreenshotAnalyzeForm'
 import Dashboard from './components/Dashboard'
 
 const TABS = [
-  { id: 'analyze', label: '🔍 Analyze', icon: null },
-  { id: 'dashboard', label: '📊 Dashboard', icon: null },
+  { id: 'analyze', label: '🔍 Analyze' },
+  { id: 'dashboard', label: '📊 Dashboard' },
 ]
 
 export default function App() {
@@ -13,14 +13,14 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   return (
-    <div className="min-h-screen py-6 px-4 sm:px-6">
+    <div className="min-h-screen py-8 px-4 sm:px-6">
       <div className="max-w-3xl mx-auto space-y-6">
 
         {/* ── Header ── */}
         <header className="text-center space-y-2 pt-4 pb-2">
           <div className="flex items-center justify-center gap-3">
             <span className="text-3xl">🛡️</span>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-300 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold text-gray-900">
               ShieldAI
             </h1>
           </div>
@@ -30,7 +30,7 @@ export default function App() {
         </header>
 
         {/* ── Tab navigation ── */}
-        <nav className="flex justify-center gap-1 border-b border-white/[0.06] pb-0">
+        <nav className="flex justify-center gap-1 border-b border-gray-200 pb-0">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -56,9 +56,9 @@ export default function App() {
         </main>
 
         {/* ── Footer ── */}
-        <footer className="text-center text-xs text-gray-600 pt-6 pb-4 space-y-1">
-          <p>Built with TF-IDF + Logistic Regression · DistilBERT · Whisper</p>
-          <p className="text-gray-700">Online Harassment Detection System</p>
+        <footer className="text-center text-xs text-gray-400 pt-6 pb-4 space-y-1">
+          <p>Built with TF-IDF + Logistic Regression · DistilBERT · Whisper · EasyOCR</p>
+          <p className="text-gray-300">Online Harassment Detection System</p>
         </footer>
       </div>
     </div>

@@ -83,13 +83,13 @@ export default function AnalyzeForm({ onNewResult }) {
         <div className="flex items-center gap-3 mb-4">
           <button
             onClick={() => setMode('text')}
-            className={`btn-ghost text-xs ${mode === 'text' ? '!border-indigo-500/40 !text-indigo-300 !bg-indigo-500/10' : ''}`}
+            className={`btn-ghost text-xs ${mode === 'text' ? '!border-indigo-500 !text-indigo-700 !bg-indigo-50' : ''}`}
           >
             📝 Text
           </button>
           <button
             onClick={() => setMode('audio')}
-            className={`btn-ghost text-xs ${mode === 'audio' ? '!border-indigo-500/40 !text-indigo-300 !bg-indigo-500/10' : ''}`}
+            className={`btn-ghost text-xs ${mode === 'audio' ? '!border-indigo-500 !text-indigo-700 !bg-indigo-50' : ''}`}
           >
             🎙️ Audio / Video
           </button>
@@ -113,8 +113,8 @@ export default function AnalyzeForm({ onNewResult }) {
 
             <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
               <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-600">Ctrl + Enter to analyze</span>
-                <span className="text-xs text-gray-700">{text.length}/2000</span>
+                <span className="text-xs text-gray-400">Ctrl + Enter to analyze</span>
+                <span className="text-xs text-gray-300">{text.length}/2000</span>
               </div>
               <button
                 onClick={handleAnalyze}
@@ -132,14 +132,14 @@ export default function AnalyzeForm({ onNewResult }) {
 
             {/* Quick examples — only before first result */}
             {!result && !loading && (
-              <div className="mt-4 pt-4 border-t border-white/[0.06]">
-                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Quick test examples</p>
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">Quick test examples</p>
                 <div className="flex flex-wrap gap-2">
                   {quickExamples.map((ex, i) => (
                     <button
                       key={i}
                       onClick={() => setText(ex)}
-                      className="text-xs text-gray-500 hover:text-gray-300 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] rounded-lg px-3 py-1.5 transition-all duration-200 truncate max-w-[220px]"
+                      className="text-xs text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg px-3 py-1.5 transition-all duration-200 truncate max-w-[220px]"
                     >
                       "{ex.slice(0, 35)}..."
                     </button>
@@ -157,7 +157,7 @@ export default function AnalyzeForm({ onNewResult }) {
             </div>
 
             <div
-              className={`drop-zone ${audioFile ? 'border-indigo-500/30 bg-indigo-500/5' : ''}`}
+              className={`drop-zone ${audioFile ? '!border-indigo-400 !bg-indigo-50/50' : ''}`}
               onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('dragover') }}
               onDragLeave={(e) => e.currentTarget.classList.remove('dragover')}
               onDrop={handleFileDrop}
@@ -172,14 +172,14 @@ export default function AnalyzeForm({ onNewResult }) {
               />
               {audioFile ? (
                 <div className="space-y-1">
-                  <p className="text-sm text-indigo-300 font-medium">📁 {audioFile.name}</p>
+                  <p className="text-sm text-indigo-700 font-medium">📁 {audioFile.name}</p>
                   <p className="text-xs text-gray-500">{(audioFile.size / (1024 * 1024)).toFixed(1)} MB — click to change</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <p className="text-2xl">🎤</p>
-                  <p className="text-sm text-gray-400">Drop an audio/video file here or click to browse</p>
-                  <p className="text-xs text-gray-600">Supported: MP3, WAV, M4A, MP4, MOV, WebM, OGG (max 50MB)</p>
+                  <p className="text-sm text-gray-500">Drop an audio/video file here or click to browse</p>
+                  <p className="text-xs text-gray-400">Supported: MP3, WAV, M4A, MP4, MOV, WebM, OGG (max 50MB)</p>
                 </div>
               )}
             </div>
@@ -204,8 +204,8 @@ export default function AnalyzeForm({ onNewResult }) {
 
       {/* ── Error display ── */}
       {error && (
-        <div className="glass-card p-4 !border-red-500/30 animate-slide-up">
-          <p className="text-sm text-red-400 flex items-center gap-2">
+        <div className="glass-card p-4 !border-red-300 !bg-red-50 animate-slide-up">
+          <p className="text-sm text-red-700 flex items-center gap-2">
             <span>⚠️</span> {error}
           </p>
         </div>
