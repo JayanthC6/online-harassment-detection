@@ -25,7 +25,7 @@ const CATEGORY_LABELS = {
   none: 'Clean',
 }
 
-export default function Dashboard({ refreshKey }) {
+export default function Dashboard({ refreshKey, token, onLogout }) {
   const [stats, setStats] = useState({ total_flagged: 0, category_breakdown: {}, model: 'baseline' })
   const [recent, setRecent] = useState([])
   const [dailyCounts, setDailyCounts] = useState(null)
@@ -34,10 +34,21 @@ export default function Dashboard({ refreshKey }) {
 
   useEffect(() => {
     setLoading(true)
+    const headers = { 'Authorization': `Bearer ${token}` }
+    
     Promise.all([
-      fetch('/api/admin/stats').then((r) => r.json()),
-      fetch('/api/admin/recent?limit=15').then((r) => r.json()),
-      fetch('/api/admin/daily_counts').then((r) => r.json()).catch(() => null),
+      fetch('/api/admin/stats', { headers }).then(async (r) => {
+        if (r.status === 401) throw new Error('Unauthorized')
+        return r.json()
+      }),
+      fetch('/api/admin/recent?limit=15', { headers }).then(async (r) => {
+        if (r.status === 401) throw new Error('Unauthorized')
+        return r.json()
+      }),
+      fetch('/api/admin/daily_counts', { headers }).then(async (r) => {
+        if (r.status === 401) throw new Error('Unauthorized')
+        return r.json()
+      }).catch(() => null),
     ])
       .then(([s, r, dc]) => {
         setStats(s)
@@ -47,9 +58,13 @@ export default function Dashboard({ refreshKey }) {
           setAnomalies(dc.anomalies || [])
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        if (err.message === 'Unauthorized' && onLogout) {
+          onLogout()
+        }
+      })
       .finally(() => setLoading(false))
-  }, [refreshKey])
+  }, [refreshKey, token, onLogout])
 
   const categories = Object.keys(stats.category_breakdown)
   const chartData = {

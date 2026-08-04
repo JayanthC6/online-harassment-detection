@@ -2,6 +2,7 @@ import { useState } from 'react'
 import AnalyzeForm from './components/AnalyzeForm'
 import ScreenshotAnalyzeForm from './components/ScreenshotAnalyzeForm'
 import Dashboard from './components/Dashboard'
+import Login from './components/Login'
 
 const TABS = [
   { id: 'analyze', label: '🔍 Analyze' },
@@ -11,6 +12,17 @@ const TABS = [
 export default function App() {
   const [activeTab, setActiveTab] = useState('analyze')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [token, setToken] = useState(() => localStorage.getItem('adminToken') || '')
+
+  const handleLogin = (newToken) => {
+    setToken(newToken)
+    localStorage.setItem('adminToken', newToken)
+  }
+
+  const handleLogout = () => {
+    setToken('')
+    localStorage.removeItem('adminToken')
+  }
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6">
@@ -18,11 +30,21 @@ export default function App() {
 
         {/* ── Header ── */}
         <header className="text-center space-y-2 pt-4 pb-2">
-          <div className="flex items-center justify-center gap-3">
-            <span className="text-3xl">🛡️</span>
-            <h1 className="text-2xl font-bold text-gray-900">
-              ShieldAI
-            </h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🛡️</span>
+              <h1 className="text-2xl font-bold text-gray-900">
+                ShieldAI
+              </h1>
+            </div>
+            {token && (
+              <button
+                onClick={handleLogout}
+                className="text-sm px-3 py-1.5 text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Sign Out
+              </button>
+            )}
           </div>
           <p className="text-sm text-gray-500 max-w-md mx-auto">
             AI-powered harassment detection — paste text or upload audio to analyze for hate speech, threats, and offensive language.
@@ -51,7 +73,11 @@ export default function App() {
             </>
           )}
           {activeTab === 'dashboard' && (
-            <Dashboard refreshKey={refreshKey} />
+            !token ? (
+              <Login onLogin={handleLogin} />
+            ) : (
+              <Dashboard refreshKey={refreshKey} token={token} onLogout={handleLogout} />
+            )
           )}
         </main>
 

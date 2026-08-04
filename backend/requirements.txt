@@ -32,3 +32,7 @@ sentence-transformers
 
 # Groq API for complaint summarization (summarize.py).
 groq
+
+# Authentication and MongoDB SSL fix
+PyJWT==2.8.0
+certifi

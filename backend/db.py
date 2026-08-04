@@ -32,10 +32,11 @@ def _try_connect():
         return
 
     try:
+        import certifi
         from pymongo import MongoClient
         from pymongo.server_api import ServerApi
 
-        _client = MongoClient(uri, server_api=ServerApi("1"), serverSelectionTimeoutMS=5000)
+        _client = MongoClient(uri, server_api=ServerApi("1"), serverSelectionTimeoutMS=5000, tlsCAFile=certifi.where())
         _client.admin.command("ping")  # fail fast if the connection string is wrong
         db = _client["harassment_detection"]
         _collection = db["flagged_messages"]

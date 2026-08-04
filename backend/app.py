@@ -37,6 +37,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+import jwt
+from functools import wraps
 
 load_dotenv()  # reads MONGODB_URI from a .env file if present
 
@@ -128,6 +130,50 @@ def health():
         "database": "mongodb" if db.is_persistent() else "in-memory (not persistent)",
         "model": _active_model_name(),
     })
+
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            
+        if not token:
+            return jsonify({"error": "Token is missing"}), 401
+            
+        try:
+            secret = os.environ.get("JWT_SECRET_KEY", "fallback-secret")
+            data = jwt.decode(token, secret, algorithms=["HS256"])
+        except Exception:
+            return jsonify({"error": "Token is invalid or expired"}), 401
+            
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route("/admin/login", methods=["POST"])
+def login():
+    data = request.get_json(silent=True) or {}
+    username = data.get("username")
+    password = data.get("password")
+    
+    env_user = os.environ.get("ADMIN_USERNAME", "admin")
+    env_pass = os.environ.get("ADMIN_PASSWORD", "password123")
+    
+    if username == env_user and password == env_pass:
+        secret = os.environ.get("JWT_SECRET_KEY", "fallback-secret")
+        # Token valid for 24 hours
+        import time
+        token = jwt.encode({
+            "user": username,
+            "exp": int(time.time()) + 24 * 3600
+        }, secret, algorithm="HS256")
+        
+        return jsonify({"token": token})
+        
+    return jsonify({"error": "Invalid credentials"}), 401
 
 
 @app.route("/predict", methods=["POST"])
@@ -311,6 +357,7 @@ def summarize():
 
 
 @app.route("/admin/stats", methods=["GET"])
+@token_required
 def admin_stats():
     stats = db.get_stats()
     stats["model"] = _active_model_name()
@@ -318,6 +365,7 @@ def admin_stats():
 
 
 @app.route("/admin/recent", methods=["GET"])
+@token_required
 def admin_recent():
     limit = int(request.args.get("limit", 20))
     recent = db.get_recent(limit)
@@ -328,6 +376,7 @@ def admin_recent():
 
 
 @app.route("/admin/daily_counts", methods=["GET"])
+@token_required
 def admin_daily_counts():
     """Return daily flagged message counts + anomaly detection results."""
     days = int(request.args.get("days", 30))
