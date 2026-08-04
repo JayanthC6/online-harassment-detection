@@ -211,7 +211,7 @@ def detect_anomalies(daily_counts: list, window: int = 7, z_threshold: float = 2
                     "count": counts[i],
                     "avg": round(mean, 1),
                     "std": 0.0,
-                    "z_score": float("inf"),
+                    "z_score": 99.99,  # std=0, count spiked
                 })
             continue
 
