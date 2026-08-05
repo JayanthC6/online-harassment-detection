@@ -1,36 +1,22 @@
 import { useState, useRef } from 'react'
+import { usePredict } from '../hooks/usePredict'
 import ResultDisplay from './ResultDisplay'
+import Card from './common/Card'
+import Button from './common/Button'
+import FileUpload from './common/FileUpload'
+import ErrorAlert from './common/ErrorAlert'
 
 const ALLOWED_IMAGE = '.png,.jpg,.jpeg,.webp'
 
 export default function ScreenshotAnalyzeForm({ onNewResult }) {
-  const [result, setResult] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
   const [imageFile, setImageFile] = useState(null)
   const fileRef = useRef(null)
+  const { loading, error, result, predictScreenshot } = usePredict()
 
   const handleImageAnalyze = async () => {
     if (!imageFile) return
-    setLoading(true)
-    setError(null)
-    setResult(null)
-    try {
-      const formData = new FormData()
-      formData.append('file', imageFile)
-      const res = await fetch('/api/predict/screenshot', {
-        method: 'POST',
-        body: formData,
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Screenshot analysis failed')
-      setResult(data)
-      if (onNewResult) onNewResult(data)
-    } catch (err) {
-      setError(err.message || 'Could not analyze screenshot. Is the backend running?')
-    } finally {
-      setLoading(false)
-    }
+    const data = await predictScreenshot(imageFile)
+    if (data && onNewResult) onNewResult(data)
   }
 
   const handleFileDrop = (e) => {
@@ -42,64 +28,39 @@ export default function ScreenshotAnalyzeForm({ onNewResult }) {
 
   return (
     <div className="space-y-4">
-      <div className="glass-card p-6 mt-4">
+      <Card className="mt-4">
         <div className="section-title">
           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
           Screenshot Upload
         </div>
 
-        <div
-          className={`drop-zone ${imageFile ? '!border-emerald-400 !bg-emerald-50/50' : ''}`}
-          onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('dragover') }}
-          onDragLeave={(e) => e.currentTarget.classList.remove('dragover')}
-          onDrop={handleFileDrop}
-          onClick={() => fileRef.current?.click()}
-        >
-          <input
-            ref={fileRef}
-            type="file"
-            accept={ALLOWED_IMAGE}
-            className="hidden"
-            onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-          />
-          {imageFile ? (
-            <div className="space-y-1">
-              <p className="text-sm text-emerald-700 font-medium">📁 {imageFile.name}</p>
-              <p className="text-xs text-gray-500">{(imageFile.size / (1024 * 1024)).toFixed(1)} MB — click to change</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-2xl">🖼️</p>
-              <p className="text-sm text-gray-500">Drop a screenshot here or click to browse</p>
-              <p className="text-xs text-gray-400">Supported: PNG, JPG, WEBP (max 10MB)</p>
-            </div>
-          )}
-        </div>
+        <FileUpload
+          file={imageFile}
+          onFileSelect={setImageFile}
+          accept={ALLOWED_IMAGE}
+          icon="🖼️"
+          activeClasses={{
+            container: '!border-emerald-400 !bg-emerald-50/50',
+            text: 'text-emerald-700'
+          }}
+          titleText="Drop a screenshot here or click to browse"
+          supportedText="Supported: PNG, JPG, WEBP (max 10MB)"
+        />
 
         <div className="flex justify-end mt-3">
-          <button
+          <Button
             onClick={handleImageAnalyze}
-            disabled={loading || !imageFile}
-            className="btn-primary"
+            disabled={!imageFile}
+            loading={loading}
+            loadingText="Extracting text & analyzing..."
             style={!loading && imageFile ? { background: '#059669' } : {}}
           >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeLinecap="round" /></svg>
-                Extracting text & analyzing...
-              </span>
-            ) : '🖼️ Analyze Screenshot'}
-          </button>
+            🖼️ Analyze Screenshot
+          </Button>
         </div>
-      </div>
+      </Card>
 
-      {error && (
-        <div className="glass-card p-4 !border-red-300 !bg-red-50 animate-slide-up">
-          <p className="text-sm text-red-700 flex items-center gap-2">
-            <span>⚠️</span> {error}
-          </p>
-        </div>
-      )}
+      <ErrorAlert error={error} />
 
       {result && <ResultDisplay result={result} />}
     </div>

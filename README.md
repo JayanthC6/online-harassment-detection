@@ -1,13 +1,17 @@
-# Online Harassment Detection System
+# ShieldAI — Online Harassment Detection System
 
-ML-based web app that classifies text as harassing or non-harassing, with
-a category breakdown (hate speech / offensive language / none) and an admin
-dashboard for reviewing flagged content.
+An ML-based web application that classifies text, audio/video, and screenshots as harassing or non-harassing, complete with category breakdowns (hate speech / offensive language / clean), advanced risk scoring, semantic duplicate detection, and an AI-powered admin dashboard for reviewing flagged content.
 
-**Current status:** baseline model (TF-IDF + Logistic Regression) trained
-and working end-to-end, full stack tested (Flask + React + dashboard).
-DistilBERT, audio/video transcription, and screenshot text extraction (OCR) are built and wired in. Note that transcription and OCR will download model weights on their first run.
-See `docs/sprint_plan.md` for the week-by-week plan.
+## Key Features
+
+- **Multi-modal Analysis**: Analyzes raw text, audio/video files (via Whisper transcription), and images/screenshots (via EasyOCR).
+- **Dual ML Models**: Supports both a fast TF-IDF + Logistic Regression baseline and an advanced DistilBERT transformer model.
+- **Explainability**: Word-level contribution highlighting (TF-IDF × LR coefficients) to explain *why* the baseline model flagged content.
+- **Risk Scoring & Incident Summarization**: Automatically scores the risk severity of flagged items and generates readable incident summaries using Groq.
+- **Semantic Clustering**: Detects repeated/similar harassment campaigns using MiniLM embeddings.
+- **Secure Admin Dashboard**: JWT-authenticated React dashboard to view trends, anomalies, and recently flagged items.
+
+---
 
 ## Quick start (local dev, no Docker)
 
@@ -21,6 +25,7 @@ pip install -r requirements.txt
 python ml/train_baseline.py     # trains and saves the model (~10 sec)
 python app.py                   # starts Flask on http://localhost:5000
 ```
+*Note: Make sure MongoDB is running locally on port 27017 or configure the `MONGO_URI` in your `.env` file.*
 
 ### 2. Frontend (separate terminal)
 
@@ -30,8 +35,9 @@ npm install
 npm run dev                     # starts Vite on http://localhost:5173
 ```
 
-Open http://localhost:5173 — the analyzer form and dashboard both talk to
-the Flask backend via the `/api` proxy configured in `vite.config.js`.
+Open http://localhost:5173 — the analyzer forms and dashboard both talk to the Flask backend via the `/api` proxy configured in `vite.config.js`.
+
+---
 
 ## Quick start (Docker)
 
@@ -39,91 +45,79 @@ the Flask backend via the `/api` proxy configured in `vite.config.js`.
 docker compose up --build
 ```
 
-Backend: http://localhost:5000, Frontend: http://localhost:3000
+- Backend: http://localhost:5000
+- Frontend: http://localhost:3000
 
-Note: you must run `python ml/train_baseline.py` locally at least once
-before building the Docker image, so `backend/models/*.joblib` exists
-(it's mounted as a volume, not baked into the image).
+*Note: you must run `python ml/train_baseline.py` locally at least once before building the Docker image, so `backend/models/*.joblib` exists (it's mounted as a volume, not baked into the image).*
 
-## Project structure
+---
+
+## Project Structure
 
 ```
 backend/
-  app.py                    Flask API — predict, predict/audio, predict/screenshot, health, admin stats/recent
-  ml/
-    preprocess.py            Text cleaning, shared by baseline training + inference
-    train_baseline.py        TF-IDF + Logistic Regression training script
-    predict.py                Loads baseline model, classifies text
-    train_transformer.py      DistilBERT fine-tuning (local/GPU-machine version)
-    predict_transformer.py    Loads DistilBERT model, classifies text
-    transcribe.py              Whisper transcription -> classifier pipeline
-    ocr.py                     EasyOCR text extraction -> classifier pipeline
-  models/                    Saved model artifacts (gitignored, regenerate locally)
-    distilbert/               DistilBERT goes here after training (see below)
+  app.py                    Flask application factory & middleware setup
+  api/                      Modular Flask Blueprints
+    routes_public.py        Public analysis endpoints (/predict, /predict/audio, etc.)
+    routes_admin.py         JWT-protected admin endpoints (/admin/stats, /admin/login)
+  services/                 Business Logic Layer
+    auth_service.py         JWT issuance and validation
+    db_service.py           MongoDB persistence and anomaly detection
+    llm_service.py          Groq-based incident summarization
+    model_service.py        ML inference orchestration
+    risk_service.py         Risk scoring engine
+    similarity_service.py   MiniLM-based semantic clustering
+  ml/                       Core ML Pipelines
+    preprocess.py           Text cleaning logic
+    train_baseline.py       TF-IDF + LR training script
+    predict.py              Baseline inference
+    train_transformer.py    DistilBERT training script
+    predict_transformer.py  DistilBERT inference
+    transcribe.py           Whisper transcription
+    ocr.py                  EasyOCR text extraction
+  models/                   Saved model artifacts (gitignored)
+
 frontend/
   src/
-    App.jsx
+    App.jsx                 Main router & Layout
+    api/client.js           Centralized API fetch client with JWT injection
+    hooks/                  Reusable custom React hooks (useAuth, usePredict, useAdminData)
     components/
-      AnalyzeForm.jsx           User-facing text analysis form
-      ScreenshotAnalyzeForm.jsx User-facing screenshot analysis form
-      Dashboard.jsx             Admin stats + chart + recent flagged messages
-data/
-  raw/                        Source dataset + notes on label mapping
-notebooks/
-  01_eda.ipynb                Sprint 1 exploratory data analysis
-  02_train_distilbert.ipynb   Colab notebook — run this to actually train DistilBERT
-docs/
-  sprint_plan.md              Week-by-week plan for the 2-4 week timeline
+      common/               Shared UI elements (Card, Button, FileUpload, LoadingState)
+      dashboard/            Admin Dashboard subcomponents (Charts, Stats, Table)
+      prediction/           Analysis result subcomponents (RiskBadge, ConfidenceBar, Summary)
+      auth/                 LoginForm component
+      AnalyzeForm.jsx       Text & Audio upload form
+      ScreenshotAnalyzeForm Image upload form
+      ResultDisplay.jsx     Orchestrates prediction visualization
 ```
 
-## Training DistilBERT (needs Colab, not this repo alone)
+---
+
+## Training DistilBERT
 
 1. Upload `notebooks/02_train_distilbert.ipynb` to https://colab.research.google.com
 2. Runtime → Change runtime type → T4 GPU
-3. Run all cells. It downloads the same dataset, trains, prints a classification
-   report you can directly compare against the baseline's, then downloads a
-   `distilbert_model.zip`
-4. Unzip it into `backend/models/distilbert/` on your machine
-5. Restart `python app.py` — it auto-detects the model and routes `/predict`
-   to DistilBERT instead of the baseline, no code changes needed
+3. Run all cells to train and download a `distilbert_model.zip`
+4. Unzip it into `backend/models/distilbert/`
+5. Restart `python app.py` — it auto-detects the model and routes `/predict` to DistilBERT instead of the baseline.
 
-## What's tested vs. what needs your machine
+---
 
-Everything below was actually run and verified, not just written:
-- Dataset load, preprocessing, baseline training (86% accuracy)
-- Flask API — all endpoints, including error handling on bad input
-- React frontend — builds clean, connects to the API
-- `/predict/audio` — file validation and error handling (confirmed it fails
-  cleanly on missing/wrong-type files, and reaches the transcription step
-  correctly on a valid file)
-- `/predict/screenshot` — extracts text via OCR and routes to the classifier. Gracefully handles blurry/unreadable images.
+## Recent Architecture Improvements
 
-What's written and syntax-checked, but needs you to run it once with real
-internet access (Hugging Face, Whisper, and EasyOCR models need downloading):
-- `train_transformer.py` / `02_train_distilbert.ipynb` — standard HuggingFace
-  Trainer API, but not test-run end-to-end here
-- `transcribe.py` — Whisper's package installs and imports fine; the actual
-  model weight download (~150MB, one-time) needs to happen on your machine
-- `ocr.py` — EasyOCR will download detection and recognition models (~30MB) on first run
+This project recently underwent a comprehensive 5-phase refactoring to achieve enterprise-grade maintainability:
 
-Run these yourself the first time rather than assuming they're bug-free the
-way `train_baseline.py` is — that one was actually executed and verified.
+1. **Backend Structural Overhaul**: Segregated business logic into a `services/` layer and isolated core ML pipelines.
+2. **Feature Extensions**: Added Groq LLM summarization, semantic clustering, risk scoring, and MongoDB persistence.
+3. **API Modularization**: Split the monolithic `app.py` into distinct `routes_public.py` and `routes_admin.py` blueprints, adding robust JWT authentication middleware.
+4. **Frontend Infrastructure**: Introduced a centralized `apiClient` and reusable custom hooks for state management.
+5. **Frontend Component Breakdown**: Dismantled large monolithic React components into atomic, single-responsibility components with strict `prop-types` validation.
 
-## Known placeholder
+---
 
-`LOG_STORE` in `app.py` is in-memory, not MongoDB — flagged messages reset
-when the server restarts. Swap this out in Sprint 3 (see `docs/sprint_plan.md`).
+## Known Limitations
 
-## Known limitations (be upfront about these in your report)
-
-1. English only — no multilingual support yet
-2. Class imbalance — hate_speech is 5.8% of the training data, so precision
-   on that specific category is currently weak (~32%). See `data/raw/README.md`.
-3. Implicit/coded threats without profanity are hard for the baseline model
-   to catch — e.g. "I know where you live" scored as non-harassing in testing.
-   This is the main argument for the DistilBERT upgrade in week 2.
-4. No explainability (SHAP/LIME) yet — flagged messages don't come with a
-   "why" beyond the confidence score.
-
-See `docs/sprint_plan.md` for the full timeline and what's explicitly
-out of scope for this deadline.
+1. **English only** — no multilingual support yet.
+2. **Class imbalance** — `hate_speech` is a minority class in the training data, so precision on that specific category is currently weak in the baseline model.
+3. **Implicit Threats** — coded threats without profanity are hard for the baseline model to catch. This is mitigated by the DistilBERT model.

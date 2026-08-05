@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
+import { apiClient } from '../../api/client';
 
-export default function Login({ onLogin }) {
+export default function LoginForm({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -12,20 +14,10 @@ export default function Login({ onLogin }) {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:5000/admin/login', {
+      const data = await apiClient('/admin/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ username, password })
       });
-
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-
       onLogin(data.token);
     } catch (err) {
       setError(err.message);
@@ -89,3 +81,7 @@ export default function Login({ onLogin }) {
     </div>
   );
 }
+
+LoginForm.propTypes = {
+  onLogin: PropTypes.func.isRequired,
+};

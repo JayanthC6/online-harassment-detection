@@ -1,62 +1,33 @@
 import { useState, useRef } from 'react'
+import { usePredict } from '../hooks/usePredict'
 import ResultDisplay from './ResultDisplay'
+import Card from './common/Card'
+import Button from './common/Button'
+import FileUpload from './common/FileUpload'
+import ErrorAlert from './common/ErrorAlert'
 
 const ALLOWED_AUDIO = '.mp3,.wav,.m4a,.mp4,.mov,.webm,.ogg'
 
 export default function AnalyzeForm({ onNewResult }) {
   const [text, setText] = useState('')
-  const [result, setResult] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
   const [mode, setMode] = useState('text') // 'text' or 'audio'
   const [audioFile, setAudioFile] = useState(null)
   const fileRef = useRef(null)
+  
+  const { loading, error, result, predictText, predictAudio } = usePredict()
 
   /* ── Text analysis ── */
   const handleAnalyze = async () => {
     if (!text.trim()) return
-    setLoading(true)
-    setError(null)
-    setResult(null)
-    try {
-      const res = await fetch('/api/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Request failed')
-      setResult(data)
-      if (onNewResult) onNewResult(data)
-    } catch (err) {
-      setError(err.message || 'Could not reach the analysis service. Is the Flask backend running?')
-    } finally {
-      setLoading(false)
-    }
+    const data = await predictText(text)
+    if (data && onNewResult) onNewResult(data)
   }
 
   /* ── Audio analysis ── */
   const handleAudioAnalyze = async () => {
     if (!audioFile) return
-    setLoading(true)
-    setError(null)
-    setResult(null)
-    try {
-      const formData = new FormData()
-      formData.append('file', audioFile)
-      const res = await fetch('/api/predict/audio', {
-        method: 'POST',
-        body: formData,
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Audio analysis failed')
-      setResult(data)
-      if (onNewResult) onNewResult(data)
-    } catch (err) {
-      setError(err.message || 'Could not analyze audio. Is the backend running with Whisper installed?')
-    } finally {
-      setLoading(false)
-    }
+    const data = await predictAudio(audioFile)
+    if (data && onNewResult) onNewResult(data)
   }
 
   const handleKeyDown = (e) => {
@@ -79,20 +50,22 @@ export default function AnalyzeForm({ onNewResult }) {
   return (
     <div className="space-y-4">
       {/* ── Mode toggle ── */}
-      <div className="glass-card p-6">
+      <Card>
         <div className="flex items-center gap-3 mb-4">
-          <button
+          <Button
             onClick={() => setMode('text')}
-            className={`btn-ghost text-xs ${mode === 'text' ? '!border-indigo-500 !text-indigo-700 !bg-indigo-50' : ''}`}
+            variant="ghost"
+            className={`text-xs ${mode === 'text' ? '!border-indigo-500 !text-indigo-700 !bg-indigo-50' : ''}`}
           >
             📝 Text
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => setMode('audio')}
-            className={`btn-ghost text-xs ${mode === 'audio' ? '!border-indigo-500 !text-indigo-700 !bg-indigo-50' : ''}`}
+            variant="ghost"
+            className={`text-xs ${mode === 'audio' ? '!border-indigo-500 !text-indigo-700 !bg-indigo-50' : ''}`}
           >
             🎙️ Audio / Video
-          </button>
+          </Button>
         </div>
 
         {mode === 'text' ? (
@@ -116,18 +89,13 @@ export default function AnalyzeForm({ onNewResult }) {
                 <span className="text-xs text-gray-400">Ctrl + Enter to analyze</span>
                 <span className="text-xs text-gray-300">{text.length}/2000</span>
               </div>
-              <button
+              <Button
                 onClick={handleAnalyze}
-                disabled={loading || !text.trim()}
-                className="btn-primary"
+                disabled={!text.trim()}
+                loading={loading}
               >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeLinecap="round" /></svg>
-                    Analyzing...
-                  </span>
-                ) : '🔍 Analyze'}
-              </button>
+                🔍 Analyze
+              </Button>
             </div>
 
             {/* Quick examples — only before first result */}
@@ -156,60 +124,34 @@ export default function AnalyzeForm({ onNewResult }) {
               Audio / Video Upload
             </div>
 
-            <div
-              className={`drop-zone ${audioFile ? '!border-indigo-400 !bg-indigo-50/50' : ''}`}
-              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('dragover') }}
-              onDragLeave={(e) => e.currentTarget.classList.remove('dragover')}
-              onDrop={handleFileDrop}
-              onClick={() => fileRef.current?.click()}
-            >
-              <input
-                ref={fileRef}
-                type="file"
-                accept={ALLOWED_AUDIO}
-                className="hidden"
-                onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
-              />
-              {audioFile ? (
-                <div className="space-y-1">
-                  <p className="text-sm text-indigo-700 font-medium">📁 {audioFile.name}</p>
-                  <p className="text-xs text-gray-500">{(audioFile.size / (1024 * 1024)).toFixed(1)} MB — click to change</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-2xl">🎤</p>
-                  <p className="text-sm text-gray-500">Drop an audio/video file here or click to browse</p>
-                  <p className="text-xs text-gray-400">Supported: MP3, WAV, M4A, MP4, MOV, WebM, OGG (max 50MB)</p>
-                </div>
-              )}
-            </div>
+            <FileUpload
+              file={audioFile}
+              onFileSelect={setAudioFile}
+              accept={ALLOWED_AUDIO}
+              icon="🎤"
+              activeClasses={{
+                container: '!border-indigo-400 !bg-indigo-50/50',
+                text: 'text-indigo-700'
+              }}
+              titleText="Drop an audio/video file here or click to browse"
+              supportedText="Supported: MP3, WAV, M4A, MP4, MOV, WebM, OGG (max 50MB)"
+            />
 
             <div className="flex justify-end mt-3">
-              <button
+              <Button
                 onClick={handleAudioAnalyze}
-                disabled={loading || !audioFile}
-                className="btn-primary"
+                disabled={!audioFile}
+                loading={loading}
+                loadingText="Transcribing & analyzing..."
               >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeLinecap="round" /></svg>
-                    Transcribing & analyzing...
-                  </span>
-                ) : '🎙️ Analyze Audio'}
-              </button>
+                🎙️ Analyze Audio
+              </Button>
             </div>
           </>
         )}
-      </div>
+      </Card>
 
-      {/* ── Error display ── */}
-      {error && (
-        <div className="glass-card p-4 !border-red-300 !bg-red-50 animate-slide-up">
-          <p className="text-sm text-red-700 flex items-center gap-2">
-            <span>⚠️</span> {error}
-          </p>
-        </div>
-      )}
+      <ErrorAlert error={error} />
 
       {/* ── Result ── */}
       <ResultDisplay result={result} />

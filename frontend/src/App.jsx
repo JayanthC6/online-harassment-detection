@@ -2,7 +2,8 @@ import { useState } from 'react'
 import AnalyzeForm from './components/AnalyzeForm'
 import ScreenshotAnalyzeForm from './components/ScreenshotAnalyzeForm'
 import Dashboard from './components/Dashboard'
-import Login from './components/Login'
+import LoginForm from './components/auth/LoginForm'
+import { useAuth } from './hooks/useAuth'
 
 const TABS = [
   { id: 'analyze', label: '🔍 Analyze' },
@@ -12,17 +13,7 @@ const TABS = [
 export default function App() {
   const [activeTab, setActiveTab] = useState('analyze')
   const [refreshKey, setRefreshKey] = useState(0)
-  const [token, setToken] = useState(() => localStorage.getItem('adminToken') || '')
-
-  const handleLogin = (newToken) => {
-    setToken(newToken)
-    localStorage.setItem('adminToken', newToken)
-  }
-
-  const handleLogout = () => {
-    setToken('')
-    localStorage.removeItem('adminToken')
-  }
+  const { token, login, logout } = useAuth()
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6">
@@ -39,7 +30,7 @@ export default function App() {
             </div>
             {token && (
               <button
-                onClick={handleLogout}
+                onClick={logout}
                 className="text-sm px-3 py-1.5 text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 Sign Out
@@ -73,10 +64,10 @@ export default function App() {
             </>
           )}
           {activeTab === 'dashboard' && (
-            !token ? (
-              <Login onLogin={handleLogin} />
+            token ? (
+              <Dashboard refreshKey={refreshKey} />
             ) : (
-              <Dashboard refreshKey={refreshKey} token={token} onLogout={handleLogout} />
+              <LoginForm onLogin={login} />
             )
           )}
         </main>
