@@ -2,8 +2,6 @@ import { useState } from 'react'
 import AnalyzeForm from './components/AnalyzeForm'
 import ScreenshotAnalyzeForm from './components/ScreenshotAnalyzeForm'
 import Dashboard from './components/Dashboard'
-import LoginForm from './components/auth/LoginForm'
-import { useAuth } from './hooks/useAuth'
 
 const TABS = [
   { id: 'analyze', label: '🔍 Analyze' },
@@ -13,7 +11,6 @@ const TABS = [
 export default function App() {
   const [activeTab, setActiveTab] = useState('analyze')
   const [refreshKey, setRefreshKey] = useState(0)
-  const { token, login, logout } = useAuth()
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6">
@@ -28,14 +25,6 @@ export default function App() {
                 ShieldAI
               </h1>
             </div>
-            {token && (
-              <button
-                onClick={logout}
-                className="text-sm px-3 py-1.5 text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                Sign Out
-              </button>
-            )}
           </div>
           <p className="text-sm text-gray-500 max-w-md mx-auto">
             AI-powered harassment detection — paste text or upload audio to analyze for hate speech, threats, and offensive language.
@@ -64,11 +53,7 @@ export default function App() {
             </>
           )}
           {activeTab === 'dashboard' && (
-            token ? (
-              <Dashboard refreshKey={refreshKey} />
-            ) : (
-              <LoginForm onLogin={login} />
-            )
+            <Dashboard refreshKey={refreshKey} />
           )}
         </main>
 
