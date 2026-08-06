@@ -1,6 +1,6 @@
-from ml.predict import predict_message as predict_baseline
 import ml.predict_transformer as predict_transformer
 from services.admin_service import AdminService
+from ml.adapters import PrimaryModelAdapter, HeuristicMultiLabelAdapter, ConversationAdapter
 
 try:
     import ml.explain as explain_module
@@ -15,48 +15,92 @@ try:
 except Exception:
     pass
 
-CATEGORY_TO_CLASS = {"hate_speech": 0, "offensive_language": 1, "none": 2}
 CATEGORY_RISK_BASE = {
+    "Threat": 90,
+    "Self Harm": 90,
+    "Hate Speech": 80,
+    "Cyberbullying": 75,
+    "Sexual Harassment": 75,
+    "Identity Attack": 70,
+    "Spam": 60,
+    "Profanity": 50,
+    "Toxicity": 50,
+    "Offensive Language": 50,
+    "Clean": 5,
     "hate_speech": 80,
     "offensive_language": 50,
-    "none": 5,
+    "none": 5
 }
 
 class PredictionService:
-    @staticmethod
-    def get_active_model_name() -> str:
-        return "distilbert" if predict_transformer.is_available() else "baseline"
+    _adapter = None
+    _conversation_adapter = None
+
+    @classmethod
+    def get_adapter(cls):
+        if cls._adapter is None:
+            primary = PrimaryModelAdapter()
+            cls._adapter = HeuristicMultiLabelAdapter(primary)
+        return cls._adapter
+
+    @classmethod
+    def get_conversation_adapter(cls):
+        if cls._conversation_adapter is None:
+            cls._conversation_adapter = ConversationAdapter(cls.get_adapter())
+        return cls._conversation_adapter
 
     @staticmethod
-    def compute_risk_score(category: str, confidence: float) -> float:
-        base = CATEGORY_RISK_BASE.get(category, 5)
-        score = base * confidence
+    def get_active_model_name() -> str:
+        return "distilbert+multi_label_heuristics" if predict_transformer.is_available() else "baseline+multi_label_heuristics"
+
+    @staticmethod
+    def compute_risk_score(primary_category: str, primary_conf: float, secondary_categories: dict) -> float:
+        # Base severity of primary
+        base = CATEGORY_RISK_BASE.get(primary_category, 5)
+        score = base * primary_conf
+        
+        # Add risk for secondary categories
+        for sec_cat, sec_conf in secondary_categories.items():
+            sec_base = CATEGORY_RISK_BASE.get(sec_cat, 20)
+            score += (sec_base * sec_conf * 0.2) # 20% weight for secondary labels
+            
+        # Add bonus for multi-vector attacks
+        if len(secondary_categories) > 0:
+            score += len(secondary_categories) * 5
+            
         return round(min(100, max(0, score)), 1)
 
     @staticmethod
     def classify_text(text: str) -> dict:
-        if predict_transformer.is_available():
-            return predict_transformer.predict_message(text)
+        result = PredictionService.get_adapter().predict(text)
         
-        result = predict_baseline(text)
-        result["model"] = "baseline"
-
-        if _explain_available and result.get("category"):
-            class_idx = CATEGORY_TO_CLASS.get(result["category"])
-            if class_idx is not None:
+        # Explainability for Primary Label if it maps to the old classes (only works if model is baseline)
+        if _explain_available and "baseline" in result.get("model", ""):
+            CATEGORY_TO_CLASS = {"hate_speech": 0, "offensive_language": 1, "none": 2}
+            cat = result.get("category")
+            if cat in CATEGORY_TO_CLASS:
                 result["explanation"] = explain_module.explain_prediction(
-                    text, class_idx, top_n=5
+                    text, CATEGORY_TO_CLASS[cat], top_n=5
                 )
+        else:
+            result["explanation"] = []
+            
+        # Append heuristic explanations for secondary labels
+        adapter = PredictionService.get_adapter()
+        if hasattr(adapter, "explain_heuristics") and result.get("secondary_labels"):
+            result["explanation"].extend(adapter.explain_heuristics(text, result["secondary_labels"]))
+            
         return result
 
     @staticmethod
     def attach_risk_and_similarity(result: dict, text_for_embedding: str) -> dict:
         result["risk_score"] = PredictionService.compute_risk_score(
-            result.get("category", "none"),
+            result.get("primary_label", result.get("category", "none")),
             result.get("confidence", 0),
+            result.get("secondary_labels", {})
         )
 
-        if result["label"] == "harassing" and _similarity_available:
+        if result.get("label") == "harassing" and _similarity_available:
             try:
                 existing = AdminService.get_all_flagged()
                 matches, embedding = find_similar_reports(text_for_embedding, existing)
@@ -67,4 +111,23 @@ class PredictionService:
             except Exception:
                 pass 
 
+        return result
+
+    @staticmethod
+    def analyze_conversation(messages: list) -> dict:
+        result = PredictionService.get_conversation_adapter().predict_conversation(messages)
+        
+        try:
+            from ml.summarize import summarize_conversation
+            result["ai_summary"] = summarize_conversation(
+                [m["text"] for m in result["messages"]], 
+                result["conversation_risk"]
+            )
+        except Exception:
+            result["ai_summary"] = {
+                "overall_sentiment": "Unknown",
+                "harassment_pattern": "Unable to summarize.",
+                "recommended_action": "Manual review required."
+            }
+            
         return result

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import { FileText, Sparkles, AlertCircle } from 'lucide-react';
 import Button from '../common/Button';
 import { apiClient } from '../../api/client';
 
@@ -33,7 +34,14 @@ export default function PredictionSummary({
     }
   };
 
-  if (!isHarassing) return null;
+  if (!isHarassing) {
+    return (
+      <div className="text-xs text-slate-500 flex items-start gap-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
+        <AlertCircle size={14} className="mt-0.5 text-slate-400 flex-shrink-0" />
+        <p>No incident summary required. The message is classified as safe.</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -43,59 +51,56 @@ export default function PredictionSummary({
           disabled={summaryLoading}
           loading={summaryLoading}
           loadingText="Generating summary..."
-          variant="ghost"
-          className="text-xs w-full justify-center"
+          variant="outline"
+          className="text-sm w-full justify-center"
         >
-          📋 Generate Incident Summary
+          <Sparkles size={16} /> Generate Incident Summary
         </Button>
       )}
 
-      {summaryError && <p className="text-xs text-red-600">{summaryError}</p>}
+      {summaryError && <p className="text-sm text-rose-600 mt-2">{summaryError}</p>}
 
       {summary && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-3">
-          <p className="text-xs font-semibold text-indigo-700 flex items-center gap-2">
-            <span>📋</span> Incident Summary
-          </p>
-          <div className="space-y-2 text-sm">
+        <div className="space-y-4 text-sm animate-fade-in">
+          <div>
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              Description
+            </span>
+            <p className="text-slate-700 mt-1 leading-relaxed">
+              {summary.incident_description}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4 pt-2">
             <div>
-              <span className="text-xs font-semibold text-gray-500 uppercase">
-                Description
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                Category
               </span>
-              <p className="text-gray-700 mt-0.5">
-                {summary.incident_description}
+              <p className="text-slate-700 mt-1">{summary.category}</p>
+            </div>
+            <div>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                Severity
+              </span>
+              <p
+                className={`mt-1 font-medium ${
+                  summary.severity === 'high'
+                    ? 'text-rose-600'
+                    : summary.severity === 'medium'
+                    ? 'text-amber-600'
+                    : 'text-slate-600'
+                }`}
+              >
+                {summary.severity?.toUpperCase()}
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <span className="text-xs font-semibold text-gray-500 uppercase">
-                  Category
-                </span>
-                <p className="text-gray-700 mt-0.5">{summary.category}</p>
-              </div>
-              <div>
-                <span className="text-xs font-semibold text-gray-500 uppercase">
-                  Severity
-                </span>
-                <p
-                  className={`mt-0.5 font-medium ${
-                    summary.severity === 'high'
-                      ? 'text-red-700'
-                      : summary.severity === 'medium'
-                      ? 'text-amber-700'
-                      : 'text-gray-700'
-                  }`}
-                >
-                  {summary.severity?.toUpperCase()}
-                </p>
-              </div>
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-gray-500 uppercase">
-                Suggested Action
-              </span>
-              <p className="text-gray-700 mt-0.5">{summary.suggested_action}</p>
-            </div>
+          </div>
+          <div className="pt-2">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              Suggested Action
+            </span>
+            <p className="text-slate-700 mt-1 bg-slate-50 p-3 rounded-lg border border-slate-100">
+              {summary.suggested_action}
+            </p>
           </div>
         </div>
       )}

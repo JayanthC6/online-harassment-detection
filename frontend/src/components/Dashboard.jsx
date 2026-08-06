@@ -1,63 +1,80 @@
+import React, { Suspense } from 'react';
+import { Shield, Sparkles } from 'lucide-react';
 import { useAdminData } from '../hooks/useAdminData';
 import LoadingState from './common/LoadingState';
 import DashboardStats from './dashboard/DashboardStats';
-import CategoryChart from './dashboard/CategoryChart';
-import TrendChart from './dashboard/TrendChart';
-import RecentFlagsTable from './dashboard/RecentFlagsTable';
+import ModeratorQueue from './dashboard/ModeratorQueue';
+import BehavioralIntelligence from './dashboard/BehavioralIntelligence';
 
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-} from 'chart.js';
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Filler, Tooltip);
+const AdvancedAnalytics = React.lazy(() => import('./dashboard/AdvancedAnalytics'));
+const TrendChart = React.lazy(() => import('./dashboard/TrendChart'));
 
 export default function Dashboard({ refreshKey }) {
-  const { stats, recent, dailyCounts, anomalies, loading } = useAdminData(refreshKey);
+  const { stats, reportsData, conversationsData, profilesData, analytics, dailyCounts, anomalies, filters, loading, reportsLoading } = useAdminData(refreshKey);
+  const [activeTab, setActiveTab] = React.useState('overview'); // overview, behavior
 
   if (loading) {
-    return <LoadingState message="Loading dashboard..." />;
+    return <LoadingState message="Loading Moderation Workspace..." />;
   }
 
-  const categories = Object.keys(stats.category_breakdown);
-
   return (
-    <div className="space-y-4 animate-fade-in">
-      {/* ── Anomaly banner ── */}
-      {anomalies.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 animate-slide-up">
-          <p className="text-sm font-semibold text-amber-800 flex items-center gap-2">
-            <span>⚠️</span> Unusual Activity Detected
-          </p>
-          {anomalies.map((a, i) => (
-            <p key={i} className="text-xs text-amber-700 mt-1">
-              Spike on <strong>{a.date}</strong>: {a.count} reports vs {a.avg.toFixed(1)} avg (z-score: {a.z_score.toFixed(1)})
-            </p>
-          ))}
-        </div>
+    <div className="space-y-10 animate-fade-in pb-12 mt-6">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
+          <Shield className="text-indigo-600" size={24} />
+          Moderator Workspace
+        </h1>
+        <p className="text-sm text-slate-500">
+          Review, analyze, and manage reported content across the platform.
+        </p>
+      </div>
+
+      <div className="flex border-b border-slate-200 mb-6">
+        <button
+          onClick={() => setActiveTab('overview')}
+          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'overview'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          Incident Overview
+        </button>
+        <button
+          onClick={() => setActiveTab('behavior')}
+          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'behavior'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+          }`}
+        >
+          <Sparkles size={14} />
+          Behavioral Intelligence
+        </button>
+      </div>
+
+      {activeTab === 'overview' ? (
+        <>
+          {/* ── Stat cards ── */}
+          <DashboardStats stats={stats} />
+
+          {/* ── Advanced Analytics (Lazy Loaded) ── */}
+          <Suspense fallback={<div className="h-48 flex items-center justify-center bg-slate-50 rounded-xl border border-slate-100 text-slate-400 text-sm">Loading charts...</div>}>
+            {analytics && <AdvancedAnalytics analytics={analytics} />}
+            {dailyCounts && dailyCounts.length > 0 && <TrendChart dailyCounts={dailyCounts} anomalies={anomalies} />}
+          </Suspense>
+
+          {/* ── Moderator Queue ── */}
+          <ModeratorQueue 
+            reportsData={reportsData}
+            conversationsData={conversationsData}
+            filters={filters} 
+            loading={reportsLoading} 
+          />
+        </>
+      ) : (
+        <BehavioralIntelligence profilesData={profilesData} />
       )}
-
-      {/* ── Stat cards ── */}
-      <DashboardStats 
-        totalFlagged={stats.total_flagged} 
-        categoriesCount={categories.length} 
-        activeModel={stats.model} 
-      />
-
-      {/* ── Category chart ── */}
-      <CategoryChart categories={categories} stats={stats} />
-
-      {/* ── Trend chart ── */}
-      <TrendChart dailyCounts={dailyCounts} anomalies={anomalies} />
-
-      {/* ── Recent table ── */}
-      <RecentFlagsTable recent={recent} />
     </div>
   );
 }

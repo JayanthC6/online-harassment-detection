@@ -95,3 +95,71 @@ Respond with ONLY the summary paragraph, nothing else."""
         "severity": SEVERITY_MAP.get(category, "low"),
         "suggested_action": ACTION_MAP.get(category, ACTION_MAP["none"]),
     }
+
+def summarize_conversation(messages: list, risk_score: float) -> dict:
+    """
+    Summarize a multi-message conversation.
+    Returns: { overall_sentiment, harassment_pattern, recommended_action }
+    """
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        # Fallback if no API key
+        return {
+            "overall_sentiment": "Negative" if risk_score > 40 else "Neutral",
+            "harassment_pattern": "Pattern analysis unavailable without Groq API key.",
+            "recommended_action": "Monitor conversation." if risk_score > 40 else "No action needed."
+        }
+
+    from groq import Groq
+    client = Groq(api_key=api_key)
+    
+    chat_text = "\n".join([f"Message {i+1}: {msg}" for i, msg in enumerate(messages)])
+
+    prompt = f"""Analyze the following conversation context. 
+Provide a very brief assessment of:
+1. Overall sentiment (e.g. Hostile, Aggressive, Neutral)
+2. Harassment pattern (e.g. Escalating threats, Repeated insults, None)
+
+Conversation:
+{chat_text}
+
+Respond in this exact JSON format:
+{{"overall_sentiment": "...", "harassment_pattern": "..."}}
+Do not include any other text.
+"""
+    try:
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are a moderation AI that outputs strict JSON."},
+                {"role": "user", "content": prompt},
+            ],
+            model="llama-3.1-8b-instant",
+            temperature=0.3,
+            max_tokens=150,
+            response_format={"type": "json_object"}
+        )
+        import json
+        content = chat_completion.choices[0].message.content.strip()
+        data = json.loads(content)
+        
+        # Rule-based action recommendation based on computed risk score
+        if risk_score >= 75:
+            rec = "Immediate intervention recommended. Ban or suspend the offending participant."
+        elif risk_score >= 40:
+            rec = "Review closely. Issue a warning to the offending participant."
+        else:
+            rec = "No immediate action required. Monitor for future escalation."
+            
+        return {
+            "overall_sentiment": data.get("overall_sentiment", "Unknown"),
+            "harassment_pattern": data.get("harassment_pattern", "Unknown"),
+            "recommended_action": rec
+        }
+    except Exception as e:
+        print(f"Summarize Error: {e}")
+        return {
+            "overall_sentiment": "Unknown",
+            "harassment_pattern": "Analysis failed.",
+            "recommended_action": "Manual review required due to API error."
+        }
+

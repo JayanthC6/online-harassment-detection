@@ -12,19 +12,19 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background: #f8f9fa;
-    color: #1f2937;
+    background: #F8FAFC;
+    color: #334155;
     min-height: 100vh;
   }
 
   #root {
     min-height: 100vh;
-    background: #f8f9fa;
+    background: #F8FAFC;
   }
 
   ::selection {
-    background: rgba(79, 70, 229, 0.15);
-    color: #1e1b4b;
+    background: rgba(99, 102, 241, 0.15);
+    color: #312E81;
   }
 
   /* Scrollbar styling */
@@ -49,65 +49,63 @@
   /* Card — clean white with subtle border */
   .card {
     background: #ffffff;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #E2E8F0;
     border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+    transition: border-color 0.15s ease;
   }
   .card:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-color: #CBD5E1;
   }
 
   /* Keep .glass-card as alias for backward compat */
   .glass-card {
     background: #ffffff;
-    border: 1px solid #e5e7eb;
+    border: 1px solid #E2E8F0;
     border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+    transition: border-color 0.15s ease;
   }
   .glass-card:hover {
-    border-color: #d1d5db;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-color: #CBD5E1;
   }
 
   /* Input field */
   .input-field {
     background: #ffffff;
-    border: 1px solid #d1d5db;
+    border: 1px solid #E2E8F0;
     border-radius: 8px;
-    color: #1f2937;
+    color: #334155;
     font-size: 0.875rem;
     line-height: 1.5;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     outline: none;
   }
   .input-field::placeholder {
-    color: #9ca3af;
+    color: #94A3B8;
   }
   .input-field:focus {
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.08);
+    border-color: #6366F1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
   }
 
   /* Keep .input-dark as alias */
   .input-dark {
     background: #ffffff;
-    border: 1px solid #d1d5db;
+    border: 1px solid #E2E8F0;
     border-radius: 8px;
-    color: #1f2937;
+    color: #334155;
     font-size: 0.875rem;
     line-height: 1.5;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     outline: none;
   }
   .input-dark::placeholder {
-    color: #9ca3af;
+    color: #94A3B8;
   }
   .input-dark:focus {
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.08);
+    border-color: #6366F1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
   }
 
   /* Primary button */
@@ -117,24 +115,23 @@
     gap: 0.5rem;
     padding: 0.625rem 1.25rem;
     font-size: 0.875rem;
-    font-weight: 600;
-    color: #fff;
-    background: #4f46e5;
-    border: none;
+    font-weight: 500;
+    color: #ffffff;
+    background: #6366F1;
+    border: 1px solid #4F46E5;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.15s ease;
-    box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
   .btn-primary:hover:not(:disabled) {
-    background: #4338ca;
-    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+    background: #4F46E5;
   }
   .btn-primary:active:not(:disabled) {
-    background: #3730a3;
+    background: #4338CA;
   }
   .btn-primary:disabled {
-    opacity: 0.5;
+    opacity: 0.6;
     cursor: not-allowed;
   }
 
@@ -146,17 +143,17 @@
     padding: 0.5rem 1rem;
     font-size: 0.8125rem;
     font-weight: 500;
-    color: #4b5563;
-    background: transparent;
-    border: 1px solid #d1d5db;
+    color: #475569;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.15s ease;
   }
   .btn-ghost:hover {
-    color: #1f2937;
-    background: #f3f4f6;
-    border-color: #9ca3af;
+    color: #0F172A;
+    background: #F1F5F9;
+    border-color: #CBD5E1;
   }
 
   /* Section title */
@@ -164,9 +161,9 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: #6b7280;
+    color: #64748B;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-bottom: 1rem;
@@ -180,16 +177,16 @@
     padding: 0.25rem 0.75rem;
     font-size: 0.75rem;
     font-weight: 600;
-    border-radius: 9999px;
+    border-radius: 6px;
     white-space: nowrap;
   }
 
   /* Tab navigation */
   .tab-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.625rem 1rem;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #9ca3af;
+    color: #64748B;
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
@@ -197,40 +194,39 @@
     transition: all 0.15s ease;
   }
   .tab-btn:hover {
-    color: #4b5563;
+    color: #334155;
   }
   .tab-btn.active {
-    color: #4f46e5;
-    border-bottom-color: #4f46e5;
+    color: #111827;
+    border-bottom-color: #111827;
   }
 
   /* Stat card */
   .stat-card {
     background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 1rem 1.25rem;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-    transition: border-color 0.2s ease;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: border-color 0.15s ease;
   }
   .stat-card:hover {
-    border-color: #d1d5db;
+    border-color: #CBD5E1;
   }
 
   /* File upload drop zone */
   .drop-zone {
-    border: 2px dashed #d1d5db;
-    border-radius: 10px;
-    padding: 2rem;
+    border: 1px dashed #CBD5E1;
+    border-radius: 12px;
+    padding: 2.5rem;
     text-align: center;
     cursor: pointer;
-    transition: all 0.2s ease;
-    background: #fafafa;
+    transition: all 0.15s ease;
+    background: #F8FAFC;
   }
   .drop-zone:hover,
   .drop-zone.dragover {
-    border-color: #4f46e5;
-    background: rgba(79, 70, 229, 0.03);
+    border-color: #6366F1;
+    background: #EEF2FF;
   }
 }
 
@@ -266,6 +262,21 @@
   @keyframes pulse-soft {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
+  }
+
+  @keyframes slideLeft {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-slide-left {
+    animation: slideLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
   }
 
   .animate-slide-up {

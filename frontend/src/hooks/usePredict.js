@@ -26,17 +26,21 @@ export function usePredict() {
     }
   };
 
-  const predictText = (text) => executePredict('/predict', { text });
+  const predictText = (text, actorId) => executePredict('/predict', { text, actor_id: actorId });
   
-  const predictAudio = (file) => {
+  const predictConversation = (messages) => executePredict('/predict/conversation', { messages });
+  
+  const predictAudio = (file, actorId) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (actorId) formData.append('actor_id', actorId);
     return executePredict('/predict/audio', formData, true);
   };
   
-  const predictScreenshot = (file) => {
+  const predictScreenshot = (file, actorId) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (actorId) formData.append('actor_id', actorId);
     return executePredict('/predict/screenshot', formData, true);
   };
 
@@ -45,5 +49,5 @@ export function usePredict() {
     setError(null);
   };
 
-  return { loading, error, result, predictText, predictAudio, predictScreenshot, clearResult };
+  return { loading, error, result, predictText, predictConversation, predictAudio, predictScreenshot, clearResult };
 }

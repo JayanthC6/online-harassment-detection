@@ -46,10 +46,10 @@ def predict():
     result = PredictionService.classify_text(text)
     result["text_preview"] = text[:120]
     result["timestamp"] = datetime.utcnow().isoformat()
+    result["actor_id"] = data.get("actor_id", "Anonymous")
     result = PredictionService.attach_risk_and_similarity(result, text)
 
-    if result["label"] == "harassing":
-        AdminService.log_flagged_message(result)
+    AdminService.log_message(result)
 
     result.pop("embedding", None)
     return jsonify(result)
@@ -78,8 +78,7 @@ def predict_batch():
         r["timestamp"] = datetime.utcnow().isoformat()
         r = PredictionService.attach_risk_and_similarity(r, text)
         
-        if r["label"] == "harassing":
-            AdminService.log_flagged_message(r)
+        AdminService.log_message(r)
             
         r.pop("embedding", None)
         results.append(r)
@@ -124,10 +123,10 @@ def predict_audio():
     result["text_preview"] = transcript_text[:120]
     result["timestamp"] = datetime.utcnow().isoformat()
     result["transcript"] = transcript_text
+    result["actor_id"] = request.form.get("actor_id", "Anonymous")
     result = PredictionService.attach_risk_and_similarity(result, transcript_text)
 
-    if result["label"] == "harassing":
-        AdminService.log_flagged_message({**result, "text_preview": transcript_text[:120]})
+    AdminService.log_message({**result, "text_preview": transcript_text[:120]})
 
     result.pop("embedding", None)
     return jsonify(result)
@@ -165,10 +164,10 @@ def predict_screenshot():
         return jsonify({"error": "No text detected in screenshot."}), 400
 
     result["timestamp"] = datetime.utcnow().isoformat()
+    result["actor_id"] = request.form.get("actor_id", "Anonymous")
     result = PredictionService.attach_risk_and_similarity(result, extracted_text)
 
-    if result["label"] == "harassing":
-        AdminService.log_flagged_message({**result, "text_preview": extracted_text[:120]})
+    AdminService.log_message({**result, "text_preview": extracted_text[:120]})
 
     result.pop("embedding", None)
     return jsonify(result)
@@ -185,6 +184,31 @@ def summarize():
 
     try:
         result = summarize_complaint(text, category, confidence)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@public_bp.route("/predict/conversation", methods=["POST"])
+def predict_conversation():
+    data = request.get_json(silent=True) or {}
+    messages = data.get("messages", [])
+
+    if not isinstance(messages, list) or len(messages) == 0:
+        return jsonify({"error": "Provide a non-empty 'messages' array."}), 400
+    if len(messages) > 100:
+        return jsonify({"error": "Conversation limit is 100 messages."}), 400
+
+    valid_messages = []
+    for msg in messages:
+        if isinstance(msg, dict) and "text" in msg and isinstance(msg["text"], str) and msg["text"].strip():
+            valid_messages.append(msg)
+            
+    if not valid_messages:
+        return jsonify({"error": "No valid messages provided."}), 400
+
+    try:
+        result = PredictionService.analyze_conversation(valid_messages)
+        AdminService.log_conversation(result)
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

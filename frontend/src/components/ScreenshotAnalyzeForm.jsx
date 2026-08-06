@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
+import { Image as ImageIcon, Sparkles } from 'lucide-react'
 import { usePredict } from '../hooks/usePredict'
 import ResultDisplay from './ResultDisplay'
 import Card from './common/Card'
@@ -10,7 +11,6 @@ const ALLOWED_IMAGE = '.png,.jpg,.jpeg,.webp'
 
 export default function ScreenshotAnalyzeForm({ onNewResult }) {
   const [imageFile, setImageFile] = useState(null)
-  const fileRef = useRef(null)
   const { loading, error, result, predictScreenshot } = usePredict()
 
   const handleImageAnalyze = async () => {
@@ -19,18 +19,10 @@ export default function ScreenshotAnalyzeForm({ onNewResult }) {
     if (data && onNewResult) onNewResult(data)
   }
 
-  const handleFileDrop = (e) => {
-    e.preventDefault()
-    e.currentTarget.classList.remove('dragover')
-    const file = e.dataTransfer?.files?.[0]
-    if (file) setImageFile(file)
-  }
-
   return (
-    <div className="space-y-4">
-      <Card className="mt-4">
+    <div className="space-y-6">
+      <Card className="mt-6">
         <div className="section-title">
-          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
           Screenshot Upload
         </div>
 
@@ -38,24 +30,23 @@ export default function ScreenshotAnalyzeForm({ onNewResult }) {
           file={imageFile}
           onFileSelect={setImageFile}
           accept={ALLOWED_IMAGE}
-          icon="🖼️"
+          icon={<ImageIcon className="mx-auto h-8 w-8 text-slate-400 mb-2" />}
           activeClasses={{
-            container: '!border-emerald-400 !bg-emerald-50/50',
-            text: 'text-emerald-700'
+            container: '!border-indigo-400 !bg-indigo-50/50',
+            text: 'text-indigo-700'
           }}
           titleText="Drop a screenshot here or click to browse"
           supportedText="Supported: PNG, JPG, WEBP (max 10MB)"
         />
 
-        <div className="flex justify-end mt-3">
+        <div className="flex justify-end mt-4">
           <Button
             onClick={handleImageAnalyze}
             disabled={!imageFile}
             loading={loading}
             loadingText="Extracting text & analyzing..."
-            style={!loading && imageFile ? { background: '#059669' } : {}}
           >
-            🖼️ Analyze Screenshot
+            <Sparkles size={16} /> Analyze Screenshot
           </Button>
         </div>
       </Card>

@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import PropTypes from 'prop-types';
+import { File } from 'lucide-react';
 
 export default function FileUpload({
   file,
@@ -41,17 +42,22 @@ export default function FileUpload({
         onChange={(e) => onFileSelect(e.target.files?.[0] || null)}
       />
       {file ? (
-        <div className="space-y-1">
-          <p className={`text-sm ${activeClasses.text} font-medium`}>📁 {file.name}</p>
-          <p className="text-xs text-gray-500">
-            {(file.size / (1024 * 1024)).toFixed(1)} MB — click to change
+        <div className="space-y-1.5 flex flex-col items-center">
+          <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-100 mb-1 inline-flex">
+            <File className="text-slate-400" size={24} />
+          </div>
+          <p className={`text-sm ${activeClasses.text} font-semibold truncate max-w-xs px-4`}>{file.name}</p>
+          <p className="text-xs text-slate-500 font-medium">
+            {(file.size / (1024 * 1024)).toFixed(1)} MB <span className="opacity-50 mx-1">•</span> <span className="hover:underline cursor-pointer">click to change</span>
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          <p className="text-2xl">{icon}</p>
-          <p className="text-sm text-gray-500">{titleText}</p>
-          <p className="text-xs text-gray-400">{supportedText}</p>
+        <div className="space-y-2 flex flex-col items-center">
+          <div className="mb-2">
+            {icon}
+          </div>
+          <p className="text-sm font-semibold text-slate-700">{titleText}</p>
+          <p className="text-xs text-slate-400">{supportedText}</p>
         </div>
       )}
     </div>
@@ -62,7 +68,7 @@ FileUpload.propTypes = {
   file: PropTypes.instanceOf(File),
   onFileSelect: PropTypes.func.isRequired,
   accept: PropTypes.string.isRequired,
-  icon: PropTypes.string.isRequired,
+  icon: PropTypes.node.isRequired,
   activeClasses: PropTypes.shape({
     container: PropTypes.string,
     text: PropTypes.string,

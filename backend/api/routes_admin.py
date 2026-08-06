@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from services.auth_service import AuthService
 from services.admin_service import AdminService
-from core.exceptions import AppException
+from services.behavior_service import BehaviorService
 from core.exceptions import AppException
 
 admin_bp = Blueprint("admin", __name__)
@@ -13,13 +13,28 @@ def admin_stats():
     stats["model"] = PredictionService.get_active_model_name()
     return jsonify(stats)
 
-@admin_bp.route("/admin/recent", methods=["GET"])
-def admin_recent():
-    limit = int(request.args.get("limit", 20))
-    recent = AdminService.get_recent(limit)
-    for r in recent:
-        r.pop("embedding", None)
-    return jsonify(recent)
+@admin_bp.route("/admin/reports", methods=["GET"])
+def admin_reports():
+    page = int(request.args.get("page", 1))
+    page_size = int(request.args.get("page_size", 20))
+    sort_by = request.args.get("sort_by", "logged_at")
+    sort_order = request.args.get("sort_order", "desc")
+    search = request.args.get("search", "")
+    category = request.args.get("category", "")
+    risk_level = request.args.get("risk_level", "")
+    date_from = request.args.get("date_from", "")
+    date_to = request.args.get("date_to", "")
+    cluster_id = request.args.get("cluster_id", "")
+    
+    reports_data = AdminService.get_reports(
+        page, page_size, sort_by, sort_order, search, 
+        category, risk_level, date_from, date_to, cluster_id
+    )
+    return jsonify(reports_data)
+
+@admin_bp.route("/admin/analytics", methods=["GET"])
+def admin_analytics():
+    return jsonify(AdminService.get_analytics())
 
 @admin_bp.route("/admin/daily_counts", methods=["GET"])
 def admin_daily_counts():
@@ -30,3 +45,21 @@ def admin_daily_counts():
         "counts": counts,
         "anomalies": anomalies
     })
+
+@admin_bp.route("/admin/conversations", methods=["GET"])
+def admin_conversations():
+    page = int(request.args.get("page", 1))
+    page_size = int(request.args.get("page_size", 20))
+    sort_by = request.args.get("sort_by", "logged_at")
+    sort_order = request.args.get("sort_order", "desc")
+    
+    conversations_data = AdminService.get_conversations(
+        page, page_size, sort_by, sort_order
+    )
+    return jsonify(conversations_data)
+
+@admin_bp.route("/admin/profiles", methods=["GET"])
+def admin_profiles():
+    profiles = BehaviorService.get_all_profiles()
+    return jsonify({"profiles": profiles})
+
