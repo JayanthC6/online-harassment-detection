@@ -1,17 +1,32 @@
 import PropTypes from 'prop-types';
 import { ShieldCheck, ShieldAlert, AlertTriangle } from 'lucide-react';
 
-const CATEGORY_LABELS = {
-  hate_speech: { text: 'Hate Speech', color: 'text-rose-700 bg-rose-50 border-rose-200' },
-  offensive_language: { text: 'Offensive Language', color: 'text-amber-700 bg-amber-50 border-amber-200' },
-  none: { text: 'Clean', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+const getCategoryStyles = (category) => {
+  const cat = category.toLowerCase();
+  
+  if (['hate_speech', 'threat', 'blackmail', 'extortion'].includes(cat)) {
+    return { text: category.replace('_', ' '), color: 'text-rose-700 bg-rose-50 border-rose-200' };
+  }
+  if (['offensive_language', 'scam', 'fraud', 'impersonation'].includes(cat)) {
+    return { text: category.replace('_', ' '), color: 'text-amber-700 bg-amber-50 border-amber-200' };
+  }
+  if (['phishing', 'social_engineering'].includes(cat)) {
+    return { text: category.replace('_', ' '), color: 'text-purple-700 bg-purple-50 border-purple-200' };
+  }
+  
+  // Default clean or unknown
+  if (cat === 'none' || cat === 'clean') {
+    return { text: 'Clean', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+  }
+  
+  return { text: category.replace('_', ' '), color: 'text-slate-700 bg-slate-50 border-slate-200' };
 };
 
 export default function RiskBadge({ isHarassing, category, riskScore }) {
-  const catInfo = CATEGORY_LABELS[category] || CATEGORY_LABELS.none;
+  const catInfo = getCategoryStyles(category);
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       {/* Harassing / Safe badge */}
       <span
         className={`badge text-sm border flex items-center gap-1.5 ${
@@ -21,11 +36,11 @@ export default function RiskBadge({ isHarassing, category, riskScore }) {
         }`}
       >
         {isHarassing ? <ShieldAlert size={16} /> : <ShieldCheck size={16} />}
-        {isHarassing ? 'Harassing' : 'Safe'}
+        {isHarassing ? 'Incident Detected' : 'Safe'}
       </span>
 
       {/* Category badge */}
-      <span className={`badge text-xs border ${catInfo.color}`}>
+      <span className={`badge text-xs border capitalize ${catInfo.color}`}>
         {catInfo.text}
       </span>
 

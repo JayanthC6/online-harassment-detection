@@ -5,7 +5,6 @@ import StatCard from './StatCard';
 export default function DashboardStats({ stats }) {
   if (!stats) return null;
 
-  // Extract counts for scams, phishing, threats if available, else 0
   const categories = stats.category_breakdown || {};
   const scamAlerts = (categories['Scam'] || 0) + (categories['Fraud'] || 0);
   const phishingAlerts = categories['Phishing'] || 0;
@@ -13,14 +12,36 @@ export default function DashboardStats({ stats }) {
   const behavioralAlerts = stats.conversation_stats?.escalated || 0;
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-        <StatCard label="Total Incidents" value={stats.total_reports || 0} icon={<BarChart3 size={18} className="text-slate-400" />} />
-        <StatCard label="High Risk Incidents" value={stats.high_risk || 0} icon={<AlertCircle size={18} className="text-rose-500" />} />
-        <StatCard label="Scam Alerts" value={scamAlerts} icon={<AlertTriangle size={18} className="text-amber-500" />} />
-        <StatCard label="Phishing Alerts" value={phishingAlerts} icon={<Bug size={18} className="text-purple-500" />} />
-        <StatCard label="Threat Alerts" value={threatAlerts} icon={<ShieldAlert size={18} className="text-rose-500" />} />
-        <StatCard label="Behavioral Alerts" value={behavioralAlerts} icon={<Activity size={18} className="text-indigo-500" />} />
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        
+        {/* Incident Overview */}
+        <div className="col-span-1 md:col-span-4 space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Incident Overview</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard label="Total Incidents" value={stats.total_reports || 0} icon={<BarChart3 size={18} className="text-slate-400" />} />
+            <StatCard label="High Risk" value={stats.high_risk || 0} icon={<AlertCircle size={18} className="text-rose-500" />} />
+          </div>
+        </div>
+
+        {/* Threat Intelligence */}
+        <div className="col-span-1 md:col-span-5 space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Threat Intelligence</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard label="Scams" value={scamAlerts} icon={<AlertTriangle size={18} className="text-amber-500" />} />
+            <StatCard label="Phishing" value={phishingAlerts} icon={<Bug size={18} className="text-purple-500" />} />
+            <StatCard label="Threats" value={threatAlerts} icon={<ShieldAlert size={18} className="text-rose-500" />} />
+          </div>
+        </div>
+
+        {/* Actor Intelligence */}
+        <div className="col-span-1 md:col-span-3 space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Actor Intelligence</h3>
+          <div className="grid grid-cols-1 gap-3">
+            <StatCard label="Behavioral Alerts" value={behavioralAlerts} icon={<Activity size={18} className="text-indigo-500" />} />
+          </div>
+        </div>
+
       </div>
     </div>
   );

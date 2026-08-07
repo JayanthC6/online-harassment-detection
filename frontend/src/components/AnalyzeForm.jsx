@@ -53,9 +53,20 @@ export default function AnalyzeForm({ onNewResult }) {
 
   return (
     <div className="space-y-6">
+      {/* ── AI Assistant Header ── */}
+      <div className="flex items-center gap-4 px-2">
+        <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center shrink-0">
+          <Sparkles size={24} />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-800">How can I help you analyze content today?</h2>
+          <p className="text-sm text-slate-500">Submit text, audio, or a full conversation for digital safety analysis.</p>
+        </div>
+      </div>
+
       {/* ── Mode toggle ── */}
-      <Card>
-        <div className="flex items-center gap-2 mb-6">
+      <Card className="border-indigo-100 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-slate-100 pb-4">
           <Button
             onClick={() => setMode('text')}
             variant="ghost"
