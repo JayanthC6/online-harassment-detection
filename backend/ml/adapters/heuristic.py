@@ -42,7 +42,14 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
             "Sexual Harassment": [r"\b(rape|molest|boobs|tits|ass|send nudes|suck)\b"],
             "Toxicity": [r"\b(shut up|trash|garbage|toxic)\b"],
             "Spam": [r"\b(click here|free money|discount|buy now|subscribe|win)\b", r"http[s]?://"],
-            "Self Harm": [r"\b(cut myself|kill myself|suicide|end it all)\b"]
+            "Self Harm": [r"\b(cut myself|kill myself|suicide|end it all)\b"],
+            "Scam": [r"\b(crypto|bitcoin|investment opportunity|ponzi|pyramid scheme)\b", r"\b(guaranteed returns)\b"],
+            "Phishing": [r"\b(verify your account|login to confirm|password reset link|update your payment)\b", r"\b(urgent action required.*account)\b"],
+            "Impersonation": [r"\b(acting as|pretending to be|fake account|i am the real)\b"],
+            "Blackmail": [r"\b(i have your photos|pay me or i will leak|expose you|send me money or)\b", r"\b(release the video)\b"],
+            "Extortion": [r"\b(pay me|send bitcoin to|ransom|transfer funds immediately)\b", r"\b(if you don't pay)\b"],
+            "Fraud": [r"\b(stolen credit card|fake id|bank transfer|wire me)\b"],
+            "Social Engineering": [r"\b(what is your mother's maiden name|verify your ssn|send me a code)\b", r"\b(can you do me a quick favor.*gift card)\b"]
         }
 
     def explain_heuristics(self, text: str, secondary_labels: dict) -> list:

@@ -14,7 +14,7 @@ export default function Dashboard({ refreshKey }) {
   const [activeTab, setActiveTab] = React.useState('overview'); // overview, behavior
 
   if (loading) {
-    return <LoadingState message="Loading Moderation Workspace..." />;
+    return <LoadingState message="Loading Digital Safety Intelligence..." />;
   }
 
   return (
@@ -22,10 +22,10 @@ export default function Dashboard({ refreshKey }) {
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
           <Shield className="text-indigo-600" size={24} />
-          Moderator Workspace
+          Digital Safety Intelligence
         </h1>
         <p className="text-sm text-slate-500">
-          Review, analyze, and manage reported content across the platform.
+          Review, analyze, and manage digital safety reports across the platform.
         </p>
       </div>
 
@@ -38,7 +38,7 @@ export default function Dashboard({ refreshKey }) {
               : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
           }`}
         >
-          Incident Overview
+          Safety Reports
         </button>
         <button
           onClick={() => setActiveTab('behavior')}

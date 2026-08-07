@@ -69,7 +69,7 @@ export default function ActorProfileDrawer({ profile, isOpen, onClose }) {
           <div className="flex gap-4">
             <Card className="flex-1 p-5 flex flex-col justify-center">
               <div className="text-sm font-medium text-slate-500 mb-1 flex items-center gap-2">
-                <Activity size={16} /> Behavioral Score
+                <Activity size={16} /> Safety Score
               </div>
               <div className={`text-4xl font-bold ${getScoreColor(profile.behavior_score)}`}>
                 {profile.behavior_score.toFixed(1)}
@@ -77,7 +77,7 @@ export default function ActorProfileDrawer({ profile, isOpen, onClose }) {
             </Card>
             <Card className="flex-1 p-5 flex flex-col justify-center">
               <div className="text-sm font-medium text-slate-500 mb-1 flex items-center gap-2">
-                <ShieldAlert size={16} /> Risk Level
+                <ShieldAlert size={16} /> Safety Level
               </div>
               <div>
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold border ${getLevelColor(profile.behavior_level)}`}>
@@ -143,11 +143,11 @@ export default function ActorProfileDrawer({ profile, isOpen, onClose }) {
                   <span className="font-semibold text-rose-600">{profile.harmful_messages}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm border-t border-slate-100 pt-3">
-                  <span className="text-slate-500">Highest Risk Seen</span>
+                  <span className="text-slate-500">Highest Safety Risk Seen</span>
                   <span className="font-semibold text-slate-800">{profile.highest_risk.toFixed(1)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-500">Average Risk</span>
+                  <span className="text-slate-500">Average Safety Risk</span>
                   <span className="font-semibold text-slate-800">{profile.avg_risk.toFixed(1)}</span>
                 </div>
               </Card>

@@ -28,7 +28,8 @@ def calculate_behavior_score(profile_stats):
         explanation.append("+5 for significant peak behavior (high risk incident).")
         
     # 4. Multi-label diversity / Severe Categories penalty
-    severe_cats = sum(1 for c, count in categories.items() if c in ['Threat', 'Hate Speech', 'Cyberbullying'] and count > 0)
+    severe_cats_list = ['Threat', 'Hate Speech', 'Cyberbullying', 'Blackmail', 'Extortion', 'Fraud', 'Scam', 'Phishing']
+    severe_cats = sum(1 for c, count in categories.items() if c in severe_cats_list and count > 0)
     if severe_cats > 0:
         penalty = severe_cats * 5
         score += penalty
@@ -44,16 +45,22 @@ def calculate_behavior_score(profile_stats):
     # Determine Level and Recommendation
     if score >= 85:
         level = "Critical"
-        recommendation = "Immediate Review Required / Permanent Ban"
+        if any(c in categories for c in ['Blackmail', 'Extortion']):
+            recommendation = "Escalate to Moderator / Preserve Evidence"
+        else:
+            recommendation = "Block Sender / Immediate Review Required"
     elif score >= 60:
         level = "High"
-        recommendation = "Temporary Restriction / Final Warning"
+        if any(c in categories for c in ['Phishing', 'Scam', 'Fraud']):
+            recommendation = "Potential Scam / Warn User"
+        else:
+            recommendation = "Temporary Restriction / Warn User"
     elif score >= 30:
         level = "Watch"
-        recommendation = "Monitor User"
+        recommendation = "Monitor"
     else:
-        level = "Normal"
-        recommendation = "No action required"
+        level = "Safe"
+        recommendation = "Safe / No action required"
         
     if total_messages > 0 and harmful_count == 0 and score < 30:
         explanation.append("User consistently exhibits safe behavior.")

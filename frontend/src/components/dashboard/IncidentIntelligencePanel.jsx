@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { X, MessageSquare, Shield, Activity, Cpu, Tag, FileText, Link, Clock, Sparkles } from 'lucide-react';
 import { apiClient } from '../../api/client';
 
-export default function ReportDetailsDrawer({ report, onClose }) {
+export default function IncidentIntelligencePanel({ report, onClose }) {
   const [summary, setSummary] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
 
@@ -61,7 +61,7 @@ export default function ReportDetailsDrawer({ report, onClose }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white">
           <div>
-            <h2 className="text-lg font-semibold text-slate-800">Report Details</h2>
+            <h2 className="text-lg font-semibold text-slate-800">Incident Intelligence</h2>
             <p className="text-xs text-slate-400 mt-0.5">ID: {report.cluster_id || 'unclustered'}-{new Date(report.logged_at).getTime()}</p>
           </div>
           <button 
@@ -139,7 +139,7 @@ export default function ReportDetailsDrawer({ report, onClose }) {
               <p className="font-semibold text-slate-700 capitalize text-sm">{report.category.replace('_', ' ')}</p>
             </div>
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Activity size={10} /> Risk</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Activity size={10} /> Safety Score</p>
               <p className={`font-semibold text-sm tabular-nums ${report.risk_score >= 75 ? 'text-rose-600' : report.risk_score >= 40 ? 'text-amber-600' : 'text-emerald-600'}`}>
                 {report.risk_score} <span className="text-slate-400 font-normal text-xs">/ 100</span>
               </p>
@@ -228,7 +228,7 @@ export default function ReportDetailsDrawer({ report, onClose }) {
 
               <div className="relative pl-6">
                 <div className="absolute w-3 h-3 bg-amber-500 rounded-full -left-[7px] top-1.5 ring-4 ring-white" />
-                <p className="text-sm font-semibold text-slate-700">Risk Assigned</p>
+                <p className="text-sm font-semibold text-slate-700">Safety Assessment Assigned</p>
                 <p className="text-xs text-slate-400 mt-0.5">Scored {report.risk_score}/100 based on policy</p>
               </div>
 
@@ -255,7 +255,7 @@ export default function ReportDetailsDrawer({ report, onClose }) {
   );
 }
 
-ReportDetailsDrawer.propTypes = {
+IncidentIntelligencePanel.propTypes = {
   report: PropTypes.object,
   onClose: PropTypes.func.isRequired
 };

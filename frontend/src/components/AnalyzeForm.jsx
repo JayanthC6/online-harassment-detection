@@ -47,7 +47,8 @@ export default function AnalyzeForm({ onNewResult }) {
   const quickExamples = [
     "You're worthless, just disappear already",
     "I hate all people from that country, they are subhuman",
-    "Great job on the presentation today!",
+    "Send 0.5 BTC to this address or your photos will be leaked",
+    "Urgent Action Required: Please verify your account at http://login-secure-update.com",
   ]
 
   return (
@@ -159,7 +160,7 @@ export default function AnalyzeForm({ onNewResult }) {
 
             <textarea
               className="input-dark w-full min-h-32 p-4 text-sm resize-y"
-              placeholder="Paste or type a message to analyze for harassment, threats, or hate speech..."
+              placeholder="Paste or type a message to analyze for digital safety threats..."
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}

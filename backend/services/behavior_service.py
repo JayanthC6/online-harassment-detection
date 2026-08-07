@@ -39,8 +39,8 @@ class BehaviorService:
             "avg_risk": 0.0,
             "multi_label_distribution": {},
             "behavior_score": 0.0,
-            "behavior_level": "Normal",
-            "recommendation": "No action required",
+            "behavior_level": "Safe",
+            "recommendation": "Safe / No action required",
             "explanation": [],
             "timeline": []
         }

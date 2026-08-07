@@ -21,7 +21,7 @@ export default function ConversationResultDisplay({ result }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Primary Category & Risk</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Incident Classification</p>
                 <div className="flex items-center gap-4">
                   <RiskBadge
                     isHarassing={isHarassing}
@@ -32,7 +32,7 @@ export default function ConversationResultDisplay({ result }) {
               </div>
               
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Escalation Intelligence</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Behavior Intelligence</p>
                 <div className="flex items-center gap-3 mb-2">
                   <span className={`px-2.5 py-1 text-xs font-medium rounded-md ${
                     result.escalation_level === 'High' ? 'bg-rose-100 text-rose-700' :
@@ -55,7 +55,7 @@ export default function ConversationResultDisplay({ result }) {
 
             <div className="space-y-4 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-8">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Secondary Categories</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Detected Categories</p>
               </div>
               
               {!result.secondary_labels || Object.keys(result.secondary_labels).length === 0 ? (
@@ -87,7 +87,7 @@ export default function ConversationResultDisplay({ result }) {
       <div className="space-y-3 pt-4">
         <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
           <Lightbulb size={18} className="text-indigo-600" />
-          AI Conversation Summary
+          AI Recommendation
         </h2>
         
         <Card className="p-0 overflow-hidden">

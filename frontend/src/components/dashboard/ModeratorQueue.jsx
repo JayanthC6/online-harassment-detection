@@ -2,7 +2,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { ChevronUp, ChevronDown, ChevronsUpDown, Inbox, ChevronRight, Loader2 } from 'lucide-react';
 import SearchFilters from './SearchFilters';
-import ReportDetailsDrawer from './ReportDetailsDrawer';
+import IncidentIntelligencePanel from './IncidentIntelligencePanel';
 import ConversationDetailsDrawer from './ConversationDetailsDrawer'; // will create this
 
 export default function ModeratorQueue({ reportsData, conversationsData, filters, loading }) {
@@ -32,7 +32,7 @@ export default function ModeratorQueue({ reportsData, conversationsData, filters
   return (
     <div className="space-y-4 relative pt-4">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">Review Queue</h2>
+        <h2 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">Digital Safety Incidents</h2>
         <div className="flex bg-slate-100 p-1 rounded-lg">
           <button
             onClick={() => { setQueueType('messages'); filters.setPage(1); }}
@@ -69,7 +69,7 @@ export default function ModeratorQueue({ reportsData, conversationsData, filters
                   <th className="px-5 py-4">Message Preview</th>
                   <th className="px-5 py-4">Category</th>
                   <th className="px-5 py-4 cursor-pointer select-none hover:bg-slate-100 transition-colors group" onClick={() => handleSort('risk')}>
-                    <div className="flex items-center">Risk Score {getSortIcon('risk')}</div>
+                    <div className="flex items-center">Digital Safety Score {getSortIcon('risk')}</div>
                   </th>
                   <th className="px-5 py-4 cursor-pointer select-none hover:bg-slate-100 transition-colors group" onClick={() => handleSort('confidence')}>
                     <div className="flex items-center">Confidence {getSortIcon('confidence')}</div>
@@ -160,7 +160,7 @@ export default function ModeratorQueue({ reportsData, conversationsData, filters
                   <th className="px-5 py-4">Messages</th>
                   <th className="px-5 py-4">Primary Category</th>
                   <th className="px-5 py-4 cursor-pointer select-none hover:bg-slate-100 transition-colors group" onClick={() => handleSort('risk')}>
-                    <div className="flex items-center">Risk Score {getSortIcon('risk')}</div>
+                    <div className="flex items-center">Digital Safety Score {getSortIcon('risk')}</div>
                   </th>
                   <th className="px-5 py-4">Escalation</th>
                   <th className="px-5 py-4 text-right">Actions</th>
@@ -270,7 +270,7 @@ export default function ModeratorQueue({ reportsData, conversationsData, filters
       </div>
 
       {/* Drawers */}
-      <ReportDetailsDrawer 
+      <IncidentIntelligencePanel 
         report={selectedReport} 
         onClose={() => setSelectedReport(null)} 
       />

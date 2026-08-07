@@ -22,14 +22,14 @@ export default function ResultDisplay({ result }) {
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
           <Layers size={18} className="text-indigo-600" />
-          Prediction Results
+          Incident Analysis Report
         </h2>
         
         <Card className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Primary Assessment</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Incident Classification</p>
                 <div className="flex items-center gap-4">
                   <RiskBadge
                     isHarassing={isHarassing}
@@ -50,7 +50,7 @@ export default function ResultDisplay({ result }) {
 
             <div className="space-y-4 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-8">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Secondary Categories</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Detected Categories</p>
               </div>
               
               {!result.secondary_labels || Object.keys(result.secondary_labels).length === 0 ? (

@@ -41,7 +41,7 @@ export default function RiskBadge({ isHarassing, category, riskScore }) {
           }`}
         >
           {riskScore >= 70 && <AlertTriangle size={14} />}
-          Risk: {Math.round(riskScore)}
+          Safety Score: {Math.round(riskScore)}
         </span>
       )}
     </div>
