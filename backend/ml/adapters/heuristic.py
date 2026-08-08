@@ -76,14 +76,12 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
         text_lower = text.lower()
         secondary_labels = {}
         
-        # 2. Run heuristics
+        # 2. Run heuristics independently without tying their confidence to primary model's failure
         for label, patterns in self.heuristics.items():
             for pattern in patterns:
                 if re.search(pattern, text_lower):
-                    # Assign a heuristic confidence based on pattern hit
-                    # In a real model, this would be actual probability.
-                    # We bound it so it doesn't always override the primary if primary is low.
-                    heuristic_conf = min(0.95, result["confidence"] * 1.1 if result["label"] == "harassing" else 0.45)
+                    # We assign a high base confidence for heuristic matches since they are exact pattern hits
+                    heuristic_conf = 0.85 
                     
                     if label != result["primary_label"]:
                         # Give it a tiny bit of random variation so it looks organic
@@ -108,13 +106,19 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
         best_label = result["primary_label"]
         best_conf = result["confidence"]
         
-        if filtered_secondary:
+        # OVERRIDE LOGIC
+        if result["primary_label"] == "Clean" and filtered_secondary:
+            # DistilBERT predicted Safe, but heuristics found threats.
+            # Promote the highest confidence heuristic label to primary_label.
             max_sec_label = max(filtered_secondary, key=filtered_secondary.get)
-            if filtered_secondary[max_sec_label] > best_conf and result["primary_label"] == "Clean":
-                # Only swap if the primary model totally missed it but heuristics caught it
-                # In this demo, we trust the primary model more, but if primary says 'Clean' (confidence 0.99)
-                # and heuristic found Profanity, maybe it's not a swap, just an addition.
-                pass
+            
+            result["primary_label"] = max_sec_label
+            result["confidence"] = filtered_secondary[max_sec_label]
+            result["label"] = "harassing" # Mark incident as detected
+            result["category"] = max_sec_label.lower().replace(" ", "_")
+            
+            # Remove the promoted label from secondary labels
+            del filtered_secondary[max_sec_label]
                 
         result["secondary_labels"] = filtered_secondary
         result["model"] = result["model"] + "+multi_label_heuristics"
