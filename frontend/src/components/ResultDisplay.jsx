@@ -6,6 +6,7 @@ import ConfidenceBar from './prediction/ConfidenceBar';
 import ToxicWordHighlight from './prediction/ToxicWordHighlight';
 import PredictionSummary from './prediction/PredictionSummary';
 import ConversationResultDisplay from './ConversationResultDisplay';
+import GuidancePanel from './prediction/GuidancePanel';
 
 export default function ResultDisplay({ result }) {
   if (!result) return null;
@@ -166,6 +167,13 @@ export default function ResultDisplay({ result }) {
             )}
             
           </div>
+          
+          {/* Guidance Panel */}
+          {result.guidance && (
+            <div className="mt-6">
+              <GuidancePanel guidance={result.guidance} />
+            </div>
+          )}
         </div>
       </div>
       

@@ -94,14 +94,6 @@ export default function PredictionSummary({
               </p>
             </div>
           </div>
-          <div className="pt-2">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-              Suggested Action
-            </span>
-            <p className="text-slate-700 mt-1 bg-slate-50 p-3 rounded-lg border border-slate-100">
-              {summary.suggested_action}
-            </p>
-          </div>
         </div>
       )}
     </>

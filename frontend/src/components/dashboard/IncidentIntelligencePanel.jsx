@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { X, MessageSquare, Shield, Activity, Cpu, Tag, FileText, Link, Clock, Sparkles, AlertTriangle, Lightbulb } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import Card from '../common/Card';
+import GuidancePanel from '../prediction/GuidancePanel';
 
 export default function IncidentIntelligencePanel({ report, onClose }) {
   const [summary, setSummary] = useState(null);
@@ -219,13 +220,13 @@ export default function IncidentIntelligencePanel({ report, onClose }) {
             </Card>
           </section>
 
-          {/* 7. Recommendation */}
-          <section>
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><AlertTriangle size={14} /> Recommendation</h3>
-            <Card className="p-4 bg-white flex flex-col justify-center border-dashed border-slate-200">
-              <p className="text-sm text-slate-500 text-center italic">Monitor the user account if incidents escalate.</p>
-            </Card>
-          </section>
+          {/* 7. Victim Guidance */}
+          {report.guidance && (
+            <section>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><AlertTriangle size={14} /> Victim Guidance</h3>
+              <GuidancePanel guidance={report.guidance} />
+            </section>
+          )}
 
         </div>
       </div>

@@ -11,11 +11,12 @@ const ALLOWED_IMAGE = '.png,.jpg,.jpeg,.webp'
 
 export default function ScreenshotAnalyzeForm({ onNewResult }) {
   const [imageFile, setImageFile] = useState(null)
+  const [platform, setPlatform] = useState('generic')
   const { loading, error, result, predictScreenshot } = usePredict()
 
   const handleImageAnalyze = async () => {
     if (!imageFile) return
-    const data = await predictScreenshot(imageFile)
+    const data = await predictScreenshot(imageFile, null, platform)
     if (data && onNewResult) onNewResult(data)
   }
 
@@ -24,6 +25,19 @@ export default function ScreenshotAnalyzeForm({ onNewResult }) {
       <Card className="mt-6">
         <div className="section-title">
           Screenshot Upload
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-slate-700 mb-1">Source Platform (Optional)</label>
+          <select 
+            value={platform} 
+            onChange={e => setPlatform(e.target.value)}
+            className="input-dark w-full max-w-xs text-sm"
+          >
+            <option value="generic">Unknown / Other</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="instagram">Instagram</option>
+          </select>
         </div>
 
         <FileUpload

@@ -1,0 +1,49 @@
+{
+  "platforms": {
+    "whatsapp": {
+      "name": "WhatsApp",
+      "report_instructions": "To report: Open the chat > Tap the contact's name or number at the top > Scroll to the bottom and tap 'Report'. You can choose to block them simultaneously.",
+      "block_instructions": "To block: Open the chat > Tap the contact's name or number > Scroll down and tap 'Block'."
+    },
+    "instagram": {
+      "name": "Instagram",
+      "report_instructions": "To report a message: Tap and hold the specific message > Tap 'Report' > Select the appropriate reason.",
+      "block_instructions": "To block a user: Go to their profile > Tap the three dots (...) in the top right > Tap 'Block'."
+    },
+    "generic": {
+      "name": "General",
+      "report_instructions": "Use the platform's native reporting tool (usually found via a flag icon or a menu in the user's profile).",
+      "block_instructions": "Block the offending user immediately to prevent further contact."
+    }
+  },
+  "evidence_checklist": [
+    "Take screenshots of all abusive messages before they are deleted.",
+    "Ensure screenshots include the sender's username, profile picture, and visible timestamps.",
+    "Do not delete the messages or the chat history from your device.",
+    "Note the exact dates and times of the incidents in a separate document.",
+    "If threats are ongoing, consider recording a video of you scrolling through the chat."
+  ],
+  "critical_resources": {
+    "helpline_title": "National Cyber Crime Reporting Portal",
+    "helpline_desc": "For immediate assistance regarding cybercrime, financial fraud, or severe online threats.",
+    "url": "https://cybercrime.gov.in",
+    "primary_phone": "1930 (24/7 helpline by I4C, MHA)",
+    "women_helpline_title": "National Women Helpline",
+    "women_helpline_phone": "181"
+  },
+  "severity_tiers": {
+    "always_critical": [
+      "Threat",
+      "Extortion",
+      "Blackmail",
+      "Scam",
+      "Phishing",
+      "Fraud",
+      "Hate Speech"
+    ],
+    "confidence_gated": [
+      "Cyberbullying",
+      "Impersonation"
+    ]
+  }
+}

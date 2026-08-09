@@ -37,10 +37,11 @@ export function usePredict() {
     return executePredict('/predict/audio', formData, true);
   };
   
-  const predictScreenshot = (file, actorId) => {
+  const predictScreenshot = (file, actorId, platform = "generic") => {
     const formData = new FormData();
     formData.append('file', file);
     if (actorId) formData.append('actor_id', actorId);
+    formData.append('platform', platform);
     return executePredict('/predict/screenshot', formData, true);
   };
 

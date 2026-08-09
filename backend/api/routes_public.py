@@ -7,6 +7,7 @@ from services.prediction_service import PredictionService
 from services.admin_service import AdminService
 from core.exceptions import AppException
 from ml.ocr import extract_and_classify
+from services.parsers import parse_whatsapp_txt, parse_instagram_json
 
 # Summarize is imported safely
 try:
@@ -165,6 +166,7 @@ def predict_screenshot():
 
     result["timestamp"] = datetime.utcnow().isoformat()
     result["actor_id"] = request.form.get("actor_id", "Anonymous")
+    result["platform"] = request.form.get("platform", "generic")
     result = PredictionService.attach_risk_and_similarity(result, extracted_text)
 
     AdminService.log_message({**result, "text_preview": extracted_text[:120]})
@@ -212,3 +214,47 @@ def predict_conversation():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@public_bp.route("/predict/conversation/import", methods=["POST"])
+def import_conversation():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded."}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename."}), 400
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in {"txt", "json"}:
+        return jsonify({"error": f"Unsupported file type. Allowed: txt, json"}), 400
+        
+    import tempfile
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as tmp:
+        file.save(tmp.name)
+        file_path = tmp.name
+        
+    try:
+        if ext == "txt":
+            messages = parse_whatsapp_txt(file_path)
+            platform = "whatsapp"
+        elif ext == "json":
+            messages = parse_instagram_json(file_path)
+            platform = "instagram"
+            
+        if not messages:
+            return jsonify({"error": "Failed to extract any messages from the file."}), 400
+            
+        # Attach platform to first message so it carries over
+        messages[0]["platform"] = platform
+        
+        result = PredictionService.analyze_conversation(messages)
+        AdminService.log_conversation(result)
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+

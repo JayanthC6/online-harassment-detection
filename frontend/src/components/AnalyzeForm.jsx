@@ -12,8 +12,10 @@ const ALLOWED_AUDIO = '.mp3,.wav,.m4a,.mp4,.mov,.webm,.ogg'
 export default function AnalyzeForm({ onNewResult }) {
   const [text, setText] = useState('')
   const [actorId, setActorId] = useState('')
-  const [mode, setMode] = useState('text') // 'text', 'audio', 'conversation'
+  const [platform, setPlatform] = useState('generic') // For screenshots
+  const [mode, setMode] = useState('text') // 'text', 'audio', 'conversation', 'screenshot'
   const [audioFile, setAudioFile] = useState(null)
+  const [importFile, setImportFile] = useState(null)
   const [messages, setMessages] = useState([{ text: '', sender: 'User 1' }])
   
   const { loading, error, result, predictText, predictAudio, predictConversation } = usePredict()
@@ -34,6 +36,24 @@ export default function AnalyzeForm({ onNewResult }) {
 
   /* ── Conversation analysis ── */
   const handleConversationAnalyze = async () => {
+    if (importFile) {
+      // Import file via new endpoint
+      const formData = new FormData();
+      formData.append("file", importFile);
+      
+      const { apiClient } = await import('../../api/client');
+      try {
+        const data = await apiClient('/predict/conversation/import', {
+          method: 'POST',
+          body: formData
+        }, true); // isMultipart
+        if (data && onNewResult) onNewResult(data);
+      } catch (err) {
+        console.error("Import error", err);
+      }
+      return;
+    }
+    
     const validMessages = messages.filter(m => m.text.trim());
     if (validMessages.length === 0) return;
     const data = await predictConversation(validMessages);
@@ -96,7 +116,25 @@ export default function AnalyzeForm({ onNewResult }) {
               Conversation Input
             </div>
             
-            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+            <div className="mb-6">
+              <p className="text-sm font-medium text-slate-700 mb-2">Import Chat Export</p>
+              <FileUpload
+                file={importFile}
+                onFileSelect={setImportFile}
+                accept=".txt,.json"
+                icon={<FileText className="mx-auto h-6 w-6 text-slate-400 mb-2" />}
+                titleText="Upload WhatsApp (.txt) or Instagram (.json) export"
+                supportedText="Platform will be auto-detected based on file type."
+              />
+            </div>
+
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex-1 border-t border-slate-200"></div>
+              <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">OR MANUALLY ENTER</span>
+              <div className="flex-1 border-t border-slate-200"></div>
+            </div>
+            
+            <div className={`space-y-4 max-h-[400px] overflow-y-auto pr-2 ${importFile ? 'opacity-50 pointer-events-none' : ''}`}>
               {messages.map((msg, index) => (
                 <div key={index} className="flex gap-2">
                   <div className="flex-1 space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
@@ -146,10 +184,10 @@ export default function AnalyzeForm({ onNewResult }) {
               </Button>
               <Button
                 onClick={handleConversationAnalyze}
-                disabled={!messages.some(m => m.text.trim())}
+                disabled={(!importFile && !messages.some(m => m.text.trim()))}
                 loading={loading}
               >
-                <Sparkles size={16} /> Analyze Conversation
+                <Sparkles size={16} /> {importFile ? 'Analyze Imported Chat' : 'Analyze Conversation'}
               </Button>
             </div>
           </>

@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import { Layers, Lightbulb, MessageSquare, AlertTriangle, ChevronRight } from 'lucide-react';
 import Card from './common/Card';
 import RiskBadge from './prediction/RiskBadge';
+import GuidancePanel from './prediction/GuidancePanel';
 
 export default function ConversationResultDisplay({ result }) {
   if (!result || !result.messages) return null;
@@ -91,7 +92,7 @@ export default function ConversationResultDisplay({ result }) {
         </h2>
         
         <Card className="p-0 overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
             <div className="p-5">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Overall Sentiment</p>
               <p className="text-sm text-slate-700 font-medium">{result.ai_summary?.overall_sentiment}</p>
@@ -100,13 +101,20 @@ export default function ConversationResultDisplay({ result }) {
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Harassment Pattern</p>
               <p className="text-sm text-slate-700 font-medium">{result.ai_summary?.harassment_pattern}</p>
             </div>
-            <div className="p-5 bg-indigo-50/30">
-              <p className="text-xs font-semibold text-indigo-800/60 uppercase tracking-wider mb-2 flex items-center gap-1.5"><AlertTriangle size={14} /> Recommended Action</p>
-              <p className="text-sm text-indigo-900 leading-snug">{result.ai_summary?.recommended_action}</p>
-            </div>
           </div>
         </Card>
       </div>
+      
+      {/* ── SECTION 2B: VICTIM GUIDANCE ── */}
+      {result.guidance && (
+        <div className="space-y-3 pt-4">
+          <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+            <AlertTriangle size={18} className="text-indigo-600" />
+            Victim Guidance
+          </h2>
+          <GuidancePanel guidance={result.guidance} />
+        </div>
+      )}
 
       {/* ── SECTION 3: MESSAGE TIMELINE ── */}
       <div className="space-y-3 pt-4">

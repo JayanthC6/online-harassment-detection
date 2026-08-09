@@ -1,6 +1,7 @@
 import ml.predict_transformer as predict_transformer
 from services.admin_service import AdminService
 from ml.adapters import PrimaryModelAdapter, HeuristicMultiLabelAdapter, ConversationAdapter
+from services.guidance_service import GuidanceService
 
 try:
     import ml.explain as explain_module
@@ -110,6 +111,16 @@ class PredictionService:
                     result["cluster_id"] = f"cluster-{hash(matches[0]['text_preview']) % 10000:04d}"
             except Exception:
                 pass 
+                
+        # Attach structured guidance
+        platform = result.get("platform", "generic")
+        primary_label = result.get("primary_label", result.get("category", "none"))
+        primary_conf = result.get("confidence", 0)
+        secondary_labels = result.get("secondary_labels", {})
+        
+        result["guidance"] = GuidanceService.get_guidance(
+            primary_label, primary_conf, secondary_labels, result["risk_score"], platform
+        )
 
         return result
 
@@ -119,15 +130,32 @@ class PredictionService:
         
         try:
             from ml.summarize import summarize_conversation
-            result["ai_summary"] = summarize_conversation(
+            ai_summary = summarize_conversation(
                 [m["text"] for m in result["messages"]], 
                 result["conversation_risk"]
             )
+            # Remove the old recommended_action from AI summary
+            if "recommended_action" in ai_summary:
+                del ai_summary["recommended_action"]
+            result["ai_summary"] = ai_summary
         except Exception:
             result["ai_summary"] = {
                 "overall_sentiment": "Unknown",
-                "harassment_pattern": "Unable to summarize.",
-                "recommended_action": "Manual review required."
+                "harassment_pattern": "Unable to summarize."
             }
+            
+        # Determine platform if provided
+        platform = messages[0].get("platform", "generic") if messages else "generic"
+        
+        # We need primary and secondary labels for the entire conversation to pass to get_guidance.
+        # Let's aggregate them from the highest risk message.
+        highest_risk_msg = max(result["messages"], key=lambda m: m.get("risk_score", 0), default={})
+        primary_label = highest_risk_msg.get("primary_label", highest_risk_msg.get("category", "none"))
+        primary_conf = highest_risk_msg.get("confidence", 0)
+        secondary_labels = highest_risk_msg.get("secondary_labels", {})
+        
+        result["guidance"] = GuidanceService.get_guidance(
+            primary_label, primary_conf, secondary_labels, result["conversation_risk"], platform
+        )
             
         return result
