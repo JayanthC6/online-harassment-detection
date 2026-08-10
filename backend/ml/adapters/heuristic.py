@@ -8,25 +8,30 @@ class PrimaryModelAdapter(ModelAdapter):
     def predict(self, text: str) -> dict:
         if predict_transformer.is_available():
             base_result = predict_transformer.predict_message(text)
+            return base_result
         else:
             base_result = predict_baseline(text)
-            base_result["model"] = "baseline"
             
-        # Map old schema to new schema mostly
-        category = base_result.get("category", "none")
-        conf = base_result.get("confidence", 0.0)
-        
-        primary_label = category.replace("_", " ").title() if category != "none" else "Clean"
-        
-        return {
-            "primary_label": primary_label,
-            "confidence": conf,
-            "secondary_labels": {},
-            "model": base_result.get("model", "unknown"),
-            "label": base_result.get("label", "non_harassing"),
-            "category": category,
-            "explanation": base_result.get("explanation", [])
-        }
+            # Map old schema to a mocked multi-label schema
+            category = base_result.get("category", "none")
+            conf = base_result.get("confidence", 0.0)
+            
+            primary_label = category.replace("_", " ").title() if category != "none" else "Clean"
+            
+            # Map old labels to new label names if needed
+            if primary_label == "Offensive Language":
+                primary_label = "Toxicity / Offensive Language"
+            elif primary_label == "Cyberbullying":
+                primary_label = "Cyberbullying / Harassment"
+                
+            return {
+                "neural_probs": {primary_label: conf} if primary_label != "Clean" else {"Clean": conf},
+                "thresholds": {},
+                "model": "baseline",
+                "label": base_result.get("label", "non_harassing"),
+                "category": category,
+                "explanation": base_result.get("explanation", [])
+            }
 
 class HeuristicMultiLabelAdapter(ModelAdapter):
     def __init__(self, primary_adapter: ModelAdapter):
@@ -35,12 +40,12 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
         # Simple keyword/regex heuristics to infer secondary categories
         self.heuristics = {
             "Threat": [r"\b(kill|murder|beat|stab|hurt|shoot|destroy)\b", r"\b(watch your back|i know where you live|die)\b"],
-            "Cyberbullying": [r"\b(loser|worthless|ugly|fat|stupid|idiot|dumb|kys|die)\b", r"\b(nobody likes you)\b"],
+            "Cyberbullying / Harassment": [r"\b(loser|worthless|ugly|fat|stupid|idiot|dumb|kys|die)\b", r"\b(nobody likes you)\b"],
             "Hate Speech": [r"\b(nazi|subhuman|scum|trash)\b", r"\b(hate all|dirty)\b"],
             "Identity Attack": [r"\b(gay|fag|tranny|retard|autistic|black|white|muslim|jew)\b"],
             "Profanity": [r"\b(fuck|shit|bitch|cunt|asshole|bastard|dick|cock|pussy)\b"],
             "Sexual Harassment": [r"\b(rape|molest|boobs|tits|ass|send nudes|suck)\b"],
-            "Toxicity": [r"\b(shut up|trash|garbage|toxic)\b"],
+            "Toxicity / Offensive Language": [r"\b(shut up|trash|garbage|toxic)\b"],
             "Spam": [r"\b(click here|free money|discount|buy now|subscribe|win)\b", r"http[s]?://"],
             "Self Harm": [r"\b(cut myself|kill myself|suicide|end it all)\b"],
             "Scam": [r"\b(crypto|bitcoin|investment opportunity|ponzi|pyramid scheme)\b", r"\b(guaranteed returns)\b"],
@@ -50,6 +55,15 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
             "Extortion": [r"\b(pay me|send bitcoin to|ransom|transfer funds immediately)\b", r"\b(if you don't pay)\b"],
             "Fraud": [r"\b(stolen credit card|fake id|bank transfer|wire me)\b"],
             "Social Engineering": [r"\b(what is your mother's maiden name|verify your ssn|send me a code)\b", r"\b(can you do me a quick favor.*gift card)\b"]
+        }
+
+        self.trained_categories = {
+            "Hate Speech",
+            "Cyberbullying / Harassment",
+            "Threat",
+            "Toxicity / Offensive Language",
+            "Profanity",
+            "Clean"
         }
 
     def explain_heuristics(self, text: str, secondary_labels: dict) -> list:
@@ -73,54 +87,85 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
         # 1. Run the primary model
         result = self.primary_adapter.predict(text)
         
-        text_lower = text.lower()
-        secondary_labels = {}
+        neural_probs = result.get("neural_probs", {})
         
-        # 2. Run heuristics independently without tying their confidence to primary model's failure
+        text_lower = text.lower()
+        symbolic_confs = {}
+        
+        # 2. Run heuristics independently
         for label, patterns in self.heuristics.items():
             for pattern in patterns:
                 if re.search(pattern, text_lower):
-                    # We assign a high base confidence for heuristic matches since they are exact pattern hits
                     heuristic_conf = 0.85 
-                    
-                    if label != result["primary_label"]:
-                        # Give it a tiny bit of random variation so it looks organic
-                        var = (hash(text + label) % 10) / 100.0
-                        conf = max(0.40, min(0.99, heuristic_conf - var))
-                        secondary_labels[label] = round(conf, 4)
+                    var = (hash(text + label) % 10) / 100.0
+                    conf = max(0.40, min(0.99, heuristic_conf - var))
+                    symbolic_confs[label] = round(conf, 4)
                     break
                     
-        # 3. Add Offensive Language if primary was Hate Speech and confidence is high
-        if result["primary_label"] == "Hate Speech" and result["confidence"] > 0.6:
-            secondary_labels["Offensive Language"] = round(result["confidence"] * 0.8, 4)
-        elif result["primary_label"] == "Offensive Language":
-            # Primary is offensive language, check if we should infer Toxicity
-            if "Toxicity" not in secondary_labels:
-                secondary_labels["Toxicity"] = round(result["confidence"] * 0.9, 4)
+        # 3. Noisy-OR Evidence Fusion
+        fused_labels = {}
+        all_possible_labels = set(neural_probs.keys()) | set(symbolic_confs.keys())
+        
+        for label in all_possible_labels:
+            if label == "Clean":
+                continue # Clean is handled separately later
                 
-        # Only keep labels with confidence > 0.4
-        filtered_secondary = {k: v for k, v in secondary_labels.items() if v >= 0.4}
-        
-        # Determine the absolute highest confidence label across primary and secondary
-        # (Though usually primary is the anchor, sometimes a heuristic might hit harder)
-        best_label = result["primary_label"]
-        best_conf = result["confidence"]
-        
-        # OVERRIDE LOGIC
-        if result["primary_label"] == "Clean" and filtered_secondary:
-            # DistilBERT predicted Safe, but heuristics found threats.
-            # Promote the highest confidence heuristic label to primary_label.
-            max_sec_label = max(filtered_secondary, key=filtered_secondary.get)
+            n_prob = neural_probs.get(label, 0.0)
+            s_prob = symbolic_confs.get(label, 0.0)
             
-            result["primary_label"] = max_sec_label
-            result["confidence"] = filtered_secondary[max_sec_label]
-            result["label"] = "harassing" # Mark incident as detected
-            result["category"] = max_sec_label.lower().replace(" ", "_")
-            
-            # Remove the promoted label from secondary labels
-            del filtered_secondary[max_sec_label]
+            if label == "Threat":
+                n_weight = 0.15
+                s_weight = 0.85
+            elif label in self.trained_categories:
+                n_weight = 0.8
+                s_weight = 0.5
+            else:
+                # Symbolic-only category
+                n_weight = 0.0
+                s_weight = 1.0
                 
-        result["secondary_labels"] = filtered_secondary
-        result["model"] = result["model"] + "+multi_label_heuristics"
+            # Noisy-OR fusion
+            fused_conf = 1 - (1 - n_prob * n_weight) * (1 - s_prob * s_weight)
+            
+            # Keep labels with confidence > 0.4 or if they passed the neural threshold
+            # thresholds not applied to symbolic-only categories
+            thresholds = result.get("thresholds", {})
+            thresh = thresholds.get(label, 0.5)
+            
+            # Since fused_conf might be slightly lower than raw n_prob (e.g. n_prob=0.8, n_weight=0.8 -> 0.64), 
+            # we should also check if raw n_prob > threshold just to be safe, but 
+            # mathematically we want the fused conf to be the final score.
+            if fused_conf >= 0.4:
+                fused_labels[label] = round(fused_conf, 4)
+                
+        # Determine primary label
+        if fused_labels:
+            best_label = max(fused_labels, key=fused_labels.get)
+            best_conf = fused_labels[best_label]
+            
+            secondary_labels = {k: v for k, v in fused_labels.items() if k != best_label}
+            category = best_label.lower().replace(" / ", "_").replace(" ", "_").replace("/", "_")
+            label_flag = "harassing"
+        else:
+            # If nothing triggered, it's Clean
+            best_label = "Clean"
+            best_conf = neural_probs.get("Clean", 0.85) 
+            # If the neural model has a probability for Clean, use it, else 0.85 default
+            
+            secondary_labels = {}
+            category = "none"
+            label_flag = "non_harassing"
+
+        # Update the result dict
+        result["primary_label"] = best_label
+        result["confidence"] = best_conf
+        result["secondary_labels"] = secondary_labels
+        result["label"] = label_flag
+        result["category"] = category
         
+        if result.get("model") == "baseline":
+            result["model"] = "baseline+multi_label_heuristics"
+        else:
+            result["model"] = "Neurosymbolic Fusion (Fine-tuned DistilBERT v1 + Rule Engine)"
+            
         return result

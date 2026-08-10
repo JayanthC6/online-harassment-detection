@@ -1,92 +1,114 @@
 """
-Loads the fine-tuned DistilBERT model (from train_transformer.py or the
-Colab notebook) and classifies new messages.
-
-Same function signature as predict.py's predict_message() on purpose, so
-app.py can swap between them without changing route logic.
+Loads the fine-tuned DistilBERT multi-label model from the Hugging Face Hub
+and classifies new messages.
 
 Imports for torch/transformers are deliberately lazy (inside functions, not
 at module top level) so that importing this module doesn't crash the whole
-Flask app on machines that haven't installed those libraries yet. You only
-need them once you actually train and use DistilBERT.
+Flask app on machines that haven't installed those libraries yet.
 """
 import os
+import json
 
-MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "models", "distilbert")
-
-CLASS_TO_CATEGORY = {0: "hate_speech", 1: "offensive_language", 2: "none"}
-CLASS_TO_LABEL = {0: "harassing", 1: "harassing", 2: "non_harassing"}
+MODEL_REPO = "Jayant62003/shieldai-distilbert-multilabel"
 
 _model = None
 _tokenizer = None
+_thresholds = None
 _device = None
 
 
 def is_available() -> bool:
-    """Check whether a fine-tuned model has been trained and dropped in place."""
-    if not os.path.exists(os.path.join(MODEL_DIR, "config.json")):
+    """Check whether we have HF_TOKEN to load the model."""
+    if not os.getenv("HF_TOKEN"):
+        print("DEBUG: is_available returning False because HF_TOKEN is not set.")
         return False
     try:
         import torch  # noqa: F401
         import transformers  # noqa: F401
-    except (ImportError, OSError):
+    except (ImportError, OSError) as e:
+        print(f"DEBUG: is_available returning False because import failed: {e}")
         return False
     return True
 
 
 def _load():
-    global _model, _tokenizer, _device
+    global _model, _tokenizer, _thresholds, _device
     if _model is None:
         import torch
-        from transformers import DistilBertTokenizerFast, DistilBertForSequenceClassification
+        from transformers import AutoTokenizer, AutoModelForSequenceClassification
+        from huggingface_hub import hf_hub_download
 
         if not is_available():
-            raise FileNotFoundError(
-                f"No DistilBERT model found at {MODEL_DIR}, or torch/transformers "
-                "aren't installed. Train it with notebooks/02_train_distilbert.ipynb "
-                "on Colab, unzip the result into backend/models/distilbert/, and "
-                "run `pip install torch transformers`."
-            )
+            raise ValueError("HF_TOKEN environment variable is missing or torch/transformers are not installed.")
+        
+        token = os.getenv("HF_TOKEN")
+        
+        # Load thresholds.json
+        thresholds_path = hf_hub_download(repo_id=MODEL_REPO, filename="thresholds.json", token=token)
+        with open(thresholds_path, "r") as f:
+            _thresholds = json.load(f)
+            
         _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        _tokenizer = DistilBertTokenizerFast.from_pretrained(MODEL_DIR)
-        _model = DistilBertForSequenceClassification.from_pretrained(MODEL_DIR)
+        _tokenizer = AutoTokenizer.from_pretrained(MODEL_REPO, token=token)
+        _model = AutoModelForSequenceClassification.from_pretrained(MODEL_REPO, token=token)
         _model.to(_device)
         _model.eval()
-    return _model, _tokenizer, _device
+    return _model, _tokenizer, _thresholds, _device
 
 
 def predict_message(text: str) -> dict:
-    """Classify a single message. Same return shape as ml/predict.py."""
+    """Classify a single message. Returns a multi-label output dictionary."""
     import torch
 
-    model, tokenizer, device = _load()
+    model, tokenizer, thresholds, device = _load()
 
-    inputs = tokenizer(text, truncation=True, padding="max_length", max_length=64, return_tensors="pt")
+    inputs = tokenizer(text, truncation=True, padding="max_length", max_length=256, return_tensors="pt")
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
     with torch.no_grad():
         logits = model(**inputs).logits
-        probs = torch.softmax(logits, dim=-1)[0]
+        probs = torch.sigmoid(logits)[0].cpu().numpy()
 
-    pred_class = int(torch.argmax(probs).item())
-    confidence = float(probs[pred_class].item())
-
+    # thresholds dict maps "Label Name" -> threshold float
+    # We need to map model.config.id2label to the probability
+    id2label = model.config.id2label
+    # If the model config doesn't have the string names, map them manually
+    if id2label and "LABEL_0" in id2label.values():
+        id2label = {
+            0: "Hate Speech",
+            1: "Cyberbullying / Harassment",
+            2: "Threat",
+            3: "Toxicity / Offensive Language",
+            4: "Profanity",
+            5: "Clean"
+        }
+        
+    neural_probs = {}
+    
+    for i, prob in enumerate(probs):
+        label_name = id2label[i]
+        neural_probs[label_name] = float(prob)
+        
     return {
-        "label": CLASS_TO_LABEL[pred_class],
-        "category": CLASS_TO_CATEGORY[pred_class],
-        "confidence": round(confidence, 4),
-        "model": "distilbert",
+        "neural_probs": neural_probs,
+        "thresholds": thresholds,
+        "model": "distilbert"
     }
 
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+    
     if not is_available():
-        print(f"No model found at {MODEL_DIR} -- train it first (see notebooks/02_train_distilbert.ipynb).")
+        print(f"HF_TOKEN missing or libraries missing.")
     else:
         examples = [
-            "You're worthless, just disappear already.",
+            "You're worthless, just disappear from here you fucker asshole",
             "Great job on the presentation today!",
-            "I know where you live, watch your back.",
+            "I know where you live, I will kill you.",
         ]
         for ex in examples:
-            print(ex, "->", predict_message(ex))
+            print(ex)
+            print(predict_message(ex))
+            print()
