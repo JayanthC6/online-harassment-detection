@@ -9,8 +9,9 @@ import sys
 # Import torch first on Windows to avoid DLL conflicts with other libraries
 try:
     import torch
-except Exception:
-    pass
+except Exception as e:
+    import logging
+    logging.warning(f"Failed to pre-import torch (this is usually fine if torch isn't needed): {e}")
 
 from flask import Flask
 from flask_cors import CORS

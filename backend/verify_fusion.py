@@ -50,6 +50,13 @@ def run_tests():
     print(f"Text: '{text3}'")
     res3 = engine.predict(text3)
     print(f"Primary Label: {res3.get('primary_label')} ({res3.get('confidence')})")
+    
+    print("Checking if Threat emerged as primary due to severity tier override...")
+    if res3.get('primary_label') == "Threat":
+        print("Success: Threat emerged as primary.")
+    else:
+        print(f"Failure: Expected 'Threat', got '{res3.get('primary_label')}'.")
+    assert res3.get('primary_label') == "Threat", "Test Case 3 failed: Threat must be the primary label."
     print(f"Neural Probs: {res3.get('debug_neural_probs', {})}")
     print(f"Symbolic Confs: {res3.get('debug_symbolic_confs', {})}")
     print(f"Fused Confs: {res3.get('debug_fused_confs', {})}")

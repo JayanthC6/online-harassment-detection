@@ -2,6 +2,27 @@ from .base import ModelAdapter
 from ml.predict import predict_message as predict_baseline
 import ml.predict_transformer as predict_transformer
 import re
+import json
+import os
+import hashlib
+
+def _load_severity_tiers():
+    config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config", "guidance_v1.json")
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        always_critical = config.get("severity_tiers", {}).get("always_critical", [])
+        confidence_gated = config.get("severity_tiers", {}).get("confidence_gated", [])
+        
+        tiers = {}
+        for label in always_critical:
+            tiers[label] = 1
+        for label in confidence_gated:
+            tiers[label] = 2
+        return tiers
+    except Exception:
+        # Fallback to empty if missing
+        return {}
 
 # We wrap the existing logic as the primary engine.
 class PrimaryModelAdapter(ModelAdapter):
@@ -97,7 +118,9 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
             for pattern in patterns:
                 if re.search(pattern, text_lower):
                     heuristic_conf = 0.85 
-                    var = (hash(text + label) % 10) / 100.0
+                    # Use deterministic hash instead of Python's randomized built-in hash
+                    det_hash = int(hashlib.md5((text + label).encode('utf-8')).hexdigest(), 16)
+                    var = (det_hash % 10) / 100.0
                     conf = max(0.40, min(0.99, heuristic_conf - var))
                     symbolic_confs[label] = round(conf, 4)
                     break
@@ -138,9 +161,20 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
             if fused_conf >= 0.4:
                 fused_labels[label] = round(fused_conf, 4)
                 
-        # Determine primary label
+        # Determine primary label using severity tiers from config
+        severity_tiers = _load_severity_tiers()
+
         if fused_labels:
-            best_label = max(fused_labels, key=fused_labels.get)
+            # Filter labels that clear a reasonable floor for primary selection
+            candidates = {k: v for k, v in fused_labels.items() if v > 0.5}
+            
+            # If nothing cleared the floor but we have fused labels, fall back to all of them
+            if not candidates:
+                candidates = fused_labels
+                
+            # Sort candidates by (severity_tier ASC, confidence DESC)
+            # Default to tier 3 (lowest priority) if a category is missing from the mapping
+            best_label = min(candidates.keys(), key=lambda k: (severity_tiers.get(k, 3), -candidates[k]))
             best_conf = fused_labels[best_label]
             
             secondary_labels = {k: v for k, v in fused_labels.items() if k != best_label}
