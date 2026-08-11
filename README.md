@@ -1,123 +1,30 @@
 # ShieldAI — Online Harassment Detection System
 
-An ML-based web application that classifies text, audio/video, and screenshots as harassing or non-harassing, complete with category breakdowns (hate speech / offensive language / clean), advanced risk scoring, semantic duplicate detection, and an AI-powered admin dashboard for reviewing flagged content.
+An advanced forensic trust & safety console designed for moderators to review digital safety incidents. 
 
-## Key Features
+## Current Stage & What Has Been Built
 
-- **Multi-modal Analysis**: Analyzes raw text, audio/video files (via Whisper transcription), and images/screenshots (via EasyOCR).
-- **Dual ML Models**: Supports both a fast TF-IDF + Logistic Regression baseline and an advanced DistilBERT transformer model.
-- **Explainability**: Word-level contribution highlighting (TF-IDF × LR coefficients) to explain *why* the baseline model flagged content.
-- **Risk Scoring & Incident Summarization**: Automatically scores the risk severity of flagged items and generates readable incident summaries using Groq.
-- **Semantic Clustering**: Detects repeated/similar harassment campaigns using MiniLM embeddings.
-- **Secure Admin Dashboard**: JWT-authenticated React dashboard to view trends, anomalies, and recently flagged items.
+The project has evolved into a fully functional, enterprise-grade forensic dashboard for trust and safety teams. We have recently completed several major milestones:
 
----
+### 1. Neurosymbolic Fusion Architecture
+- **Dual Engine System**: Fuses a Fine-tuned DistilBERT transformer model (neural) with an explicit Heuristic Rule Engine (symbolic).
+- **Noisy-OR Fusion Logic**: Probabilities are combined using a noisy-OR formula, ensuring that strong signals from either the neural or symbolic engine can escalate an incident's severity.
+- **Explainability**: Word-level contribution highlighting ensures moderators understand exactly *why* a decision was made.
 
-## Quick start (local dev, no Docker)
+### 2. External Threat Intelligence Integration
+- **Google Safe Browsing**: Extracts URLs from text and checks them against Google's malware and phishing databases.
+- **Domain Age Analysis**: Uses WHOIS lookups to identify domains registered in the last 30 days (strong phishing signal).
+- **Typosquatting Detection**: Uses Levenshtein distance algorithms to detect domains impersonating high-value targets (e.g., `paypa1.com` instead of `paypal.com`).
+- **Data Breach Lookup**: Checks extracted email addresses against Have I Been Pwned (HIBP) to flag known compromised accounts.
+- **Graceful Degradation**: External API calls are wrapped in strict async timeouts to prevent the core analysis pipeline from blocking if an external service is down.
 
-### 1. Backend
+### 3. Forensic UI Redesign (React/Vite)
+- **Dark Mode "Ink" Aesthetic**: Completely rebuilt the UI to resemble a forensic case-file system rather than a generic SaaS dashboard. Features strict hard edges (no rounded corners), a curated color palette (Ink, Panel, Manila, Redaction Red), and custom Recharts styling.
+- **Incident Intelligence Panel**: A dedicated flyout panel for moderators to review extracted Threat Intelligence, explainability highlights, and victim guidance.
 
-```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python ml/train_baseline.py     # trains and saves the model (~10 sec)
-python app.py                   # starts Flask on http://localhost:5000
-```
-*Note: Make sure MongoDB is running locally on port 27017 or configure the `MONGO_URI` in your `.env` file.*
+### 4. Robust Backend Infrastructure (Python/Flask/MongoDB)
+- **Persistent Storage**: Fully functional MongoDB Atlas integration with proper TLS configuration (`certifi`) to prevent silent fallbacks to in-memory storage.
+- **Modular Services**: Business logic, ML pipelines, and API routes are strictly segregated for maintainability.
 
-### 2. Frontend (separate terminal)
-
-```bash
-cd frontend
-npm install
-npm run dev                     # starts Vite on http://localhost:5173
-```
-
-Open http://localhost:5173 — the analyzer forms and dashboard both talk to the Flask backend via the `/api` proxy configured in `vite.config.js`.
-
----
-
-## Quick start (Docker)
-
-```bash
-docker compose up --build
-```
-
-- Backend: http://localhost:5000
-- Frontend: http://localhost:3000
-
-*Note: you must run `python ml/train_baseline.py` locally at least once before building the Docker image, so `backend/models/*.joblib` exists (it's mounted as a volume, not baked into the image).*
-
----
-
-## Project Structure
-
-```
-backend/
-  app.py                    Flask application factory & middleware setup
-  api/                      Modular Flask Blueprints
-    routes_public.py        Public analysis endpoints (/predict, /predict/audio, etc.)
-    routes_admin.py         JWT-protected admin endpoints (/admin/stats, /admin/login)
-  services/                 Business Logic Layer
-    auth_service.py         JWT issuance and validation
-    db_service.py           MongoDB persistence and anomaly detection
-    llm_service.py          Groq-based incident summarization
-    model_service.py        ML inference orchestration
-    risk_service.py         Risk scoring engine
-    similarity_service.py   MiniLM-based semantic clustering
-  ml/                       Core ML Pipelines
-    preprocess.py           Text cleaning logic
-    train_baseline.py       TF-IDF + LR training script
-    predict.py              Baseline inference
-    train_transformer.py    DistilBERT training script
-    predict_transformer.py  DistilBERT inference
-    transcribe.py           Whisper transcription
-    ocr.py                  EasyOCR text extraction
-  models/                   Saved model artifacts (gitignored)
-
-frontend/
-  src/
-    App.jsx                 Main router & Layout
-    api/client.js           Centralized API fetch client with JWT injection
-    hooks/                  Reusable custom React hooks (useAuth, usePredict, useAdminData)
-    components/
-      common/               Shared UI elements (Card, Button, FileUpload, LoadingState)
-      dashboard/            Admin Dashboard subcomponents (Charts, Stats, Table)
-      prediction/           Analysis result subcomponents (RiskBadge, ConfidenceBar, Summary)
-      auth/                 LoginForm component
-      AnalyzeForm.jsx       Text & Audio upload form
-      ScreenshotAnalyzeForm Image upload form
-      ResultDisplay.jsx     Orchestrates prediction visualization
-```
-
----
-
-## Training DistilBERT
-
-1. Upload `notebooks/02_train_distilbert.ipynb` to https://colab.research.google.com
-2. Runtime → Change runtime type → T4 GPU
-3. Run all cells to train and download a `distilbert_model.zip`
-4. Unzip it into `backend/models/distilbert/`
-5. Restart `python app.py` — it auto-detects the model and routes `/predict` to DistilBERT instead of the baseline.
-
----
-
-## Recent Architecture Improvements
-
-This project recently underwent a comprehensive 5-phase refactoring to achieve enterprise-grade maintainability:
-
-1. **Backend Structural Overhaul**: Segregated business logic into a `services/` layer and isolated core ML pipelines.
-2. **Feature Extensions**: Added Groq LLM summarization, semantic clustering, risk scoring, and MongoDB persistence.
-3. **API Modularization**: Split the monolithic `app.py` into distinct `routes_public.py` and `routes_admin.py` blueprints, adding robust JWT authentication middleware.
-4. **Frontend Infrastructure**: Introduced a centralized `apiClient` and reusable custom hooks for state management.
-5. **Frontend Component Breakdown**: Dismantled large monolithic React components into atomic, single-responsibility components with strict `prop-types` validation.
-
----
-
-## Known Limitations
-
-1. **English only** — no multilingual support yet.
-2. **Class imbalance** — `hate_speech` is a minority class in the training data, so precision on that specific category is currently weak in the baseline model.
-3. **Implicit Threats** — coded threats without profanity are hard for the baseline model to catch. This is mitigated by the DistilBERT model.
+## Next Steps
+The project is currently in a highly functional state, ready for further refinement in scalability, multilingual support, and deployment automation.
