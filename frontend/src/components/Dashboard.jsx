@@ -20,32 +20,32 @@ export default function Dashboard({ refreshKey }) {
   return (
     <div className="space-y-10 animate-fade-in pb-12 mt-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 flex items-center gap-2">
-          <Shield className="text-indigo-600" size={24} />
+        <h1 className="text-2xl font-bold tracking-wider uppercase font-display text-off-white flex items-center gap-2">
+          <Shield className="text-slate-500" size={24} />
           Digital Safety Intelligence
         </h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-400 font-mono">
           Review, analyze, and manage digital safety reports across the platform.
         </p>
       </div>
 
-      <div className="flex border-b border-slate-200 mb-6">
+      <div className="flex border-b border-slate-700 mb-6">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 py-3 text-sm font-bold font-mono uppercase tracking-wider border-b transition-colors ${
             activeTab === 'overview'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'border-off-white text-off-white'
+              : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-500'
           }`}
         >
           Safety Reports
         </button>
         <button
           onClick={() => setActiveTab('behavior')}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+          className={`px-4 py-3 text-sm font-bold font-mono uppercase tracking-wider border-b transition-colors flex items-center gap-2 ${
             activeTab === 'behavior'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+              ? 'border-off-white text-off-white'
+              : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-500'
           }`}
         >
           <Sparkles size={14} />
@@ -59,7 +59,7 @@ export default function Dashboard({ refreshKey }) {
           <DashboardStats stats={stats} />
 
           {/* ── Advanced Analytics (Lazy Loaded) ── */}
-          <Suspense fallback={<div className="h-48 flex items-center justify-center bg-slate-50 rounded-xl border border-slate-100 text-slate-400 text-sm">Loading charts...</div>}>
+          <Suspense fallback={<div className="h-48 flex items-center justify-center bg-panel border border-slate-700 text-slate-400 text-sm font-mono">Loading charts...</div>}>
             {analytics && <AdvancedAnalytics analytics={analytics} />}
             {dailyCounts && dailyCounts.length > 0 && <TrendChart dailyCounts={dailyCounts} anomalies={anomalies} />}
           </Suspense>

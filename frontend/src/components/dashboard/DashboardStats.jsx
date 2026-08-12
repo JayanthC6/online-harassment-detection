@@ -19,8 +19,8 @@ export default function DashboardStats({ stats }) {
         <div className="col-span-1 md:col-span-4 space-y-3">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Incident Overview</h3>
           <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Total Incidents" value={stats.total_reports || 0} icon={<BarChart3 size={18} className="text-slate-400" />} />
-            <StatCard label="High Risk" value={stats.high_risk || 0} icon={<AlertCircle size={18} className="text-rose-500" />} />
+            <StatCard label="Total Incidents" value={stats.total_reports || 0} icon={<BarChart3 size={18} className="text-slate-500" />} />
+            <StatCard label="High Risk" value={stats.high_risk || 0} icon={<AlertCircle size={18} className="text-redaction-red" />} />
           </div>
         </div>
 
@@ -28,9 +28,9 @@ export default function DashboardStats({ stats }) {
         <div className="col-span-1 md:col-span-5 space-y-3">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Threat Intelligence</h3>
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Scams" value={scamAlerts} icon={<AlertTriangle size={18} className="text-amber-500" />} />
-            <StatCard label="Phishing" value={phishingAlerts} icon={<Bug size={18} className="text-purple-500" />} />
-            <StatCard label="Threats" value={threatAlerts} icon={<ShieldAlert size={18} className="text-rose-500" />} />
+            <StatCard label="Scams" value={scamAlerts} icon={<AlertTriangle size={18} className="text-alert-amber" />} />
+            <StatCard label="Phishing" value={phishingAlerts} icon={<Bug size={18} className="text-redaction-red" />} />
+            <StatCard label="Threats" value={threatAlerts} icon={<ShieldAlert size={18} className="text-redaction-red" />} />
           </div>
         </div>
 
@@ -38,7 +38,7 @@ export default function DashboardStats({ stats }) {
         <div className="col-span-1 md:col-span-3 space-y-3">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Actor Intelligence</h3>
           <div className="grid grid-cols-1 gap-3">
-            <StatCard label="Behavioral Alerts" value={behavioralAlerts} icon={<Activity size={18} className="text-indigo-500" />} />
+            <StatCard label="Behavioral Alerts" value={behavioralAlerts} icon={<Activity size={18} className="text-slate-400" />} />
           </div>
         </div>
 

@@ -25,7 +25,7 @@ export default function FileUpload({
 
   return (
     <div
-      className={`drop-zone ${file ? activeClasses.container : ''}`}
+      className={`drop-zone ${file ? (activeClasses?.container || '') : ''}`}
       onDragOver={(e) => {
         e.preventDefault();
         e.currentTarget.classList.add('dragover');
@@ -43,11 +43,11 @@ export default function FileUpload({
       />
       {file ? (
         <div className="space-y-1.5 flex flex-col items-center">
-          <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-100 mb-1 inline-flex">
+          <div className="p-2 bg-panel border border-slate-700 mb-1 inline-flex">
             <File className="text-slate-400" size={24} />
           </div>
-          <p className={`text-sm ${activeClasses.text} font-semibold truncate max-w-xs px-4`}>{file.name}</p>
-          <p className="text-xs text-slate-500 font-medium">
+          <p className={`text-sm ${activeClasses?.text || 'text-off-white'} font-bold font-mono truncate max-w-xs px-4`}>{file.name}</p>
+          <p className="text-xs text-slate-500 font-mono">
             {(file.size / (1024 * 1024)).toFixed(1)} MB <span className="opacity-50 mx-1">•</span> <span className="hover:underline cursor-pointer">click to change</span>
           </p>
         </div>
@@ -56,8 +56,8 @@ export default function FileUpload({
           <div className="mb-2">
             {icon}
           </div>
-          <p className="text-sm font-semibold text-slate-700">{titleText}</p>
-          <p className="text-xs text-slate-400">{supportedText}</p>
+          <p className="text-sm font-bold text-slate-400 font-mono">{titleText}</p>
+          <p className="text-xs text-slate-500 font-mono">{supportedText}</p>
         </div>
       )}
     </div>
@@ -72,7 +72,7 @@ FileUpload.propTypes = {
   activeClasses: PropTypes.shape({
     container: PropTypes.string,
     text: PropTypes.string,
-  }).isRequired,
+  }),
   titleText: PropTypes.string.isRequired,
   subtitleText: PropTypes.string,
   supportedText: PropTypes.string.isRequired,

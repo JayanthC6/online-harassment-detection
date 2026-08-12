@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import { Layers, Lightbulb, MessageSquare, AlertTriangle, ChevronRight } from 'lucide-react';
 import Card from './common/Card';
 import RiskBadge from './prediction/RiskBadge';
+import RedactionBar from './common/RedactionBar';
 import GuidancePanel from './prediction/GuidancePanel';
 
 export default function ConversationResultDisplay({ result }) {
@@ -13,8 +14,8 @@ export default function ConversationResultDisplay({ result }) {
     <div className="space-y-6 animate-slide-up mt-8">
       {/* ── SECTION 1: CONVERSATION ASSESSMENT ── */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-          <Layers size={18} className="text-indigo-600" />
+        <h2 className="text-sm font-bold text-off-white font-display flex items-center gap-2">
+          <Layers size={18} className="text-slate-500" />
           Conversation Assessment
         </h2>
         
@@ -22,7 +23,7 @@ export default function ConversationResultDisplay({ result }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Incident Classification</p>
+                <p className="text-xs font-semibold text-slate-500 font-mono uppercase tracking-wider mb-3">Incident Classification</p>
                 <div className="flex items-center gap-4">
                   <RiskBadge
                     isHarassing={isHarassing}
@@ -33,18 +34,18 @@ export default function ConversationResultDisplay({ result }) {
               </div>
               
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Behavior Intelligence</p>
+                <p className="text-xs font-semibold text-slate-500 font-mono uppercase tracking-wider mb-3">Behavior Intelligence</p>
                 <div className="flex items-center gap-3 mb-2">
-                  <span className={`px-2.5 py-1 text-xs font-medium rounded-md ${
-                    result.escalation_level === 'High' ? 'bg-rose-100 text-rose-700' :
-                    result.escalation_level === 'Medium' ? 'bg-amber-100 text-amber-700' :
-                    'bg-slate-100 text-slate-700'
+                  <span className={`px-2.5 py-1 text-xs font-medium rounded-none border ${
+                    result.escalation_level === 'High' ? 'bg-panel border-redaction-red text-redaction-red' :
+                    result.escalation_level === 'Medium' ? 'bg-panel border-alert-amber text-alert-amber' :
+                    'bg-panel border-slate-700 text-off-white'
                   }`}>
                     {result.escalation_level} Escalation
                   </span>
-                  <span className="text-xs text-slate-500 font-medium">Score: +{result.escalation_score}</span>
+                  <span className="text-xs text-slate-400 font-mono">Score: +{result.escalation_score}</span>
                 </div>
-                <ul className="text-sm text-slate-600 space-y-1 mt-2">
+                <ul className="text-sm text-slate-400 space-y-1 mt-2">
                   {result.escalation_reason.map((r, i) => (
                     <li key={i} className="flex items-start gap-1.5">
                       <ChevronRight size={14} className="text-slate-400 mt-0.5" /> {r}
@@ -54,25 +55,22 @@ export default function ConversationResultDisplay({ result }) {
               </div>
             </div>
 
-            <div className="space-y-4 border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-8">
+            <div className="space-y-4 border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-8">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Detected Categories</p>
+                <p className="text-xs font-semibold text-slate-500 font-mono uppercase tracking-wider">Detected Categories</p>
               </div>
               
               {!result.secondary_labels || Object.keys(result.secondary_labels).length === 0 ? (
-                <p className="text-sm text-slate-400 italic">No secondary categories detected.</p>
+                <p className="text-sm text-slate-500 italic">No secondary categories detected.</p>
               ) : (
                 <div className="space-y-3">
                   {Object.entries(result.secondary_labels).map(([label, conf]) => (
                     <div key={label} className="flex items-center gap-3">
-                      <span className="text-sm text-slate-700 w-32 truncate">{label}</span>
-                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-amber-500 rounded-full" 
-                          style={{ width: `${conf * 100}%` }}
-                        />
+                      <span className="text-sm text-off-white w-32 truncate">{label}</span>
+                      <div className="flex-1">
+                        <RedactionBar score={conf} tier="amber" />
                       </div>
-                      <span className="text-xs font-medium text-slate-500 w-10 text-right">
+                      <span className="text-xs font-medium text-slate-400 font-mono tabular-nums w-10 text-right">
                         {(conf * 100).toFixed(0)}%
                       </span>
                     </div>
@@ -86,20 +84,20 @@ export default function ConversationResultDisplay({ result }) {
 
       {/* ── SECTION 2: AI SUMMARY ── */}
       <div className="space-y-3 pt-4">
-        <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-          <Lightbulb size={18} className="text-indigo-600" />
+        <h2 className="text-sm font-bold text-off-white font-display flex items-center gap-2">
+          <Lightbulb size={18} className="text-slate-500" />
           AI Recommendation
         </h2>
         
         <Card className="p-0 overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-700">
             <div className="p-5">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Overall Sentiment</p>
-              <p className="text-sm text-slate-700 font-medium">{result.ai_summary?.overall_sentiment}</p>
+              <p className="text-xs font-semibold text-slate-500 font-mono uppercase tracking-wider mb-2">Overall Sentiment</p>
+              <p className="text-sm text-off-white">{result.ai_summary?.overall_sentiment}</p>
             </div>
             <div className="p-5">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Harassment Pattern</p>
-              <p className="text-sm text-slate-700 font-medium">{result.ai_summary?.harassment_pattern}</p>
+              <p className="text-xs font-semibold text-slate-500 font-mono uppercase tracking-wider mb-2">Harassment Pattern</p>
+              <p className="text-sm text-off-white">{result.ai_summary?.harassment_pattern}</p>
             </div>
           </div>
         </Card>
@@ -108,8 +106,8 @@ export default function ConversationResultDisplay({ result }) {
       {/* ── SECTION 2B: VICTIM GUIDANCE ── */}
       {result.guidance && (
         <div className="space-y-3 pt-4">
-          <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-            <AlertTriangle size={18} className="text-indigo-600" />
+          <h2 className="text-sm font-bold text-off-white font-display flex items-center gap-2">
+            <AlertTriangle size={18} className="text-alert-amber" />
             Victim Guidance
           </h2>
           <GuidancePanel guidance={result.guidance} />
@@ -118,8 +116,8 @@ export default function ConversationResultDisplay({ result }) {
 
       {/* ── SECTION 3: MESSAGE TIMELINE ── */}
       <div className="space-y-3 pt-4">
-        <h2 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-          <MessageSquare size={18} className="text-indigo-600" />
+        <h2 className="text-sm font-bold text-off-white font-display flex items-center gap-2">
+          <MessageSquare size={18} className="text-slate-500" />
           Message Timeline
         </h2>
         
@@ -127,18 +125,18 @@ export default function ConversationResultDisplay({ result }) {
           {result.messages.map((msg, idx) => {
             const isMsgHarmful = msg.prediction.label === 'harassing';
             return (
-              <Card key={msg.message_id || idx} className={`p-4 border-l-4 ${isMsgHarmful ? 'border-l-rose-500 bg-rose-50/30' : 'border-l-emerald-500'}`}>
+              <Card key={msg.message_id || idx} className={`p-4 border-l-4 ${isMsgHarmful ? 'border-l-redaction-red bg-slate-800' : 'border-l-verified-teal bg-panel'}`}>
                 <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-semibold text-slate-700">{msg.sender}</span>
-                  <span className="text-[10px] text-slate-400">{new Date(msg.timestamp).toLocaleTimeString()}</span>
+                  <span className="text-xs font-semibold text-off-white font-mono">{msg.sender}</span>
+                  <span className="text-[10px] text-slate-500 font-mono">{new Date(msg.timestamp).toLocaleTimeString()}</span>
                 </div>
-                <p className="text-sm text-slate-800 mb-3">{msg.text}</p>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className={`font-medium ${isMsgHarmful ? 'text-rose-600' : 'text-emerald-600'}`}>
+                <p className="text-sm text-off-white mb-3">{msg.text}</p>
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <span className={`font-semibold ${isMsgHarmful ? 'text-redaction-red' : 'text-verified-teal'}`}>
                     {msg.prediction.primary_label || msg.prediction.category}
                   </span>
-                  <span className="text-slate-300">•</span>
-                  <span className="text-slate-500">Risk: {msg.risk_score}</span>
+                  <span className="text-slate-600">•</span>
+                  <span className="text-slate-400">Risk: {msg.risk_score}</span>
                 </div>
               </Card>
             )

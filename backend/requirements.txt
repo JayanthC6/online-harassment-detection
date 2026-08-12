@@ -36,3 +36,7 @@ groq
 # Authentication and MongoDB SSL fix
 PyJWT==2.8.0
 certifi
+
+python-whois
+requests
+cachetools

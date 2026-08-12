@@ -28,7 +28,7 @@ export default function ScreenshotAnalyzeForm({ onNewResult }) {
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-slate-700 mb-1">Source Platform (Optional)</label>
+          <label className="block text-xs font-bold text-slate-500 font-mono uppercase tracking-wider mb-1">Source Platform (Optional)</label>
           <select 
             value={platform} 
             onChange={e => setPlatform(e.target.value)}
@@ -46,8 +46,8 @@ export default function ScreenshotAnalyzeForm({ onNewResult }) {
           accept={ALLOWED_IMAGE}
           icon={<ImageIcon className="mx-auto h-8 w-8 text-slate-400 mb-2" />}
           activeClasses={{
-            container: '!border-indigo-400 !bg-indigo-50/50',
-            text: 'text-indigo-700'
+            container: '!border-off-white !bg-slate-800',
+            text: 'text-off-white'
           }}
           titleText="Drop a screenshot here or click to browse"
           supportedText="Supported: PNG, JPG, WEBP (max 10MB)"

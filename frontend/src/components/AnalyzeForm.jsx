@@ -41,7 +41,7 @@ export default function AnalyzeForm({ onNewResult }) {
       const formData = new FormData();
       formData.append("file", importFile);
       
-      const { apiClient } = await import('../../api/client');
+      const { apiClient } = await import('../api/client');
       try {
         const data = await apiClient('/predict/conversation/import', {
           method: 'POST',
@@ -75,39 +75,37 @@ export default function AnalyzeForm({ onNewResult }) {
     <div className="space-y-6">
       {/* ── AI Assistant Header ── */}
       <div className="flex items-center gap-4 px-2">
-        <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center shrink-0">
-          <Sparkles size={24} />
+        <div className="w-12 h-12 bg-panel border-2 border-slate-700 text-off-white flex items-center justify-center shrink-0">
+          <Search size={24} />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-slate-800">How can I help you analyze content today?</h2>
-          <p className="text-sm text-slate-500">Submit text, audio, or a full conversation for digital safety analysis.</p>
+          <h2 className="text-lg font-bold text-off-white font-display">Forensic Content Analysis</h2>
+          <p className="text-sm text-slate-400 font-mono">Submit evidence (text, audio, or conversation) for digital safety scanning.</p>
         </div>
       </div>
 
       {/* ── Mode toggle ── */}
-      <Card className="border-indigo-100 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-slate-100 pb-4">
-          <Button
+      <Card className="border-slate-700">
+        {/* ── Evidence type tabs (manila-folder style) ── */}
+        <div className="flex items-stretch border-b-2 border-slate-700 -mx-6 -mt-6 mb-6">
+          <button
             onClick={() => setMode('text')}
-            variant="ghost"
-            className={`text-sm ${mode === 'text' ? '!bg-slate-100 !text-slate-900 !border-slate-300' : ''}`}
+            className={`evidence-tab ${mode === 'text' ? 'active' : ''}`}
           >
-            <FileText size={16} className={mode === 'text' ? 'text-indigo-600' : 'text-slate-400'} /> Text
-          </Button>
-          <Button
+            <FileText size={14} /> Text
+          </button>
+          <button
             onClick={() => setMode('audio')}
-            variant="ghost"
-            className={`text-sm ${mode === 'audio' ? '!bg-slate-100 !text-slate-900 !border-slate-300' : ''}`}
+            className={`evidence-tab ${mode === 'audio' ? 'active' : ''}`}
           >
-            <Mic size={16} className={mode === 'audio' ? 'text-indigo-600' : 'text-slate-400'} /> Audio / Video
-          </Button>
-          <Button
+            <Mic size={14} /> Audio / Video
+          </button>
+          <button
             onClick={() => setMode('conversation')}
-            variant="ghost"
-            className={`text-sm ${mode === 'conversation' ? '!bg-slate-100 !text-slate-900 !border-slate-300' : ''}`}
+            className={`evidence-tab ${mode === 'conversation' ? 'active' : ''}`}
           >
-            <MessageSquare size={16} className={mode === 'conversation' ? 'text-indigo-600' : 'text-slate-400'} /> Conversation
-          </Button>
+            <MessageSquare size={14} /> Conversation
+          </button>
         </div>
 
         {mode === 'conversation' ? (
@@ -117,7 +115,7 @@ export default function AnalyzeForm({ onNewResult }) {
             </div>
             
             <div className="mb-6">
-              <p className="text-sm font-medium text-slate-700 mb-2">Import Chat Export</p>
+              <p className="text-sm font-bold text-slate-400 font-mono uppercase tracking-wider mb-2">Import Chat Export</p>
               <FileUpload
                 file={importFile}
                 onFileSelect={setImportFile}
@@ -129,15 +127,15 @@ export default function AnalyzeForm({ onNewResult }) {
             </div>
 
             <div className="flex items-center gap-4 mb-4">
-              <div className="flex-1 border-t border-slate-200"></div>
-              <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">OR MANUALLY ENTER</span>
-              <div className="flex-1 border-t border-slate-200"></div>
+              <div className="flex-1 border-t border-slate-700"></div>
+              <span className="text-xs text-slate-500 uppercase tracking-wider font-bold font-mono">OR MANUALLY ENTER</span>
+              <div className="flex-1 border-t border-slate-700"></div>
             </div>
             
             <div className={`space-y-4 max-h-[400px] overflow-y-auto pr-2 ${importFile ? 'opacity-50 pointer-events-none' : ''}`}>
               {messages.map((msg, index) => (
                 <div key={index} className="flex gap-2">
-                  <div className="flex-1 space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  <div className="flex-1 space-y-2 bg-panel p-3 border border-slate-700">
                     <div className="flex justify-between items-center">
                       <input 
                         type="text" 
@@ -147,13 +145,13 @@ export default function AnalyzeForm({ onNewResult }) {
                           newMessages[index].sender = e.target.value;
                           setMessages(newMessages);
                         }}
-                        className="text-xs font-semibold bg-transparent border-none p-0 focus:ring-0 text-slate-700 w-32"
+                        className="text-xs font-semibold bg-transparent border-none p-0 focus:ring-0 text-off-white w-32 font-mono"
                         placeholder="Sender Name"
                       />
                       {messages.length > 1 && (
                         <button 
                           onClick={() => setMessages(messages.filter((_, i) => i !== index))}
-                          className="text-slate-400 hover:text-rose-500 transition-colors"
+                          className="text-slate-500 hover:text-redaction-red transition-colors"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -175,7 +173,7 @@ export default function AnalyzeForm({ onNewResult }) {
               ))}
             </div>
             
-            <div className="mt-4 flex justify-between items-center border-t border-slate-100 pt-4">
+            <div className="mt-4 flex justify-between items-center border-t border-slate-700 pt-4">
               <Button
                 variant="ghost"
                 onClick={() => setMessages([...messages, { text: '', sender: `User ${messages.length % 2 === 0 ? 1 : 2}` }])}
@@ -187,7 +185,7 @@ export default function AnalyzeForm({ onNewResult }) {
                 disabled={(!importFile && !messages.some(m => m.text.trim()))}
                 loading={loading}
               >
-                <Sparkles size={16} /> {importFile ? 'Analyze Imported Chat' : 'Analyze Conversation'}
+                <Search size={16} /> {importFile ? 'Analyze Imported Chat' : 'Analyze Conversation'}
               </Button>
             </div>
           </>
@@ -218,28 +216,28 @@ export default function AnalyzeForm({ onNewResult }) {
 
             <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
               <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-400">Ctrl + Enter to analyze</span>
-                <span className="text-xs text-slate-300">{text.length}/2000</span>
+                <span className="text-xs text-slate-500 font-mono">Ctrl + Enter to analyze</span>
+                <span className="text-xs text-slate-400 font-mono">{text.length}/2000</span>
               </div>
               <Button
                 onClick={handleAnalyze}
                 disabled={!text.trim()}
                 loading={loading}
               >
-                <Sparkles size={16} /> Analyze Text
+                <Search size={16} /> Analyze Text
               </Button>
             </div>
 
             {/* Quick examples — only before first result */}
             {!result && !loading && (
-              <div className="mt-6 pt-4 border-t border-slate-100">
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider mb-3">Quick test examples</p>
+              <div className="mt-6 pt-4 border-t border-slate-700">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-3 font-mono">Quick test examples</p>
                 <div className="flex flex-wrap gap-2">
                   {quickExamples.map((ex, i) => (
                     <button
                       key={i}
                       onClick={() => setText(ex)}
-                      className="text-xs text-slate-500 hover:text-slate-800 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md px-3 py-1.5 transition-colors truncate max-w-[240px]"
+                      className="text-xs text-slate-400 hover:text-off-white bg-panel hover:bg-slate-800 border border-slate-700 px-3 py-1.5 transition-colors truncate max-w-[240px] font-mono"
                     >
                       "{ex.slice(0, 35)}..."
                     </button>
@@ -269,10 +267,10 @@ export default function AnalyzeForm({ onNewResult }) {
               file={audioFile}
               onFileSelect={setAudioFile}
               accept={ALLOWED_AUDIO}
-              icon={<Mic className="mx-auto h-8 w-8 text-slate-400 mb-2" />}
+              icon={<Mic className="mx-auto h-8 w-8 text-slate-500 mb-2" />}
               activeClasses={{
-                container: '!border-indigo-400 !bg-indigo-50/50',
-                text: 'text-indigo-700'
+                container: '!border-off-white !bg-slate-800',
+                text: 'text-off-white'
               }}
               titleText="Drop an audio/video file here or click to browse"
               supportedText="Supported: MP3, WAV, M4A, MP4, MOV, WebM, OGG (max 50MB)"
@@ -285,7 +283,7 @@ export default function AnalyzeForm({ onNewResult }) {
                 loading={loading}
                 loadingText="Transcribing & analyzing..."
               >
-                <Sparkles size={16} /> Analyze Audio
+                <Search size={16} /> Analyze Audio
               </Button>
             </div>
           </>

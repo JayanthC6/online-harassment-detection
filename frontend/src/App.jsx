@@ -21,20 +21,20 @@ export default function App() {
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+              <div className="p-2 bg-panel border border-slate-700 rounded-none text-off-white">
                 <ShieldCheck size={28} strokeWidth={2.5} />
               </div>
-              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-                ShieldAI
+              <h1 className="text-2xl font-bold font-display uppercase tracking-wider text-off-white">
+                ShieldAI Forensic Console
               </h1>
             </div>
-            <p className="text-sm text-slate-500 mt-2">
+            <p className="text-sm text-slate-400 font-mono mt-2">
               Intelligent moderation workspace for text, audio, and visual content.
             </p>
           </div>
           
           {/* ── Tab navigation ── */}
-          <nav className="flex gap-2 border-b border-slate-200 pb-0">
+          <nav className="flex gap-2 border-b border-slate-700 pb-0">
             {TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -44,7 +44,7 @@ export default function App() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 tab-btn ${isActive ? 'active' : ''}`}
                 >
-                  <Icon size={16} className={isActive ? 'text-indigo-600' : 'text-slate-400'} />
+                  <Icon size={16} className={isActive ? 'text-off-white' : 'text-slate-400'} />
                   {tab.label}
                 </button>
               );
@@ -66,9 +66,9 @@ export default function App() {
         </main>
 
         {/* ── Footer ── */}
-        <footer className="text-center text-xs text-gray-400 pt-6 pb-4 space-y-1">
+        <footer className="text-center text-xs text-slate-500 font-mono pt-6 pb-4 space-y-1">
           <p>Built with TF-IDF + Logistic Regression · DistilBERT · Whisper · EasyOCR</p>
-          <p className="text-gray-300">Online Harassment Detection System</p>
+          <p className="text-slate-400 uppercase tracking-wider">Online Harassment Detection System</p>
         </footer>
       </div>
     </div>

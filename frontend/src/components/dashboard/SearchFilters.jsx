@@ -3,17 +3,17 @@ import { Search, Filter, AlertTriangle } from 'lucide-react';
 
 export default function SearchFilters({ filters }) {
   return (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-end mb-6">
+    <div className="bg-panel p-4 border border-slate-700 flex flex-wrap gap-4 items-end mb-6">
       <div className="flex-1 min-w-[200px] relative">
-        <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+        <label className="block text-[10px] font-bold text-slate-500 font-mono uppercase tracking-wider mb-1.5 flex items-center gap-1">
           <Search size={12} /> Search
         </label>
         <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
             placeholder="Search messages..."
-            className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-700"
+            className="input-dark w-full pl-9 pr-3 py-2 text-sm"
             value={filters.search}
             onChange={(e) => {
               filters.setSearch(e.target.value);
@@ -24,11 +24,11 @@ export default function SearchFilters({ filters }) {
       </div>
 
       <div className="w-40">
-        <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+        <label className="block text-[10px] font-bold text-slate-500 font-mono uppercase tracking-wider mb-1.5 flex items-center gap-1">
           <AlertTriangle size={12} /> Risk Level
         </label>
         <select
-          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-700 bg-white"
+          className="input-dark w-full px-3 py-2 text-sm"
           value={filters.riskLevel}
           onChange={(e) => {
             filters.setRiskLevel(e.target.value);
@@ -43,11 +43,11 @@ export default function SearchFilters({ filters }) {
       </div>
 
       <div className="w-44">
-        <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+        <label className="block text-[10px] font-bold text-slate-500 font-mono uppercase tracking-wider mb-1.5 flex items-center gap-1">
           <Filter size={12} /> Category
         </label>
         <select
-          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-700 bg-white"
+          className="input-dark w-full px-3 py-2 text-sm"
           value={filters.category}
           onChange={(e) => {
             filters.setCategory(e.target.value);

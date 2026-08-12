@@ -9,18 +9,18 @@ export default function BehavioralIntelligence({ profilesData }) {
 
   const getLevelColor = (level) => {
     switch (level) {
-      case 'Critical': return 'text-rose-700 bg-rose-50 border-rose-200';
-      case 'High': return 'text-amber-700 bg-amber-50 border-amber-200';
-      case 'Watch': return 'text-indigo-700 bg-indigo-50 border-indigo-200';
-      default: return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+      case 'Critical': return 'text-redaction-red bg-slate-900 border-redaction-red rounded-none';
+      case 'High': return 'text-alert-amber bg-panel border-alert-amber rounded-none';
+      case 'Watch': return 'text-slate-300 bg-panel border-slate-500 rounded-none';
+      default: return 'text-verified-teal bg-panel border-verified-teal rounded-none';
     }
   };
 
   const getScoreColor = (score) => {
-    if (score >= 85) return 'text-rose-600';
-    if (score >= 60) return 'text-amber-600';
-    if (score >= 30) return 'text-indigo-600';
-    return 'text-emerald-600';
+    if (score >= 85) return 'text-redaction-red';
+    if (score >= 60) return 'text-alert-amber';
+    if (score >= 30) return 'text-slate-300';
+    return 'text-verified-teal';
   };
 
   // Stats
@@ -32,50 +32,50 @@ export default function BehavioralIntelligence({ profilesData }) {
     <div className="space-y-6">
       {/* ── Behavior Stats ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4 flex flex-col justify-between">
-          <div className="text-slate-500 text-sm font-medium flex items-center gap-2">
+        <Card className="p-4 flex flex-col justify-between bg-panel border-slate-700 rounded-none">
+          <div className="text-slate-400 text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2">
             <User size={16} /> Total Tracked Actors
           </div>
-          <div className="text-3xl font-bold text-slate-800 mt-2">{profiles.length}</div>
+          <div className="text-3xl font-bold text-off-white mt-2 font-mono">{profiles.length}</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-between bg-rose-50 border-rose-100">
-          <div className="text-rose-700 text-sm font-medium flex items-center gap-2">
+        <Card className="p-4 flex flex-col justify-between bg-slate-900 border-redaction-red rounded-none">
+          <div className="text-redaction-red text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2">
             <ShieldAlert size={16} /> Critical Risk
           </div>
-          <div className="text-3xl font-bold text-rose-800 mt-2">{criticalActors}</div>
+          <div className="text-3xl font-bold text-redaction-red mt-2 font-mono">{criticalActors}</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-between">
-          <div className="text-amber-700 text-sm font-medium flex items-center gap-2">
+        <Card className="p-4 flex flex-col justify-between bg-panel border-alert-amber rounded-none">
+          <div className="text-alert-amber text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2">
             <AlertTriangle size={16} /> High Risk
           </div>
-          <div className="text-3xl font-bold text-amber-800 mt-2">{highActors}</div>
+          <div className="text-3xl font-bold text-alert-amber mt-2 font-mono">{highActors}</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-between">
-          <div className="text-indigo-700 text-sm font-medium flex items-center gap-2">
+        <Card className="p-4 flex flex-col justify-between bg-panel border-slate-500 rounded-none">
+          <div className="text-slate-300 text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2">
             <Activity size={16} /> On Watchlist
           </div>
-          <div className="text-3xl font-bold text-indigo-800 mt-2">{watchActors}</div>
+          <div className="text-3xl font-bold text-slate-300 mt-2 font-mono">{watchActors}</div>
         </Card>
       </div>
 
       {/* ── Actor Profiles Table ── */}
-      <Card className="p-0 overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white">
-          <h2 className="text-base font-semibold text-slate-800">Actor Profiles</h2>
+      <Card className="p-0 overflow-hidden bg-panel border-slate-700 rounded-none">
+        <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-panel">
+          <h2 className="text-sm font-bold text-off-white font-display uppercase tracking-wider">Actor Profiles</h2>
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actor Identifier</th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Safety Score</th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Safety Level</th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Reports</th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Action</th>
+              <tr className="bg-slate-800 border-b border-slate-700">
+                <th className="px-6 py-3 text-xs font-bold text-slate-400 font-mono uppercase tracking-wider">Actor Identifier</th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-400 font-mono uppercase tracking-wider">Safety Score</th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-400 font-mono uppercase tracking-wider">Safety Level</th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-400 font-mono uppercase tracking-wider">Total Reports</th>
+                <th className="px-6 py-3 text-xs font-bold text-slate-400 font-mono uppercase tracking-wider">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-700 bg-panel">
               {profiles.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="px-6 py-8 text-center text-slate-500 text-sm">
@@ -84,31 +84,31 @@ export default function BehavioralIntelligence({ profilesData }) {
                 </tr>
               ) : (
                 profiles.map((profile, i) => (
-                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={i} className="hover:bg-slate-800/50 transition-colors group">
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-slate-900">{profile.actor_id}</div>
-                      <div className="text-xs text-slate-500">Last seen: {new Date(profile.last_seen).toLocaleString()}</div>
+                      <div className="text-sm font-bold text-off-white font-mono">{profile.actor_id}</div>
+                      <div className="text-xs text-slate-500 font-mono">Last seen: {new Date(profile.last_seen).toLocaleString()}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className={`text-xl font-bold ${getScoreColor(profile.behavior_score)}`}>
+                      <div className={`text-xl font-bold font-mono tabular-nums ${getScoreColor(profile.behavior_score)}`}>
                         {profile.behavior_score.toFixed(1)}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getLevelColor(profile.behavior_level)}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 text-xs font-bold font-mono uppercase border ${getLevelColor(profile.behavior_level)}`}>
                         {profile.behavior_level}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-slate-700">{profile.total_reports}</div>
+                      <div className="text-sm text-off-white font-mono tabular-nums">{profile.total_reports}</div>
                       {profile.harmful_messages > 0 && (
-                        <div className="text-xs text-rose-500 font-medium">{profile.harmful_messages} harmful</div>
+                        <div className="text-xs text-redaction-red font-bold font-mono mt-1">{profile.harmful_messages} harmful</div>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       <button 
                         onClick={() => setSelectedProfile(profile)}
-                        className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 transition-colors"
+                        className="text-slate-400 group-hover:text-off-white text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-1 transition-colors"
                       >
                         View Profile <ArrowRight size={14} />
                       </button>

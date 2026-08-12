@@ -15,7 +15,7 @@ export default function Button({
   if (variant === 'ghost') {
     baseClass = 'btn-ghost';
   } else if (variant === 'secondary') {
-    baseClass = 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-sm font-semibold rounded-lg px-4 py-2 text-sm transition-all flex items-center justify-center gap-2';
+    baseClass = 'bg-panel border border-slate-700 text-off-white hover:bg-slate-800 hover:text-white font-semibold rounded-none px-4 py-2 text-sm transition-all flex items-center justify-center gap-2';
   }
   
   return (

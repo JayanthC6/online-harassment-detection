@@ -125,6 +125,45 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
                     symbolic_confs[label] = round(conf, 4)
                     break
                     
+        # Fetch threat intel
+        try:
+            from .threat_intel import analyze_text_for_threat_intel
+            threat_data = analyze_text_for_threat_intel(text)
+        except Exception as e:
+            print(f"Error fetching threat intel: {e}")
+            threat_data = {"urls": [], "emails": []}
+            
+        result["threat_intel"] = threat_data
+
+        # Calculate threat intel symbolic boost
+        ti_safe_browsing_conf = 0.0
+        ti_domain_age_conf = 0.0
+        ti_typosquat_conf = 0.0
+        
+        for url_info in threat_data.get("urls", []):
+            if url_info.get("safe_browsing") == "unsafe":
+                ti_safe_browsing_conf = max(ti_safe_browsing_conf, 0.90)
+            if url_info.get("domain_age_days") is not None and url_info.get("domain_age_days") < 30:
+                ti_domain_age_conf = max(ti_domain_age_conf, 0.40)
+            if url_info.get("typosquat_match"):
+                ti_typosquat_conf = max(ti_typosquat_conf, 0.60)
+                
+        result["debug_ti_confs"] = {
+            "safe_browsing": ti_safe_browsing_conf,
+            "domain_age": ti_domain_age_conf,
+            "typosquat": ti_typosquat_conf
+        }
+        result["debug_base_s"] = {label: symbolic_confs.get(label, 0.0) for label in ["Phishing", "Scam"]}
+        
+        # Combine threat intel evidence into Phishing and Scam symbolic_confs using Noisy-OR
+        if ti_safe_browsing_conf > 0 or ti_domain_age_conf > 0 or ti_typosquat_conf > 0:
+            for label in ["Phishing", "Scam"]:
+                base_s = symbolic_confs.get(label, 0.0)
+                new_s = 1.0 - (1.0 - base_s) * (1.0 - ti_safe_browsing_conf) * (1.0 - ti_domain_age_conf) * (1.0 - ti_typosquat_conf)
+                symbolic_confs[label] = round(new_s, 4)
+
+        result["debug_symbolic_confs"] = symbolic_confs.copy()
+        
         # 3. Noisy-OR Evidence Fusion
         fused_labels = {}
         all_possible_labels = set(neural_probs.keys()) | set(symbolic_confs.keys())

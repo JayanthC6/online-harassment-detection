@@ -43,13 +43,77 @@ def _try_connect():
         _db_enabled = True
         print("[db] Connected to MongoDB -- flagged messages will persist.")
     except Exception as e:
-        print(f"[db] Could not connect to MongoDB ({e}) -- falling back to in-memory storage.")
+        print("\n" + "!"*60)
+        print("WARNING: MONGODB CONNECTION FAILED")
+        print("!"*60)
+        print(f"Error: {e}")
+        print("Falling back to IN-MEMORY storage. All data will be LOST on restart.")
+        print("!"*60 + "\n")
         _client = None
         _collection = None
         _db_enabled = False
 
 
 _try_connect()
+
+def seed_mock_data_if_empty():
+    """Auto-seed sample data if the db (or in-memory store) is empty."""
+    if os.environ.get("SEED_DEMO_DATA", "").lower() != "true":
+        return
+        
+    stats = get_stats()
+    if stats.get("total_flagged", 0) > 0:
+        return
+        
+    print("[db] SEED_DEMO_DATA=true and database is empty. Seeding 15 sample incidents.")
+    samples = [
+        {"text": "I will kill you and your family, I know where you live", "actor_id": "angry_user_99"}, 
+        {"text": "You are a stupid idiot and nobody likes you", "actor_id": "troll_master"}, 
+        {"text": "I am going to release those photos of you if you don't pay me $1000", "actor_id": "anon_hacker"}, 
+        {"text": "Your account has been suspended. Please click here to verify your identity.", "actor_id": "support_scam"}, 
+        {"text": "Invest in this new crypto coin, guaranteed 100x return in 2 days", "actor_id": "crypto_bro"}, 
+        {"text": "Send bobs and vagene", "actor_id": "creep_123"}, 
+        {"text": "Kill yourself now", "actor_id": "hater_x"}, 
+        {"text": "I'm going to track your IP and swat your house", "actor_id": "angry_gamer"}, 
+        {"text": "You're a disgusting pig", "actor_id": "troll_master"}, 
+        {"text": "I hate people of your kind, you should all be deported", "actor_id": "racist_dude"}, 
+        {"text": "Hello how are you doing today?", "actor_id": "friendly_bot"}, 
+        {"text": "Please send me your social security number to claim your prize.", "actor_id": "scammer_1"}, 
+        {"text": "Give me your lunch money or else I will beat you up", "actor_id": "bully_kid"}, 
+        {"text": "I have hacked your webcam and have a video of you. Send 0.1 BTC to this address.", "actor_id": "anon_hacker"}, 
+        {"text": "Go back to your country you freak", "actor_id": "racist_dude"}
+    ]
+    
+    # We can't use PredictionService directly here because db is loaded first.
+    # Instead, we just manually inject them with pre-computed labels.
+    from datetime import datetime, timezone
+    
+    precomputed = [
+        {"primary_label": "Threat", "risk_score": 92.5, "severity_tier": "Critical", "category": "threat"},
+        {"primary_label": "Cyberbullying", "risk_score": 65.0, "severity_tier": "High", "category": "cyberbullying"},
+        {"primary_label": "Extortion", "risk_score": 88.0, "severity_tier": "Critical", "category": "extortion"},
+        {"primary_label": "Phishing", "risk_score": 85.0, "severity_tier": "High", "category": "phishing"},
+        {"primary_label": "Scam", "risk_score": 82.0, "severity_tier": "High", "category": "scam"},
+        {"primary_label": "Sexual Harassment", "risk_score": 75.0, "severity_tier": "High", "category": "sexual_harassment"},
+        {"primary_label": "Self Harm", "risk_score": 95.0, "severity_tier": "Critical", "category": "self_harm"},
+        {"primary_label": "Threat", "risk_score": 89.0, "severity_tier": "Critical", "category": "threat"},
+        {"primary_label": "Toxicity", "risk_score": 55.0, "severity_tier": "Medium", "category": "toxicity"},
+        {"primary_label": "Hate Speech", "risk_score": 78.0, "severity_tier": "High", "category": "hate_speech"},
+        {"primary_label": "Clean", "risk_score": 5.0, "severity_tier": "Low", "category": "none"},
+        {"primary_label": "Scam", "risk_score": 81.0, "severity_tier": "High", "category": "scam"},
+        {"primary_label": "Extortion", "risk_score": 86.0, "severity_tier": "Critical", "category": "extortion"},
+        {"primary_label": "Blackmail", "risk_score": 91.0, "severity_tier": "Critical", "category": "blackmail"},
+        {"primary_label": "Hate Speech", "risk_score": 76.0, "severity_tier": "High", "category": "hate_speech"}
+    ]
+    
+    for i, item in enumerate(samples):
+        entry = {
+            "text_preview": item["text"][:120],
+            "actor_id": item["actor_id"],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            **precomputed[i]
+        }
+        log_flagged_message(entry)
 
 
 def is_persistent() -> bool:
@@ -227,3 +291,6 @@ def detect_anomalies(daily_counts: list, window: int = 7, z_threshold: float = 2
             })
 
     return anomalies
+
+# Seed mock data automatically on startup if database is empty
+seed_mock_data_if_empty()

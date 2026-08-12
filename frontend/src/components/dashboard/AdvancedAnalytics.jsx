@@ -22,8 +22,8 @@ export default function AdvancedAnalytics({ analytics }) {
     labels: riskLabels,
     datasets: [{
       data: [risk_distribution?.high || 0, risk_distribution?.medium || 0, risk_distribution?.low || 0],
-      backgroundColor: ['rgba(244, 63, 94, 0.8)', 'rgba(245, 158, 11, 0.8)', 'rgba(16, 185, 129, 0.8)'],
-      borderRadius: 6,
+      backgroundColor: ['#FF3333', '#FFD700', '#00E5FF'],
+      borderRadius: 0,
       barThickness: 24,
     }]
   };
@@ -34,8 +34,8 @@ export default function AdvancedAnalytics({ analytics }) {
     labels: labelFreqEntries.map(e => e[0].replace('_', ' ')),
     datasets: [{
       data: labelFreqEntries.map(e => e[1]),
-      backgroundColor: 'rgba(99, 102, 241, 0.8)',
-      borderRadius: 6,
+      backgroundColor: '#334155',
+      borderRadius: 0,
       barThickness: 24,
     }]
   };
@@ -46,63 +46,67 @@ export default function AdvancedAnalytics({ analytics }) {
     plugins: { 
       legend: { display: false },
       tooltip: {
-        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        backgroundColor: '#1C1E27',
+        titleColor: '#F8FAFC',
+        bodyColor: '#94A3B8',
+        borderColor: '#334155',
+        borderWidth: 1,
         padding: 12,
-        titleFont: { size: 13, family: 'Inter' },
-        bodyFont: { size: 13, family: 'Inter' },
-        cornerRadius: 8,
+        titleFont: { size: 13, family: 'monospace' },
+        bodyFont: { size: 13, family: 'monospace' },
+        cornerRadius: 0,
       }
     },
     scales: {
       y: { 
         beginAtZero: true, 
-        grid: { color: 'rgba(241, 245, 249, 1)' },
+        grid: { color: 'rgba(51, 65, 85, 0.5)' },
         border: { display: false },
-        ticks: { font: { family: 'Inter', size: 11 }, color: '#94a3b8' }
+        ticks: { font: { family: 'monospace', size: 11 }, color: '#64748b' }
       },
       x: { 
         grid: { display: false },
         border: { display: false },
-        ticks: { font: { family: 'Inter', size: 11 }, color: '#64748b' }
+        ticks: { font: { family: 'monospace', size: 11 }, color: '#64748b' }
       }
     }
   };
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-semibold text-slate-800 uppercase tracking-wider mb-2">Analytics Overview</h2>
+      <h2 className="text-sm font-bold text-off-white font-display uppercase tracking-wider mb-2">Analytics Overview</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-6">Risk Distribution</h3>
+        <div className="bg-panel p-5 border border-slate-700 rounded-none shadow-sm">
+          <h3 className="text-xs font-bold text-slate-500 font-mono uppercase tracking-wider mb-6">Risk Distribution</h3>
           <div className="h-56">
             <Bar data={riskData} options={chartOptions} />
           </div>
         </div>
         
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-6">Most Common Categories</h3>
+        <div className="bg-panel p-5 border border-slate-700 rounded-none shadow-sm">
+          <h3 className="text-xs font-bold text-slate-500 font-mono uppercase tracking-wider mb-6">Most Common Categories</h3>
           <div className="h-56">
             {labelFreqEntries.length > 0 ? (
               <Bar data={freqData} options={chartOptions} />
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 text-sm">No data</div>
+              <div className="h-full flex items-center justify-center text-slate-500 font-mono text-sm">No data</div>
             )}
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Top Label Combinations</h3>
+        <div className="bg-panel p-5 border border-slate-700 rounded-none shadow-sm flex flex-col">
+          <h3 className="text-xs font-bold text-slate-500 font-mono uppercase tracking-wider mb-4">Top Label Combinations</h3>
           <div className="flex-1 overflow-y-auto pr-2 space-y-2">
             {top_combinations && Object.keys(top_combinations).length > 0 ? (
               Object.entries(top_combinations).sort((a, b) => b[1] - a[1]).map(([combo, count]) => (
-                <div key={combo} className="flex justify-between items-center text-sm p-3 bg-slate-50 rounded-lg border border-slate-100">
-                  <span className="text-slate-700 truncate mr-2 font-medium" title={combo}>{combo.replace(/,/g, ' + ')}</span>
-                  <span className="font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md text-xs tabular-nums">{count}</span>
+                <div key={combo} className="flex justify-between items-center text-sm p-3 bg-slate-900 border border-slate-700 rounded-none">
+                  <span className="text-slate-300 font-mono truncate mr-2" title={combo}>{combo.replace(/,/g, ' + ')}</span>
+                  <span className="font-bold text-slate-400 bg-slate-800 px-2 py-1 border border-slate-700 tabular-nums">{count}</span>
                 </div>
               ))
             ) : (
-              <div className="h-full flex items-center justify-center text-slate-400 text-sm">No data</div>
+              <div className="h-full flex items-center justify-center text-slate-500 font-mono text-sm">No data</div>
             )}
           </div>
         </div>
