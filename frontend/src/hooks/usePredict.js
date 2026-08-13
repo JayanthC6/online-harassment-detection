@@ -45,10 +45,16 @@ export function usePredict() {
     return executePredict('/predict/screenshot', formData, true);
   };
 
+  const importConversation = (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return executePredict('/predict/conversation/import', formData, true);
+  };
+
   const clearResult = () => {
     setResult(null);
     setError(null);
   };
 
-  return { loading, error, result, predictText, predictConversation, predictAudio, predictScreenshot, clearResult };
+  return { loading, error, result, predictText, predictConversation, importConversation, predictAudio, predictScreenshot, clearResult };
 }

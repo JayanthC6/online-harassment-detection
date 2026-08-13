@@ -1,7 +1,7 @@
 import re
 import os
 import requests
-import whois
+import whois  # type: ignore[import-untyped]  # python-whois has no type stubs
 import socket
 from datetime import datetime
 from cachetools import TTLCache, cached
@@ -85,7 +85,9 @@ def check_safe_browsing(url):
         if response.status_code == 200:
             data = response.json()
             if "matches" in data and len(data["matches"]) > 0:
-                return "unsafe"
+                # Return the actual threatType so the caller can route the boost
+                threat_type = data["matches"][0].get("threatType", "UNKNOWN")
+                return threat_type  # e.g. "SOCIAL_ENGINEERING", "MALWARE", "UNWANTED_SOFTWARE"
             return "safe"
         return None
     except Exception as e:

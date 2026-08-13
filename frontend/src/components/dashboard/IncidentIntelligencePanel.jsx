@@ -192,7 +192,7 @@ export default function IncidentIntelligencePanel({ report, onClose }) {
               <h3 className="text-xs font-bold text-slate-500 font-mono uppercase tracking-wider mb-3 flex items-center gap-1.5"><Shield size={14} /> Threat Intelligence</h3>
               <div className="space-y-3">
                 {report.threat_intel.urls?.map((u, i) => (
-                  <Card key={i} className={`p-4 bg-panel border-slate-700 rounded-none shadow-none border-l-4 ${u.safe_browsing === 'unsafe' || u.typosquat_match ? 'border-l-redaction-red' : 'border-l-slate-700'}`}>
+                  <Card key={i} className={`p-4 bg-panel border-slate-700 rounded-none shadow-none border-l-4 ${(u.safe_browsing && u.safe_browsing !== 'safe') || u.typosquat_match ? 'border-l-redaction-red' : 'border-l-slate-700'}`}>
                     <div className="flex items-center gap-2 mb-2">
                       <Link size={14} className="text-slate-400" />
                       <span className="font-mono text-sm font-bold text-off-white break-all">{u.url}</span>
@@ -201,8 +201,8 @@ export default function IncidentIntelligencePanel({ report, onClose }) {
                       {u.safe_browsing && (
                         <div>
                           <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mb-1">Safe Browsing</p>
-                          <span className={`inline-flex font-mono text-xs font-bold px-2 py-0.5 ${u.safe_browsing === 'unsafe' ? 'bg-redaction-red text-ink' : 'bg-verified-teal/20 text-verified-teal'}`}>
-                            {u.safe_browsing === 'unsafe' ? 'UNSAFE (MATCH)' : 'CLEAN'}
+                          <span className={`inline-flex font-mono text-xs font-bold px-2 py-0.5 ${u.safe_browsing !== 'safe' ? 'bg-redaction-red text-ink' : 'bg-verified-teal/20 text-verified-teal'}`}>
+                            {u.safe_browsing !== 'safe' ? u.safe_browsing.replace(/_/g, ' ') : 'CLEAN'}
                           </span>
                         </div>
                       )}

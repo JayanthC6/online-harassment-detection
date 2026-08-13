@@ -65,7 +65,7 @@ export default function FileUpload({
 }
 
 FileUpload.propTypes = {
-  file: PropTypes.instanceOf(File),
+  file: PropTypes.object,
   onFileSelect: PropTypes.func.isRequired,
   accept: PropTypes.string.isRequired,
   icon: PropTypes.node.isRequired,

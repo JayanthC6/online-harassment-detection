@@ -136,31 +136,53 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
         result["threat_intel"] = threat_data
 
         # Calculate threat intel symbolic boost
-        ti_safe_browsing_conf = 0.0
+        # Safe Browsing now returns the actual threatType, not just "unsafe"
+        ti_sb_phishing_conf = 0.0   # SOCIAL_ENGINEERING -> Phishing
+        ti_sb_scam_conf = 0.0       # MALWARE / UNWANTED_SOFTWARE -> Scam
         ti_domain_age_conf = 0.0
         ti_typosquat_conf = 0.0
         
         for url_info in threat_data.get("urls", []):
-            if url_info.get("safe_browsing") == "unsafe":
-                ti_safe_browsing_conf = max(ti_safe_browsing_conf, 0.90)
+            sb_result = url_info.get("safe_browsing")
+            if sb_result and sb_result not in ("safe", None):
+                # Route based on Google's actual threatType
+                if sb_result == "SOCIAL_ENGINEERING":
+                    ti_sb_phishing_conf = max(ti_sb_phishing_conf, 0.90)
+                elif sb_result in ("MALWARE", "UNWANTED_SOFTWARE", "POTENTIALLY_HARMFUL_APPLICATION"):
+                    ti_sb_scam_conf = max(ti_sb_scam_conf, 0.90)
+                else:
+                    # Unknown threat type — conservative boost to both
+                    ti_sb_phishing_conf = max(ti_sb_phishing_conf, 0.70)
+                    ti_sb_scam_conf = max(ti_sb_scam_conf, 0.70)
+
             if url_info.get("domain_age_days") is not None and url_info.get("domain_age_days") < 30:
                 ti_domain_age_conf = max(ti_domain_age_conf, 0.40)
             if url_info.get("typosquat_match"):
                 ti_typosquat_conf = max(ti_typosquat_conf, 0.60)
                 
         result["debug_ti_confs"] = {
-            "safe_browsing": ti_safe_browsing_conf,
+            "sb_phishing": ti_sb_phishing_conf,
+            "sb_scam": ti_sb_scam_conf,
             "domain_age": ti_domain_age_conf,
             "typosquat": ti_typosquat_conf
         }
         result["debug_base_s"] = {label: symbolic_confs.get(label, 0.0) for label in ["Phishing", "Scam"]}
         
-        # Combine threat intel evidence into Phishing and Scam symbolic_confs using Noisy-OR
-        if ti_safe_browsing_conf > 0 or ti_domain_age_conf > 0 or ti_typosquat_conf > 0:
-            for label in ["Phishing", "Scam"]:
-                base_s = symbolic_confs.get(label, 0.0)
-                new_s = 1.0 - (1.0 - base_s) * (1.0 - ti_safe_browsing_conf) * (1.0 - ti_domain_age_conf) * (1.0 - ti_typosquat_conf)
-                symbolic_confs[label] = round(new_s, 4)
+        # Combine threat intel evidence into symbolic_confs using Noisy-OR
+        # Phishing gets: sb_phishing + domain_age + typosquat
+        # Scam gets:     sb_scam + domain_age + typosquat
+        has_phishing_boost = ti_sb_phishing_conf > 0 or ti_domain_age_conf > 0 or ti_typosquat_conf > 0
+        has_scam_boost = ti_sb_scam_conf > 0 or ti_domain_age_conf > 0 or ti_typosquat_conf > 0
+        
+        if has_phishing_boost:
+            base_s = symbolic_confs.get("Phishing", 0.0)
+            new_s = 1.0 - (1.0 - base_s) * (1.0 - ti_sb_phishing_conf) * (1.0 - ti_domain_age_conf) * (1.0 - ti_typosquat_conf)
+            symbolic_confs["Phishing"] = round(new_s, 4)
+            
+        if has_scam_boost:
+            base_s = symbolic_confs.get("Scam", 0.0)
+            new_s = 1.0 - (1.0 - base_s) * (1.0 - ti_sb_scam_conf) * (1.0 - ti_domain_age_conf) * (1.0 - ti_typosquat_conf)
+            symbolic_confs["Scam"] = round(new_s, 4)
 
         result["debug_symbolic_confs"] = symbolic_confs.copy()
         

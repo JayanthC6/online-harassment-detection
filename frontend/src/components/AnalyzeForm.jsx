@@ -18,7 +18,7 @@ export default function AnalyzeForm({ onNewResult }) {
   const [importFile, setImportFile] = useState(null)
   const [messages, setMessages] = useState([{ text: '', sender: 'User 1' }])
   
-  const { loading, error, result, predictText, predictAudio, predictConversation } = usePredict()
+  const { loading, error, result, predictText, predictAudio, predictConversation, importConversation } = usePredict()
 
   /* ── Text analysis ── */
   const handleAnalyze = async () => {
@@ -37,20 +37,8 @@ export default function AnalyzeForm({ onNewResult }) {
   /* ── Conversation analysis ── */
   const handleConversationAnalyze = async () => {
     if (importFile) {
-      // Import file via new endpoint
-      const formData = new FormData();
-      formData.append("file", importFile);
-      
-      const { apiClient } = await import('../api/client');
-      try {
-        const data = await apiClient('/predict/conversation/import', {
-          method: 'POST',
-          body: formData
-        }, true); // isMultipart
-        if (data && onNewResult) onNewResult(data);
-      } catch (err) {
-        console.error("Import error", err);
-      }
+      const data = await importConversation(importFile);
+      if (data && onNewResult) onNewResult(data);
       return;
     }
     
