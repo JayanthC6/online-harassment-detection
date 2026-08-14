@@ -1,0 +1,42 @@
+/* ShieldAI Inline Badge Styles */
+.shieldai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  margin-left: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 0; /* Forensic hard edges */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  cursor: help;
+  z-index: 9999;
+  position: relative;
+  line-height: 1;
+}
+
+.badge-threat {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-left: 2px solid #EF4444; /* Redaction Red */
+  color: #EF4444;
+}
+
+.badge-threat::before {
+  content: "⚠";
+  font-size: 10px;
+}
+
+.badge-safe {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-left: 2px solid #10B981; /* Accent Green */
+  color: #10B981;
+}
+
+.badge-safe::before {
+  content: "✓";
+  font-size: 10px;
+}

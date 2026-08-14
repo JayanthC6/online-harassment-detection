@@ -26,5 +26,12 @@ The project has evolved into a fully functional, enterprise-grade forensic dashb
 - **Persistent Storage**: Fully functional MongoDB Atlas integration with proper TLS configuration (`certifi`) to prevent silent fallbacks to in-memory storage.
 - **Modular Services**: Business logic, ML pipelines, and API routes are strictly segregated for maintainability.
 
+### 5. Real-Time Protection (Chrome Extension)
+- **Manifest V3 Architecture**: A lightweight, sideloaded Chrome extension that serves as a real-time client for the ShieldAI backend.
+- **Privacy-First Scanning**: Uses `IntersectionObserver` to only scan messages actively visible in the viewport (supported on Gmail and WhatsApp Web). No history is stored.
+- **Inline Threat Badges**: Injects non-intrusive, color-coded badges (`⚠ [THREAT]` for high-confidence threats, `✓ SAFE` for benign messages) directly into the DOM next to the text.
+- **Deduplication & Truncation**: Smartly skips previously checked messages to save API calls, and automatically truncates massive emails to 1,950 characters to comply with the backend's 2,000 character limit without throwing 400 Bad Request errors.
+- **Lightweight Auth**: Secures the connection to the backend using an `X-Extension-Api-Key` header, configurable directly in the extension's popup UI.
+
 ## Next Steps
 The project is currently in a highly functional state, ready for further refinement in scalability, multilingual support, and deployment automation.
