@@ -19,102 +19,63 @@ export default function ResultDisplay({ result }) {
   const isHarassing = result.label === 'harassing';
 
   return (
-    <div className="space-y-6 animate-slide-up mt-8">
-      {/* ── SECTION 2: PREDICTION ── */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-bold text-off-white font-display flex items-center gap-2">
-          <Layers size={18} className="text-slate-500" />
-          Incident Analysis Report
-        </h2>
-        
-        <Card className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 font-mono uppercase tracking-wider mb-3">Incident Classification</p>
-                <div className="flex items-center gap-4">
-                  <RiskBadge
-                    isHarassing={isHarassing}
-                    category={result.category}
-                    riskScore={result.risk_score}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <p className="text-xs font-semibold text-slate-500 font-mono uppercase tracking-wider mb-3">Confidence Score</p>
-                <ConfidenceBar
-                  confidence={result.confidence}
-                  isHarassing={isHarassing}
-                />
-              </div>
+    <div className="grid grid-cols-12 gap-gutter animate-slide-up mt-8">
+      {/* Dials & Telemetry (Col 8) */}
+      <div className="col-span-12 lg:col-span-8 flex flex-col gap-gutter">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter h-full">
+          {/* Risk Score Dial */}
+          <div className="glass-panel clip-path-chamfer p-6 flex flex-col items-center justify-center relative overflow-hidden h-64">
+            <div className="absolute -right-8 -bottom-8 opacity-10">
+              <Layers size={120} className={isHarassing ? "text-error" : "text-primary-fixed"} />
             </div>
+            <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-4">Risk Classification</h3>
+            <RiskBadge
+              isHarassing={isHarassing}
+              category={result.category}
+              riskScore={result.risk_score}
+            />
+          </div>
 
-            <div className="space-y-4 border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-8">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-slate-500 font-mono uppercase tracking-wider">Detected Categories</p>
-              </div>
-              
+          {/* Confidence Dial */}
+          <div className="glass-panel clip-path-chamfer p-6 flex flex-col items-center justify-center relative overflow-hidden h-64">
+            <div className="absolute -right-8 -top-8 opacity-10">
+              <Activity size={120} className="text-primary-fixed" />
+            </div>
+            <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-4">Attribution Confidence</h3>
+            <ConfidenceBar
+              confidence={result.confidence}
+              isHarassing={isHarassing}
+            />
+          </div>
+        </div>
+
+        {/* AI Insights & Secondary Classifications */}
+        <div className="glass-panel clip-path-chamfer p-6 flex flex-col gap-4 border-l-4 border-secondary-container">
+          <div className="font-label-caps text-label-caps text-on-surface flex items-center gap-2">
+            <Lightbulb size={18} className="text-secondary-container" /> AI Insights & Secondary Labels
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               {!result.secondary_labels || Object.keys(result.secondary_labels).length === 0 ? (
                 <p className="text-sm text-slate-500 italic">No secondary categories detected.</p>
               ) : (
                 <div className="space-y-3">
                   {Object.entries(result.secondary_labels).map(([label, conf]) => (
                     <div key={label} className="flex items-center gap-3">
-                      <span className="text-sm text-off-white w-32 truncate">{label}</span>
+                      <span className="text-sm text-on-surface w-32 truncate">{label}</span>
                       <div className="flex-1">
                         <RedactionBar score={conf} tier="amber" />
                       </div>
-                      <span className="text-xs font-medium text-slate-400 w-10 text-right font-mono tabular-nums">
+                      <span className="text-xs font-medium text-primary-fixed w-10 text-right font-mono tabular-nums">
                         {(conf * 100).toFixed(0)}%
                       </span>
                     </div>
                   ))}
                 </div>
               )}
-              
-              <div className="pt-4 mt-2 border-t border-slate-700">
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span className="flex items-center gap-1.5 font-mono"><Activity size={12} /> Model Engine</span>
-                  <span className="font-medium text-slate-400 font-mono">{result.model || 'distilbert'}</span>
-                </div>
-              </div>
             </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* ── SECTION 3: AI INSIGHTS ── */}
-      <div className="space-y-3 pt-4">
-        <h2 className="text-sm font-bold text-off-white font-display flex items-center gap-2">
-          <Lightbulb size={18} className="text-slate-500" />
-          AI Insights
-        </h2>
-
-        <div className="grid grid-cols-1 gap-4">
-          
-          {/* Explainability Card */}
-          <Card className="p-0 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-700 bg-panel">
-              <h3 className="text-xs font-bold text-slate-400 font-mono uppercase tracking-wider">Explainability Analysis</h3>
-            </div>
-            <div className="p-5">
-              <ToxicWordHighlight explanation={result.explanation} />
-              {result.model && result.model !== 'baseline' && (!result.explanation || !result.explanation.length) && (
-                <div className="text-xs text-slate-400 flex items-start gap-2 bg-slate-800/50 p-3 border border-slate-700">
-                  <Info size={14} className="mt-0.5 text-slate-500 flex-shrink-0" />
-                  <p>Word-level explanations are primarily available for baseline models or heuristic matches. The current engine ({result.model}) did not extract specific tokens.</p>
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {/* Incident Summary Card */}
-          <Card className="p-0 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-700 bg-panel">
-              <h3 className="text-xs font-bold text-slate-400 font-mono uppercase tracking-wider">Incident Summary</h3>
-            </div>
-            <div className="p-5">
+            <div>
               <PredictionSummary
                 isHarassing={isHarassing}
                 category={result.category}
@@ -122,61 +83,64 @@ export default function ResultDisplay({ result }) {
                 textToSummarize={result.text_preview || result.transcript || result.extracted_text}
               />
             </div>
-          </Card>
-
-          {/* Context Cards (Audio / OCR / Similar) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {result.transcript && (
-              <Card className="p-5 bg-panel border-slate-700">
-                <p className="text-xs font-semibold text-slate-400 font-mono mb-3 flex items-center gap-2 uppercase tracking-wider">
-                  <FileText size={14} /> Transcript {result.language && <span className="normal-case font-normal text-slate-500">({result.language})</span>}
-                </p>
-                <p className="text-sm text-off-white leading-relaxed">
-                  {result.transcript}
-                </p>
-              </Card>
-            )}
-
-            {result.extracted_text && (
-              <Card className="p-5 bg-panel border-slate-700">
-                <p className="text-xs font-semibold text-slate-400 font-mono mb-3 flex items-center gap-2 uppercase tracking-wider">
-                  <FileText size={14} /> OCR Extracted Text
-                </p>
-                <p className="text-sm text-off-white leading-relaxed">
-                  {result.extracted_text}
-                </p>
-              </Card>
-            )}
-
-            {result.similar_reports?.length > 0 && (
-              <Card className="p-5 border-alert-amber/50">
-                <p className="text-xs font-semibold text-alert-amber font-mono mb-3 flex items-center gap-2 uppercase tracking-wider">
-                  <Link size={14} /> Similar Reports
-                </p>
-                <ul className="space-y-2">
-                  {result.similar_reports.map((sr, i) => (
-                    <li key={i} className="text-sm text-off-white leading-snug">
-                      &quot;{sr.text_preview}&quot; <span className="font-mono text-alert-amber ml-1">({Math.round(sr.similarity * 100)}% match)</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            )}
-            
           </div>
-          
-          {/* Guidance Panel */}
-          {result.guidance && (
-            <div className="mt-6">
-              <GuidancePanel guidance={result.guidance} />
-            </div>
-          )}
         </div>
       </div>
-      
-      <div className="text-center pt-4">
-        <p className="text-[10px] text-slate-600 font-mono">Analyzed at {new Date(result.timestamp || Date.now()).toLocaleString()}</p>
+
+      {/* Terminal Evidence (Col 4) */}
+      <div className="col-span-12 lg:col-span-4 terminal-block border border-outline-variant clip-path-chamfer-lg p-6 relative h-auto min-h-[400px] flex flex-col">
+        <div className="absolute top-0 left-0 w-full h-8 bg-surface-container-high border-b border-outline-variant flex items-center px-4 gap-2 font-label-caps text-label-caps text-on-surface-variant">
+          <span className="w-3 h-3 rounded-full bg-error"></span>
+          <span className="w-3 h-3 rounded-full bg-surface-variant"></span>
+          <span className="w-3 h-3 rounded-full bg-surface-variant"></span>
+          <span className="ml-2 opacity-50">/var/log/analysis_extract.txt</span>
+        </div>
+        
+        <div className="mt-8 flex-1 overflow-y-auto font-metadata-sm text-metadata-sm text-[#00ff00] opacity-80 leading-relaxed font-mono">
+          <p className="mb-1">&gt; INITIALIZING FORENSIC PARSER...</p>
+          <p className="mb-1">&gt; DECRYPTING PAYLOAD...</p>
+          
+          <div className="my-4">
+            <ToxicWordHighlight explanation={result.explanation} />
+          </div>
+          
+          {result.model && result.model !== 'baseline' && (!result.explanation || !result.explanation.length) && (
+            <p className="mb-1 text-secondary-container">&gt; [INFO] Word-level explanations primarily available for heuristic matches. Current engine: {result.model}.</p>
+          )}
+
+          {result.transcript && (
+            <>
+              <p className="mb-1 mt-4">&gt; EXTRACTING AUDIO TRANSCRIPT...</p>
+              <div className="bg-black/50 p-2 my-2 border-l-2 border-primary-fixed text-on-surface break-words">
+                {result.transcript}
+              </div>
+            </>
+          )}
+
+          {result.extracted_text && (
+            <>
+              <p className="mb-1 mt-4">&gt; EXTRACTING OCR TEXT...</p>
+              <div className="bg-black/50 p-2 my-2 border-l-2 border-primary-fixed text-on-surface break-words">
+                {result.extracted_text}
+              </div>
+            </>
+          )}
+          
+          {result.similar_reports?.length > 0 && (
+            <>
+              <p className="mb-1 mt-4 text-error">&gt; CORRELATING THREAT INTEL...</p>
+              <ul className="space-y-2 my-2">
+                {result.similar_reports.map((sr, i) => (
+                  <li key={i} className="bg-black/50 p-2 border-l-2 border-error">
+                    &quot;{sr.text_preview}&quot; <span className="text-error">({Math.round(sr.similarity * 100)}% match)</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          <p className="animate-pulse mt-4">_</p>
+        </div>
       </div>
     </div>
   );

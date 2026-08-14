@@ -22,7 +22,7 @@ export default function ScreenshotAnalyzeForm({ onNewResult }) {
 
   return (
     <div className="space-y-6">
-      <Card className="mt-6">
+      <Card className="border-outline-variant mt-6">
         <div className="section-title">
           Screenshot Upload
         </div>

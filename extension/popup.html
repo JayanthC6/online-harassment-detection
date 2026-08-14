@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ShieldAI Settings</title>
+  <style>
+    /* Ink/Panel Aesthetic */
+    :root {
+      --bg-ink: #0B0C10;
+      --bg-panel: #1C1E27;
+      --border-color: #334155;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --accent-red: #EF4444;
+      --accent-green: #10B981;
+    }
+    
+    body {
+      width: 340px;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-ink);
+      color: var(--text-main);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 14px;
+    }
+    
+    .header {
+      background-color: var(--bg-panel);
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .header h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      letter-spacing: 0.05em;
+    }
+    
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status-text {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-family: ui-monospace, monospace;
+    }
+    
+    .status-active { color: var(--accent-green); }
+    .status-inactive { color: var(--text-muted); }
+    
+    /* Toggle switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--border-color);
+      transition: .2s;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+    }
+    input:checked + .slider { background-color: var(--accent-green); }
+    input:checked + .slider:before { transform: translateX(16px); }
+
+    .content {
+      padding: 16px;
+    }
+    
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-family: ui-monospace, monospace;
+    }
+    
+    .input-group {
+      margin-bottom: 20px;
+    }
+    
+    input[type="password"], input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 12px;
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      outline: none;
+    }
+    
+    input[type="password"]:focus, input[type="text"]:focus {
+      border-color: var(--text-muted);
+    }
+    
+    .privacy-notice {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background-color: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 12px;
+    }
+    
+    .privacy-notice.hidden {
+      display: none;
+    }
+    
+    .privacy-icon {
+      color: var(--accent-green);
+      font-size: 16px;
+    }
+    
+    .stats-card {
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      padding: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .stats-count {
+      font-size: 24px;
+      font-weight: 700;
+      font-family: ui-monospace, monospace;
+      color: var(--accent-red);
+    }
+    
+    .flagged-list {
+      max-height: 200px;
+      overflow-y: auto;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    
+    .flagged-item {
+      padding: 10px 0;
+      border-bottom: 1px dashed var(--border-color);
+      font-size: 12px;
+    }
+    .flagged-item:last-child {
+      border-bottom: none;
+    }
+    
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    
+    .item-category {
+      font-weight: 700;
+      color: var(--accent-red);
+      font-family: ui-monospace, monospace;
+    }
+    
+    .item-score {
+      color: var(--text-muted);
+      font-family: ui-monospace, monospace;
+    }
+    
+    .item-preview {
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .item-ti {
+      margin-top: 4px;
+      color: var(--text-main);
+      font-size: 11px;
+      background: rgba(239, 68, 68, 0.1);
+      padding: 2px 4px;
+      display: inline-block;
+      border-left: 2px solid var(--accent-red);
+    }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-ink); }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>SHIELD_AI</h1>
+    <div class="toggle-container">
+      <span id="status-label" class="status-text status-active">SCANNING</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-switch" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+  
+  <div class="content">
+    <div id="privacy-banner" class="privacy-notice">
+      <div class="privacy-icon">✓</div>
+      <div><strong>Active</strong> &mdash; ShieldAI is scanning visible messages on this page. No history is stored.</div>
+    </div>
+    
+    <div class="input-group">
+      <div class="section-title">Backend API Key</div>
+      <input type="password" id="api-key" placeholder="Enter EXTENSION_API_KEY">
+    </div>
+    
+    <div class="section-title">Current Tab Status</div>
+    <div class="stats-card">
+      <div>Flagged Threats</div>
+      <div class="stats-count" id="flagged-count">0</div>
+    </div>
+    
+    <ul class="flagged-list" id="flagged-list">
+      <!-- Flagged items will be injected here -->
+    </ul>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

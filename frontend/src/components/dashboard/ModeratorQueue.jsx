@@ -52,18 +52,18 @@ export default function ModeratorQueue({ reportsData, conversationsData, filters
       
       <SearchFilters filters={filters} />
 
-      <div className="bg-panel rounded-none border border-slate-700 overflow-hidden relative">
+      <div className="glass-panel border border-outline-variant clip-path-chamfer overflow-hidden relative">
         {loading && (
-          <div className="absolute inset-0 bg-panel/50 backdrop-blur-[2px] flex items-center justify-center z-10 transition-all">
-            <Loader2 size={32} className="text-slate-500 animate-spin" />
+          <div className="absolute inset-0 bg-surface/50 backdrop-blur-[2px] flex items-center justify-center z-10 transition-all">
+            <Loader2 size={32} className="text-secondary-container animate-spin" />
           </div>
         )}
         
         {queueType === 'messages' ? (
           <div className="overflow-x-auto min-h-[300px] max-h-[600px]">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-slate-800 text-slate-400 font-mono sticky top-0 border-b border-slate-700 z-0">
-                <tr className="text-xs uppercase tracking-wider">
+              <thead className="bg-surface-container text-on-surface-variant font-label-caps text-label-caps sticky top-0 border-b border-outline-variant/30 z-0">
+                <tr className="uppercase tracking-wider">
                   <th className="px-5 py-4 cursor-pointer select-none hover:bg-slate-700 transition-colors group" onClick={() => handleSort('logged_at')}>
                     <div className="flex items-center">Timestamp {getSortIcon('logged_at')}</div>
                   </th>
@@ -150,21 +150,21 @@ export default function ModeratorQueue({ reportsData, conversationsData, filters
         ) : (
           <div className="overflow-x-auto min-h-[300px] max-h-[600px]">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-slate-800 text-slate-400 font-mono sticky top-0 border-b border-slate-700 z-0">
-                <tr className="text-xs uppercase tracking-wider">
-                  <th className="px-5 py-4 cursor-pointer select-none hover:bg-slate-700 transition-colors group" onClick={() => handleSort('logged_at')}>
+              <thead className="bg-surface-container text-on-surface-variant font-label-caps text-label-caps sticky top-0 border-b border-outline-variant/30 z-0">
+                <tr className="uppercase tracking-wider">
+                  <th className="px-5 py-4 cursor-pointer select-none hover:bg-surface-variant transition-colors group" onClick={() => handleSort('logged_at')}>
                     <div className="flex items-center">Timestamp {getSortIcon('logged_at')}</div>
                   </th>
                   <th className="px-5 py-4">Messages</th>
                   <th className="px-5 py-4">Primary Category</th>
-                  <th className="px-5 py-4 cursor-pointer select-none hover:bg-slate-700 transition-colors group" onClick={() => handleSort('risk')}>
+                  <th className="px-5 py-4 cursor-pointer select-none hover:bg-surface-variant transition-colors group" onClick={() => handleSort('risk')}>
                     <div className="flex items-center">Safety Score {getSortIcon('risk')}</div>
                   </th>
                   <th className="px-5 py-4">Escalation</th>
                   <th className="px-5 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-700">
+              <tbody className="divide-y divide-outline-variant/30">
                 {!loading && conversations.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="px-5 py-24 text-center text-slate-500">

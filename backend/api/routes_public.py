@@ -36,6 +36,15 @@ def health():
 
 @public_bp.route("/predict", methods=["POST"])
 def predict():
+    import os
+    ext_api_key = os.environ.get("EXTENSION_API_KEY")
+    if ext_api_key:
+        origin = request.headers.get("Origin", "")
+        # Bypass for local frontend development
+        if not (origin.startswith("http://localhost:") or origin.startswith("http://127.0.0.1:")):
+            if request.headers.get("X-Extension-Api-Key") != ext_api_key:
+                return jsonify({"error": "Unauthorized: Invalid or missing X-Extension-Api-Key"}), 401
+
     data = request.get_json(silent=True) or {}
     text = data.get("text", "")
 

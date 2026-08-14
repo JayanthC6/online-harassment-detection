@@ -61,38 +61,27 @@ export default function AnalyzeForm({ onNewResult }) {
 
   return (
     <div className="space-y-6">
-      {/* ── AI Assistant Header ── */}
-      <div className="flex items-center gap-4 px-2">
-        <div className="w-12 h-12 bg-panel border-2 border-slate-700 text-off-white flex items-center justify-center shrink-0">
-          <Search size={24} />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-off-white font-display">Forensic Content Analysis</h2>
-          <p className="text-sm text-slate-400 font-mono">Submit evidence (text, audio, or conversation) for digital safety scanning.</p>
-        </div>
-      </div>
-
       {/* ── Mode toggle ── */}
-      <Card className="border-slate-700">
-        {/* ── Evidence type tabs (manila-folder style) ── */}
-        <div className="flex items-stretch border-b-2 border-slate-700 -mx-6 -mt-6 mb-6">
+      <Card className="border-outline-variant">
+        {/* ── Evidence type tabs ── */}
+        <div className="flex flex-wrap gap-4 mb-6 pb-6 border-b border-outline-variant/30">
           <button
             onClick={() => setMode('text')}
-            className={`evidence-tab ${mode === 'text' ? 'active' : ''}`}
+            className={`flex items-center gap-2 px-4 py-2 font-label-caps text-label-caps transition-all ${mode === 'text' ? 'text-primary-fixed border-b-2 border-primary-fixed' : 'text-on-surface-variant hover:text-primary-fixed-dim'}`}
           >
-            <FileText size={14} /> Text
+            <FileText size={16} /> Text
           </button>
           <button
             onClick={() => setMode('audio')}
-            className={`evidence-tab ${mode === 'audio' ? 'active' : ''}`}
+            className={`flex items-center gap-2 px-4 py-2 font-label-caps text-label-caps transition-all ${mode === 'audio' ? 'text-primary-fixed border-b-2 border-primary-fixed' : 'text-on-surface-variant hover:text-primary-fixed-dim'}`}
           >
-            <Mic size={14} /> Audio / Video
+            <Mic size={16} /> Audio / Video
           </button>
           <button
             onClick={() => setMode('conversation')}
-            className={`evidence-tab ${mode === 'conversation' ? 'active' : ''}`}
+            className={`flex items-center gap-2 px-4 py-2 font-label-caps text-label-caps transition-all ${mode === 'conversation' ? 'text-primary-fixed border-b-2 border-primary-fixed' : 'text-on-surface-variant hover:text-primary-fixed-dim'}`}
           >
-            <MessageSquare size={14} /> Conversation
+            <MessageSquare size={16} /> Conversation
           </button>
         </div>
 

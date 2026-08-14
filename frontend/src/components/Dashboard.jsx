@@ -18,37 +18,28 @@ export default function Dashboard({ refreshKey }) {
   }
 
   return (
-    <div className="space-y-10 animate-fade-in pb-12 mt-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-wider uppercase font-display text-off-white flex items-center gap-2">
-          <Shield className="text-slate-500" size={24} />
-          Digital Safety Intelligence
-        </h1>
-        <p className="text-sm text-slate-400 font-mono">
-          Review, analyze, and manage digital safety reports across the platform.
-        </p>
-      </div>
-
-      <div className="flex border-b border-slate-700 mb-6">
+    <div className="space-y-10 animate-fade-in pb-12">
+      <div className="flex border-b border-outline-variant/30 mb-6 pb-2 gap-4">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-3 text-sm font-bold font-mono uppercase tracking-wider border-b transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2 font-label-caps text-label-caps transition-all ${
             activeTab === 'overview'
-              ? 'border-off-white text-off-white'
-              : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-500'
+              ? 'text-primary-fixed border-b-2 border-primary-fixed'
+              : 'text-on-surface-variant hover:text-primary-fixed-dim'
           }`}
         >
+          <Shield size={16} />
           Safety Reports
         </button>
         <button
           onClick={() => setActiveTab('behavior')}
-          className={`px-4 py-3 text-sm font-bold font-mono uppercase tracking-wider border-b transition-colors flex items-center gap-2 ${
+          className={`flex items-center gap-2 px-4 py-2 font-label-caps text-label-caps transition-all ${
             activeTab === 'behavior'
-              ? 'border-off-white text-off-white'
-              : 'border-transparent text-slate-500 hover:text-slate-300 hover:border-slate-500'
+              ? 'text-primary-fixed border-b-2 border-primary-fixed'
+              : 'text-on-surface-variant hover:text-primary-fixed-dim'
           }`}
         >
-          <Sparkles size={14} />
+          <Sparkles size={16} />
           Behavioral Intelligence
         </button>
       </div>

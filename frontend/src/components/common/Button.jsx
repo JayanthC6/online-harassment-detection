@@ -11,11 +11,14 @@ export default function Button({
   className = '',
   ...props
 }) {
-  let baseClass = 'btn-primary';
+  let baseClass = 'btn-cyber clip-path-chamfer font-label-caps text-label-caps transition-colors';
   if (variant === 'ghost') {
-    baseClass = 'btn-ghost';
+    baseClass += ' bg-surface/50 border border-outline-variant text-on-surface-variant hover:bg-surface-variant hover:text-on-surface';
   } else if (variant === 'secondary') {
-    baseClass = 'bg-panel border border-slate-700 text-off-white hover:bg-slate-800 hover:text-white font-semibold rounded-none px-4 py-2 text-sm transition-all flex items-center justify-center gap-2';
+    baseClass += ' bg-secondary-container/20 border border-secondary-container px-6 py-2 text-secondary-container hover:bg-secondary-container hover:text-on-secondary shadow-[0_0_10px_rgba(254,0,254,0.3)]';
+  } else {
+    // primary
+    baseClass += ' bg-surface border border-primary-fixed/50 px-6 py-2 text-primary-fixed hover:bg-primary-fixed/10';
   }
   
   return (
