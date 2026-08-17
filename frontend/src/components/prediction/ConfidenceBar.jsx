@@ -2,20 +2,25 @@ import PropTypes from 'prop-types';
 import RedactionBar from '../common/RedactionBar';
 
 export default function ConfidenceBar({ confidence, isHarassing }) {
-  const conf = Math.round((confidence || 0) * 100);
+  const pct = Math.round((confidence || 0) * 100);
+  const tier = isHarassing ? (pct >= 75 ? 'danger' : 'warning') : 'success';
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-28">
-        <RedactionBar score={confidence} tier={isHarassing ? 'red' : 'teal'} />
+    <div className="flex flex-col gap-4 w-full">
+      {/* Large number */}
+      <div className="flex items-end gap-2">
+        <span className="text-4xl font-extrabold text-text-primary tabular-nums font-mono">{pct}</span>
+        <span className="text-2xl font-bold text-text-muted mb-0.5">%</span>
       </div>
-      <span className="text-sm text-slate-400 font-mono tabular-nums">{conf}%</span>
+
+      {/* Bar */}
+      <RedactionBar score={confidence} tier={tier} heightClass="h-2" />
+      <p className="text-2xs text-text-muted -mt-1">Model Confidence</p>
     </div>
   );
 }
 
 ConfidenceBar.propTypes = {
-  confidence: PropTypes.number.isRequired,
+  confidence:  PropTypes.number.isRequired,
   isHarassing: PropTypes.bool.isRequired,
 };
-

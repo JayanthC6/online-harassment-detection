@@ -17,9 +17,10 @@ MAX_LOG_ENTRIES = 500
 
 _client = None
 _collection = None
+_chat_collection = None
 _db_enabled = False
 _fallback_store = []  # used only if MongoDB isn't configured/reachable
-
+_chat_fallback_store = {} # {session_id: [messages]}
 
 def _try_connect():
     """Attempt a MongoDB connection once, at import time. Never raises --
@@ -40,6 +41,7 @@ def _try_connect():
         _client.admin.command("ping")  # fail fast if the connection string is wrong
         db = _client["harassment_detection"]
         _collection = db["flagged_messages"]
+        _chat_collection = db["chat_history"]
         _db_enabled = True
         print("[db] Connected to MongoDB -- flagged messages will persist.")
     except Exception as e:
@@ -51,6 +53,7 @@ def _try_connect():
         print("!"*60 + "\n")
         _client = None
         _collection = None
+        _chat_collection = None
         _db_enabled = False
 
 
@@ -291,6 +294,27 @@ def detect_anomalies(daily_counts: list, window: int = 7, z_threshold: float = 2
             })
 
     return anomalies
+
+# ── Chatbot History ──
+
+def get_chat_session(session_id: str) -> list:
+    """Retrieve chat history for a session."""
+    if _db_enabled:
+        doc = _chat_collection.find_one({"session_id": session_id}, {"_id": 0})
+        return doc.get("messages", []) if doc else []
+    else:
+        return _chat_fallback_store.get(session_id, [])
+
+def save_chat_session(session_id: str, messages: list) -> None:
+    """Save/update chat history for a session."""
+    if _db_enabled:
+        _chat_collection.update_one(
+            {"session_id": session_id},
+            {"$set": {"messages": messages, "updated_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True
+        )
+    else:
+        _chat_fallback_store[session_id] = messages
 
 # Seed mock data automatically on startup if database is empty
 seed_mock_data_if_empty()

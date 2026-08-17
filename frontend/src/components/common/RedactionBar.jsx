@@ -1,30 +1,33 @@
 import PropTypes from 'prop-types';
 
-export default function RedactionBar({ score, tier = 'teal', heightClass = 'h-4', className = '' }) {
+/**
+ * Clean horizontal progress bar replacing the "redaction bar" hatch pattern.
+ * tier: 'danger' | 'warning' | 'success' | 'blue'
+ */
+export default function RedactionBar({ score, tier = 'blue', heightClass = 'h-1.5', className = '' }) {
   const percentage = Math.min(Math.max(score * 100, 0), 100);
-  
-  const getTierColor = () => {
-    switch(tier) {
-      case 'red': return 'bg-redaction-red';
-      case 'amber': return 'bg-alert-amber';
-      case 'teal': return 'bg-verified-teal';
-      default: return 'bg-verified-teal';
-    }
+
+  const colors = {
+    danger:  'bg-danger',
+    red:     'bg-danger',
+    warning: 'bg-warning',
+    amber:   'bg-warning',
+    success: 'bg-success',
+    teal:    'bg-success',
+    blue:    'bg-blue',
   };
+  const fill = colors[tier] || 'bg-blue';
 
   return (
-    <div className={`w-full flex hatch-pattern overflow-hidden border border-slate-700 ${heightClass} ${className}`}>
-      <div 
-        className={`h-full ${getTierColor()}`}
-        style={{ width: `${percentage}%` }}
-      />
+    <div className={`progress-bar ${heightClass} ${className}`}>
+      <div className={`progress-bar-fill ${fill}`} style={{ width: `${percentage}%` }} />
     </div>
   );
 }
 
 RedactionBar.propTypes = {
-  score: PropTypes.number.isRequired,
-  tier: PropTypes.oneOf(['red', 'amber', 'teal']),
+  score:       PropTypes.number.isRequired,
+  tier:        PropTypes.string,
   heightClass: PropTypes.string,
-  className: PropTypes.string,
+  className:   PropTypes.string,
 };

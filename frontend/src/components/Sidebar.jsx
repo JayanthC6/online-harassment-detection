@@ -1,67 +1,59 @@
 import React from 'react';
-import { ShieldCheck, Search, BarChart3, Settings, Bell, Fingerprint, Database, Grid } from 'lucide-react';
+import { LayoutDashboard, Search, AlertTriangle, Brain, Settings, Bell, ShieldCheck } from 'lucide-react';
+
+const NAV = [
+  { id: 'dashboard',  label: 'Dashboard',         icon: LayoutDashboard },
+  { id: 'analyze',    label: 'Threat Hunt',        icon: Search },
+  { id: 'incidents',  label: 'Incidents',          icon: AlertTriangle },
+  { id: 'behavioral', label: 'Behavioral Intel',   icon: Brain },
+];
 
 export default function Sidebar({ activeTab, setActiveTab }) {
   return (
-    <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] z-40 flex flex-col bg-surface-container-low/90 backdrop-blur-md border-r border-outline-variant/50 w-64 hidden md:flex">
-      <div className="p-6 border-b border-outline-variant/30 mb-4">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 clip-path-chamfer border border-primary-fixed/30 flex items-center justify-center bg-primary-fixed/10">
-            <ShieldCheck size={20} className="text-primary-fixed" />
+    <aside
+      style={{ width: 240 }}
+      className="fixed left-0 top-0 h-screen z-40 flex flex-col bg-surface border-r border-border hidden md:flex"
+    >
+      {/* Logo */}
+      <div className="flex items-center gap-2.5 px-5 h-14 border-b border-border flex-shrink-0">
+        <div className="w-7 h-7 bg-blue rounded-md flex items-center justify-center flex-shrink-0">
+          <ShieldCheck size={15} className="text-white" />
+        </div>
+        <span className="text-lg font-bold text-text-primary tracking-tight">
+          Shield<span className="text-blue">AI</span>
+        </span>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        <p className="section-title px-2 mt-2 mb-3">Main Menu</p>
+        {NAV.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`nav-item ${activeTab === id ? 'active' : ''}`}
+          >
+            <Icon size={15} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="p-3 border-t border-border flex-shrink-0">
+        <button className="nav-item">
+          <Settings size={15} />
+          <span>Settings</span>
+        </button>
+        <div className="flex items-center gap-3 mt-3 px-3 py-2">
+          <div className="w-7 h-7 rounded-full bg-blue-muted border border-border-2 flex items-center justify-center flex-shrink-0">
+            <ShieldCheck size={13} className="text-blue" />
           </div>
-          <div>
-            <div className="font-label-caps text-label-caps text-primary-fixed">Core Terminal</div>
-            <div className="font-metadata-sm text-metadata-sm text-on-surface-variant">Level 4 Clearance</div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-text-primary truncate">Admin</p>
+            <p className="text-2xs text-text-muted">Level 4 Access</p>
           </div>
         </div>
-      </div>
-      
-      <div className="flex-1 px-4 space-y-1">
-        <button
-          onClick={() => setActiveTab('dashboard')}
-          className={`w-full flex items-center gap-3 p-3 font-label-caps text-label-caps transition-all duration-200 ${
-            activeTab === 'dashboard' 
-              ? 'bg-primary-container/10 text-primary-fixed border-l-4 border-primary-fixed clip-path-chamfer scale-95 duration-100'
-              : 'text-on-surface-variant hover:bg-surface-variant/30 hover:border-l-4 hover:border-secondary-fixed'
-          }`}
-        >
-          <Grid size={18} /> Dashboard
-        </button>
-
-        <button
-          onClick={() => setActiveTab('analyze')}
-          className={`w-full flex items-center gap-3 p-3 font-label-caps text-label-caps transition-all duration-200 ${
-            activeTab === 'analyze' 
-              ? 'bg-primary-container/10 text-primary-fixed border-l-4 border-primary-fixed clip-path-chamfer scale-95 duration-100'
-              : 'text-on-surface-variant hover:bg-surface-variant/30 hover:border-l-4 hover:border-secondary-fixed'
-          }`}
-        >
-          <Search size={18} /> Threat Hunt
-        </button>
-
-        <button
-          onClick={() => setActiveTab('evidence')}
-          className={`w-full flex items-center gap-3 p-3 font-label-caps text-label-caps transition-all duration-200 ${
-            activeTab === 'evidence' 
-              ? 'bg-primary-container/10 text-primary-fixed border-l-4 border-primary-fixed clip-path-chamfer scale-95 duration-100'
-              : 'text-on-surface-variant hover:bg-surface-variant/30 hover:border-l-4 hover:border-secondary-fixed'
-          }`}
-        >
-          <Fingerprint size={18} /> Evidence
-        </button>
-
-        <button className="w-full flex items-center gap-3 text-on-surface-variant p-3 hover:bg-surface-variant/30 hover:border-l-4 hover:border-secondary-fixed transition-all duration-200 font-label-caps text-label-caps">
-          <Database size={18} /> Archives
-        </button>
-      </div>
-      
-      <div className="p-4 mt-auto border-t border-outline-variant/30">
-        <button 
-          onClick={() => setActiveTab('analyze')}
-          className="w-full py-2 bg-primary-fixed/10 text-primary-fixed border border-primary-fixed clip-path-chamfer font-label-caps text-label-caps hover:bg-primary-fixed hover:text-on-primary-fixed transition-colors shadow-[0_0_15px_rgba(116,245,255,0.2)]"
-        >
-          New Scan
-        </button>
       </div>
     </aside>
   );

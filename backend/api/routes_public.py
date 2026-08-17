@@ -8,6 +8,8 @@ from services.admin_service import AdminService
 from core.exceptions import AppException
 from ml.ocr import extract_and_classify
 from services.parsers import parse_whatsapp_txt, parse_instagram_json
+import db
+from ml.chatbot import generate_chat_response
 
 # Summarize is imported safely
 try:
@@ -266,4 +268,37 @@ def import_conversation():
     finally:
         if os.path.exists(file_path):
             os.remove(file_path)
+
+@public_bp.route("/chat", methods=["POST"])
+def chat():
+    data = request.get_json(silent=True) or {}
+    session_id = data.get("session_id")
+    message = data.get("message")
+
+    if not session_id or not message:
+        return jsonify({"error": "session_id and message are required."}), 400
+
+    # Retrieve history
+    history = db.get_chat_session(session_id)
+    
+    # Append user message
+    user_msg = {"role": "user", "content": message}
+    history.append(user_msg)
+    
+    # Generate response
+    ai_response_text = generate_chat_response(history)
+    
+    # Append ai response
+    ai_msg = {"role": "assistant", "content": ai_response_text}
+    history.append(ai_msg)
+    
+    # Save history
+    db.save_chat_session(session_id, history)
+    
+    return jsonify({"response": ai_response_text, "session_id": session_id})
+
+@public_bp.route("/chat/<session_id>", methods=["GET"])
+def get_chat(session_id):
+    history = db.get_chat_session(session_id)
+    return jsonify({"messages": history})
 

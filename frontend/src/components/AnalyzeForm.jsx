@@ -60,39 +60,37 @@ export default function AnalyzeForm({ onNewResult }) {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* ── Mode toggle ── */}
-      <Card className="border-outline-variant">
+      <Card className="">
         {/* ── Evidence type tabs ── */}
-        <div className="flex flex-wrap gap-4 mb-6 pb-6 border-b border-outline-variant/30">
+        <div className="flex flex-wrap gap-0 mb-5 pb-4 border-b border-border">
           <button
             onClick={() => setMode('text')}
-            className={`flex items-center gap-2 px-4 py-2 font-label-caps text-label-caps transition-all ${mode === 'text' ? 'text-primary-fixed border-b-2 border-primary-fixed' : 'text-on-surface-variant hover:text-primary-fixed-dim'}`}
+            className={`tab-btn ${mode === 'text' ? 'active' : ''}`}
           >
-            <FileText size={16} /> Text
+            <FileText size={14} /> Text
           </button>
           <button
             onClick={() => setMode('audio')}
-            className={`flex items-center gap-2 px-4 py-2 font-label-caps text-label-caps transition-all ${mode === 'audio' ? 'text-primary-fixed border-b-2 border-primary-fixed' : 'text-on-surface-variant hover:text-primary-fixed-dim'}`}
+            className={`tab-btn ${mode === 'audio' ? 'active' : ''}`}
           >
-            <Mic size={16} /> Audio / Video
+            <Mic size={14} /> Audio / Video
           </button>
           <button
             onClick={() => setMode('conversation')}
-            className={`flex items-center gap-2 px-4 py-2 font-label-caps text-label-caps transition-all ${mode === 'conversation' ? 'text-primary-fixed border-b-2 border-primary-fixed' : 'text-on-surface-variant hover:text-primary-fixed-dim'}`}
+            className={`tab-btn ${mode === 'conversation' ? 'active' : ''}`}
           >
-            <MessageSquare size={16} /> Conversation
+            <MessageSquare size={14} /> Conversation
           </button>
         </div>
 
         {mode === 'conversation' ? (
           <>
-            <div className="section-title">
-              Conversation Input
-            </div>
+            <p className="section-title">Conversation Input</p>
             
-            <div className="mb-6">
-              <p className="text-sm font-bold text-slate-400 font-mono uppercase tracking-wider mb-2">Import Chat Export</p>
+            <div className="mb-5">
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Import Chat Export</p>
               <FileUpload
                 file={importFile}
                 onFileSelect={setImportFile}
@@ -104,15 +102,15 @@ export default function AnalyzeForm({ onNewResult }) {
             </div>
 
             <div className="flex items-center gap-4 mb-4">
-              <div className="flex-1 border-t border-slate-700"></div>
-              <span className="text-xs text-slate-500 uppercase tracking-wider font-bold font-mono">OR MANUALLY ENTER</span>
-              <div className="flex-1 border-t border-slate-700"></div>
+              <div className="flex-1 border-t border-border"></div>
+              <span className="text-2xs text-text-muted uppercase tracking-widest font-semibold">or manually enter</span>
+              <div className="flex-1 border-t border-border"></div>
             </div>
             
-            <div className={`space-y-4 max-h-[400px] overflow-y-auto pr-2 ${importFile ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className={`space-y-3 max-h-[400px] overflow-y-auto pr-2 ${importFile ? 'opacity-50 pointer-events-none' : ''}`}>
               {messages.map((msg, index) => (
                 <div key={index} className="flex gap-2">
-                  <div className="flex-1 space-y-2 bg-panel p-3 border border-slate-700">
+                  <div className="flex-1 space-y-2 panel p-3">
                     <div className="flex justify-between items-center">
                       <input 
                         type="text" 
@@ -122,13 +120,13 @@ export default function AnalyzeForm({ onNewResult }) {
                           newMessages[index].sender = e.target.value;
                           setMessages(newMessages);
                         }}
-                        className="text-xs font-semibold bg-transparent border-none p-0 focus:ring-0 text-off-white w-32 font-mono"
+                        className="text-xs font-semibold bg-transparent border-none p-0 focus:outline-none text-text-primary w-32 font-mono"
                         placeholder="Sender Name"
                       />
                       {messages.length > 1 && (
                         <button 
                           onClick={() => setMessages(messages.filter((_, i) => i !== index))}
-                          className="text-slate-500 hover:text-redaction-red transition-colors"
+                          className="text-text-muted hover:text-danger transition-colors"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -150,7 +148,7 @@ export default function AnalyzeForm({ onNewResult }) {
               ))}
             </div>
             
-            <div className="mt-4 flex justify-between items-center border-t border-slate-700 pt-4">
+            <div className="mt-4 flex justify-between items-center border-t border-border pt-4">
               <Button
                 variant="ghost"
                 onClick={() => setMessages([...messages, { text: '', sender: `User ${messages.length % 2 === 0 ? 1 : 2}` }])}
@@ -168,22 +166,20 @@ export default function AnalyzeForm({ onNewResult }) {
           </>
         ) : mode === 'text' ? (
           <>
-            <div className="section-title">
-              Message Input
-            </div>
+            <p className="section-title">Message Input</p>
             
             <div className="mb-4">
               <input 
                 type="text" 
                 value={actorId}
                 onChange={(e) => setActorId(e.target.value)}
-                className="input-dark w-full max-w-xs text-sm"
-                placeholder="Actor Identifier (Optional)"
+                className="input max-w-xs"
+                placeholder="Actor ID (optional)"
               />
             </div>
 
             <textarea
-              className="input-dark w-full min-h-32 p-4 text-sm resize-y"
+              className="input min-h-32 p-3 resize-y"
               placeholder="Paste or type a message to analyze for digital safety threats..."
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -193,8 +189,8 @@ export default function AnalyzeForm({ onNewResult }) {
 
             <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
               <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-500 font-mono">Ctrl + Enter to analyze</span>
-                <span className="text-xs text-slate-400 font-mono">{text.length}/2000</span>
+                <span className="text-2xs text-text-muted font-mono">Ctrl + Enter to analyze</span>
+                <span className="text-2xs text-text-muted font-mono">{text.length}/2000</span>
               </div>
               <Button
                 onClick={handleAnalyze}
@@ -207,14 +203,14 @@ export default function AnalyzeForm({ onNewResult }) {
 
             {/* Quick examples — only before first result */}
             {!result && !loading && (
-              <div className="mt-6 pt-4 border-t border-slate-700">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-3 font-mono">Quick test examples</p>
+              <div className="mt-5 pt-4 border-t border-border">
+                <p className="text-2xs text-text-muted uppercase tracking-widest font-semibold mb-3">Quick test examples</p>
                 <div className="flex flex-wrap gap-2">
                   {quickExamples.map((ex, i) => (
                     <button
                       key={i}
                       onClick={() => setText(ex)}
-                      className="text-xs text-slate-400 hover:text-off-white bg-panel hover:bg-slate-800 border border-slate-700 px-3 py-1.5 transition-colors truncate max-w-[240px] font-mono"
+                      className="text-xs text-text-muted hover:text-text-secondary bg-surface-2 hover:bg-surface-3 border border-border hover:border-border-2 px-3 py-1.5 rounded transition-colors truncate max-w-[240px] font-mono"
                     >
                       "{ex.slice(0, 35)}..."
                     </button>
@@ -226,17 +222,15 @@ export default function AnalyzeForm({ onNewResult }) {
         ) : (
           /* ── Audio upload ── */
           <>
-            <div className="section-title">
-              Audio / Video Upload
-            </div>
+            <p className="section-title">Audio / Video Upload</p>
             
             <div className="mb-4">
               <input 
                 type="text" 
                 value={actorId}
                 onChange={(e) => setActorId(e.target.value)}
-                className="input-dark w-full max-w-xs text-sm"
-                placeholder="Actor Identifier (Optional)"
+                className="input max-w-xs"
+                placeholder="Actor ID (optional)"
               />
             </div>
 
@@ -244,10 +238,10 @@ export default function AnalyzeForm({ onNewResult }) {
               file={audioFile}
               onFileSelect={setAudioFile}
               accept={ALLOWED_AUDIO}
-              icon={<Mic className="mx-auto h-8 w-8 text-slate-500 mb-2" />}
+              icon={<Mic className="mx-auto h-8 w-8 text-text-muted mb-2" />}
               activeClasses={{
-                container: '!border-off-white !bg-slate-800',
-                text: 'text-off-white'
+                container: '!border-blue !bg-blue-muted',
+                text: 'text-text-primary'
               }}
               titleText="Drop an audio/video file here or click to browse"
               supportedText="Supported: MP3, WAV, M4A, MP4, MOV, WebM, OGG (max 50MB)"
