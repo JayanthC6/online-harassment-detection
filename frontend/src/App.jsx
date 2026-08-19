@@ -43,7 +43,7 @@ export default function App() {
 
           {(activeTab === 'dashboard' || activeTab === 'incidents' || activeTab === 'behavioral') && (
             <div className="animate-fade-in">
-              <Dashboard refreshKey={refreshKey} />
+              <Dashboard refreshKey={refreshKey} activeTab={activeTab} />
             </div>
           )}
         </div>
