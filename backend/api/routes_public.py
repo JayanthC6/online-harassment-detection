@@ -9,7 +9,13 @@ from core.exceptions import AppException
 from ml.ocr import extract_and_classify
 from services.parsers import parse_whatsapp_txt, parse_instagram_json
 import db
-from ml.chatbot import generate_chat_response
+from ml.chatbot import generate_chat_response, extract_text_from_file, analyze_file_content
+
+MAX_CHAT_FILE_MB = 50
+ALLOWED_CHAT_FILE_EXTS = {
+    "pdf", "txt", "md", "log", "csv", "json", "docx",
+    "py", "html", "xml", "png", "jpg", "jpeg", "webp"
+}
 
 # Summarize is imported safely
 try:
@@ -301,4 +307,62 @@ def chat():
 def get_chat(session_id):
     history = db.get_chat_session(session_id)
     return jsonify({"messages": history})
+
+
+@public_bp.route("/chat/file", methods=["POST"])
+def chat_file_upload():
+    """Accept a file, extract its text, and return an AI analysis."""
+    session_id = request.form.get("session_id")
+    if not session_id:
+        return jsonify({"error": "session_id is required."}), 400
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded. Send it under key 'file'."}), 400
+
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "Empty filename."}), 400
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ALLOWED_CHAT_FILE_EXTS:
+        return jsonify({
+            "error": f"Unsupported file type '.{ext}'. Allowed: {sorted(ALLOWED_CHAT_FILE_EXTS)}"
+        }), 400
+
+    import tempfile
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as tmp:
+        file.save(tmp.name)
+        file_size_mb = os.path.getsize(tmp.name) / (1024 * 1024)
+
+        if file_size_mb > MAX_CHAT_FILE_MB:
+            os.remove(tmp.name)
+            return jsonify({"error": f"File too large ({file_size_mb:.1f} MB). Max {MAX_CHAT_FILE_MB} MB."}), 413
+
+        try:
+            extracted_text = extract_text_from_file(tmp.name, file.filename)
+        except RuntimeError as e:
+            os.remove(tmp.name)
+            return jsonify({"error": str(e)}), 400
+        finally:
+            if os.path.exists(tmp.name):
+                os.remove(tmp.name)
+
+    if not extracted_text or not extracted_text.strip():
+        return jsonify({"error": "No readable text found in the file."}), 400
+
+    # Run AI analysis
+    analysis = analyze_file_content(extracted_text, file.filename)
+
+    # Persist as a chat turn so the conversation remembers the file
+    history = db.get_chat_session(session_id)
+    history.append({"role": "user", "content": f"[Uploaded file: **{file.filename}**]"})
+    history.append({"role": "assistant", "content": analysis})
+    db.save_chat_session(session_id, history)
+
+    return jsonify({
+        "response": analysis,
+        "filename": file.filename,
+        "size_mb": round(file_size_mb, 2),
+        "session_id": session_id,
+    })
 

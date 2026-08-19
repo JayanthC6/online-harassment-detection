@@ -25,7 +25,7 @@ _chat_fallback_store = {} # {session_id: [messages]}
 def _try_connect():
     """Attempt a MongoDB connection once, at import time. Never raises --
     logs a clear reason and falls back to in-memory storage instead."""
-    global _client, _collection, _db_enabled
+    global _client, _collection, _chat_collection, _db_enabled
 
     uri = os.environ.get("MONGODB_URI")
     if not uri:

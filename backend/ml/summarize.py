@@ -74,7 +74,7 @@ Respond with ONLY the summary paragraph, nothing else."""
                     "content": prompt,
                 },
             ],
-            model="llama-3.1-8b-instant",
+            model="qwen/qwen3.6-27b",
             temperature=0.3,
             max_tokens=200,
         )
@@ -133,7 +133,7 @@ Do not include any other text.
                 {"role": "system", "content": "You are a moderation AI that outputs strict JSON."},
                 {"role": "user", "content": prompt},
             ],
-            model="llama-3.1-8b-instant",
+            model="qwen/qwen3.6-27b",
             temperature=0.3,
             max_tokens=150,
             response_format={"type": "json_object"}
