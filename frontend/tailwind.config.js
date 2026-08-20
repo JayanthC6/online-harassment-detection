@@ -5,19 +5,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ── Core Surfaces ──
-        bg:          "#0B0C16",      // deep space cyber purple-black
-        surface:     "#131426",      // card / panel
-        "surface-2": "#1A1B33",      // elevated card
-        "surface-3": "#252744",      // hover / active
-        border:      "#262846",      // default border
-        "border-2":  "#383B61",      // accent border
+        // ── Core Surfaces (Lightened slightly per user request) ──
+        bg:          "#131522",      // base background
+        surface:     "rgba(25, 27, 46, 0.7)",  // card / panel (glassmorphism base)
+        "surface-solid": "#191B2E",  // solid fallback
+        "surface-2": "rgba(32, 35, 59, 0.75)", // elevated card
+        "surface-3": "rgba(42, 45, 75, 0.8)",  // hover / active
+        border:      "#2E3254",      // default border
+        "border-2":  "#464A73",      // accent border
         
-        // ── Brand Cyber Cyan ──
+        // ── Brand Cyber Colors ──
         blue:        "#00F2FE",      // neon cyan
         "blue-dim":  "#00C4CE",
         "blue-muted":"#005663",
         "blue-glow": "rgba(0,242,254,0.15)",
+        purple:      "#A855F7",      // secondary accent for gradients
+        "purple-glow":"rgba(168,85,247,0.15)",
 
         // ── Semantic ──
         success:     "#10B981",
@@ -63,11 +66,32 @@ export default {
         sidebar: "240px",
         header:  "56px",
       },
-      boxShadow: {
-        card: "0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-        panel:"0 4px 16px rgba(0,0,0,0.5)",
+        boxShadow: {
+        card: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
+        panel: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
         blue: "0 0 0 1px rgba(59,130,246,0.4)",
         "blue-lg": "0 0 24px rgba(59,130,246,0.15)",
+        "neon": "0 0 10px rgba(0, 242, 254, 0.4), 0 0 20px rgba(0, 242, 254, 0.2)",
+      },
+      animation: {
+        "fade-in": "fadeIn 0.3s ease-out forwards",
+        "slide-up": "slideUp 0.4s ease-out forwards",
+        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "glow": "glow 2s ease-in-out infinite alternate",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: 0 },
+          "100%": { opacity: 1 },
+        },
+        slideUp: {
+          "0%": { opacity: 0, transform: "translateY(10px)" },
+          "100%": { opacity: 1, transform: "translateY(0)" },
+        },
+        glow: {
+          "0%": { boxShadow: "0 0 5px rgba(0, 242, 254, 0.2)" },
+          "100%": { boxShadow: "0 0 15px rgba(0, 242, 254, 0.6)" },
+        },
       },
     },
   },
