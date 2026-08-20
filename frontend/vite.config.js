@@ -16,6 +16,11 @@ export default defineConfig({
         target: 'http://127.0.0.1:5000',
         changeOrigin: true,
       },
+      // Forwards /predict/* calls to Flask backend (includes /predict/explain)
+      '/predict': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+      },
     },
   },
 })

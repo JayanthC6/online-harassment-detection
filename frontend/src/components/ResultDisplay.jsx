@@ -8,6 +8,7 @@ import ToxicWordHighlight from './prediction/ToxicWordHighlight';
 import PredictionSummary from './prediction/PredictionSummary';
 import ConversationResultDisplay from './ConversationResultDisplay';
 import GuidancePanel from './prediction/GuidancePanel';
+import ExplainPanel from './prediction/ExplainPanel';
 
 function getSecondaryTier(label) {
   const l = label.toLowerCase();
@@ -180,6 +181,15 @@ export default function ResultDisplay({ result }) {
           <p className="animate-pulse-soft text-text-muted mt-2">_</p>
         </div>
       </Card>
+
+      {/* Incident Intelligence / Explainability panel */}
+      {result.primary_label && (result.text_full || result.text_preview || result.transcript || result.extracted_text) && (
+        <ExplainPanel
+          text={result.text_full || result.text_preview || result.transcript || result.extracted_text}
+          primaryLabel={result.primary_label}
+          secondaryLabels={result.secondary_labels || {}}
+        />
+      )}
 
       {/* Guidance panel */}
       {result.guidance && (

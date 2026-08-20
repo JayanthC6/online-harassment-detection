@@ -79,6 +79,8 @@ Respond with ONLY the summary paragraph, nothing else."""
             max_tokens=200,
         )
         incident_description = chat_completion.choices[0].message.content.strip()
+        import re
+        incident_description = re.sub(r'<think>.*?</think>', '', incident_description, flags=re.DOTALL).strip()
     except Exception as e:
         raise RuntimeError(f"Groq API call failed: {str(e)}")
 
@@ -138,8 +140,9 @@ Do not include any other text.
             max_tokens=150,
             response_format={"type": "json_object"}
         )
-        import json
+        import json, re
         content = chat_completion.choices[0].message.content.strip()
+        content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
         data = json.loads(content)
         
         # Rule-based action recommendation based on computed risk score

@@ -23,6 +23,13 @@ try:
 except Exception:
     pass
 
+# Transformer explainability — only available when HF_TOKEN + captum are present
+try:
+    from ml import explain_transformer as _explain_tx
+    _explain_tx_available = True
+except Exception:
+    _explain_tx_available = False
+
 public_bp = Blueprint("public", __name__)
 
 ALLOWED_AUDIO_EXTENSIONS = {"mp3", "wav", "m4a", "mp4", "mov", "webm", "ogg"}
@@ -63,6 +70,7 @@ def predict():
 
     result = PredictionService.classify_text(text)
     result["text_preview"] = text[:120]
+    result["text_full"] = text  # full text needed by /predict/explain for LIG
     result["timestamp"] = datetime.utcnow().isoformat()
     result["actor_id"] = data.get("actor_id", "Anonymous")
     result = PredictionService.attach_risk_and_similarity(result, text)
@@ -366,3 +374,66 @@ def chat_file_upload():
         "session_id": session_id,
     })
 
+
+@public_bp.route("/predict/explain", methods=["POST"])
+def predict_explain():
+    """
+    Lazy token-level explainability endpoint.
+    Called only when the Incident Intelligence panel is opened — NOT during /predict.
+
+    Body (JSON):
+        text  (str, required)  — the message to explain
+        label (str, required)  — which label to attribute against (primary or secondary)
+
+    Returns 200 with one of two shapes:
+        Neural label:   { label, is_neural: true,  method, tokens: [{token, score, sign}] }
+        Symbolic label: { label, is_neural: false, reason, rule_evidence: [...] }
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    text = body.get("text", "").strip()
+    label = body.get("label", "").strip()
+
+    if not text:
+        return jsonify({"error": "'text' is required."}), 400
+    if not label:
+        return jsonify({"error": "'label' is required."}), 400
+
+    # ── Symbolic-only label or module unavailable: return rule evidence ──
+    is_neural = _explain_tx_available and _explain_tx.is_neural_label(label)
+
+    if not is_neural:
+        try:
+            adapter = PredictionService.get_adapter()
+            rule_hits = adapter.explain_heuristics(text, {label: 1.0}) if hasattr(adapter, "explain_heuristics") else []
+        except Exception:
+            rule_hits = []
+
+        if not _explain_tx_available:
+            reason = "Explainability module unavailable (HF_TOKEN or captum missing)."
+        else:
+            reason = (
+                f"'{label}' is detected by the rule engine, not the neural model. "
+                "Gradient attribution would produce meaningless output for this category."
+            )
+
+        return jsonify({
+            "label": label,
+            "is_neural": False,
+            "reason": reason,
+            "rule_evidence": rule_hits,
+        })
+
+    # ── Neural label: compute LIG attributions ──
+    try:
+        result = _explain_tx.compute_ig_attributions(text, label)
+        result["is_neural"] = True
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 503
+    except Exception as e:
+        import traceback
+        print(f"[/predict/explain] Unexpected error: {e}")
+        traceback.print_exc()
+        return jsonify({"error": "Internal error during attribution computation."}), 500
