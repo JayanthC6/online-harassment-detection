@@ -35,3 +35,4 @@ The project has evolved into a fully functional, enterprise-grade forensic dashb
 
 ## Next Steps
 The project is currently in a highly functional state, ready for further refinement in scalability, multilingual support, and deployment automation.
+
