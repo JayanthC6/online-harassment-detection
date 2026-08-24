@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { apiClient } from '../../../api/client';
+import { apiClient } from '../../api/client';
 import { UploadCloud, MessageSquare, AlertTriangle } from 'lucide-react';
 
 export default function SubmitComplaint({ onNewResult }) {

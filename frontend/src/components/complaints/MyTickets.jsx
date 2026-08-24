@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { apiClient } from '../../../api/client';
+import { apiClient } from '../../api/client';
 import { Clock, CheckCircle, AlertCircle, ShieldAlert } from 'lucide-react';
-import RiskBadge from '../RiskBadge';
+import RiskBadge from '../prediction/RiskBadge';
 
 export default function MyTickets({ refreshKey }) {
   const [tickets, setTickets] = useState([]);
