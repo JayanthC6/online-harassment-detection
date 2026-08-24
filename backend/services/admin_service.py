@@ -414,3 +414,56 @@ class AdminService:
                 })
 
         return anomalies
+
+    # ── Mutating actions ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def dismiss_incident(incident_id: str) -> None:
+        """Mark an incident as reviewed/dismissed (sets dismissed=True)."""
+        if db_instance.is_persistent:
+            from bson import ObjectId
+            try:
+                db_instance.collection.update_one(
+                    {"_id": ObjectId(incident_id)},
+                    {"$set": {"dismissed": True}},
+                )
+            except Exception as e:
+                raise RuntimeError(f"Could not dismiss incident {incident_id}: {e}")
+        else:
+            for entry in db_instance.fallback_store:
+                if str(entry.get("_id", "")) == incident_id:
+                    entry["dismissed"] = True
+                    return
+
+    @staticmethod
+    def override_classification(incident_id: str, new_label: str) -> None:
+        """Override the primary label of an incident."""
+        if db_instance.is_persistent:
+            from bson import ObjectId
+            try:
+                db_instance.collection.update_one(
+                    {"_id": ObjectId(incident_id)},
+                    {"$set": {"primary_label": new_label, "overridden": True}},
+                )
+            except Exception as e:
+                raise RuntimeError(f"Could not override incident {incident_id}: {e}")
+        else:
+            for entry in db_instance.fallback_store:
+                if str(entry.get("_id", "")) == incident_id:
+                    entry["primary_label"] = new_label
+                    entry["overridden"] = True
+                    return
+
+    @staticmethod
+    def ban_actor(actor_id: str, reason: str) -> None:
+        """Flag all incidents from an actor as banned."""
+        if db_instance.is_persistent:
+            db_instance.collection.update_many(
+                {"actor_id": actor_id},
+                {"$set": {"actor_banned": True, "ban_reason": reason}},
+            )
+        else:
+            for entry in db_instance.fallback_store:
+                if entry.get("actor_id") == actor_id:
+                    entry["actor_banned"] = True
+                    entry["ban_reason"] = reason

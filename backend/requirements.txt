@@ -40,3 +40,6 @@ certifi
 python-whois
 requests
 cachetools
+
+# Rate limiting on public prediction endpoints
+Flask-Limiter==3.8.0

@@ -72,8 +72,8 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
             "Scam": [r"\b(crypto|bitcoin|investment opportunity|ponzi|pyramid scheme)\b", r"\b(guaranteed returns)\b"],
             "Phishing": [r"\b(verify your account|login to confirm|password reset link|update your payment)\b", r"\b(urgent action required.*account)\b"],
             "Impersonation": [r"\b(acting as|pretending to be|fake account|i am the real)\b"],
-            "Blackmail": [r"\b(i have your photos|pay me or i will leak|expose you|send me money or)\b", r"\b(release the video)\b"],
-            "Extortion": [r"\b(pay me|send bitcoin to|ransom|transfer funds immediately)\b", r"\b(if you don't pay)\b"],
+            "Blackmail": [r"\b(i have your photos|pay me or i will leak|expose you|send me money or)\b", r"\b(release the video)\b", r"(leak|expose).*(photos|pictures|images|nudes)", r"(photos|pictures|images|nudes).*(will be|are going to be) (leaked|exposed|sent)"],
+            "Extortion": [r"\b(pay me|send bitcoin to|ransom|transfer funds immediately)\b", r"\b(if you don't pay)\b", r"send.*(btc|bitcoin|eth|ethereum|crypto)"],
             "Fraud": [r"\b(stolen credit card|fake id|bank transfer|wire me)\b"],
             "Social Engineering": [r"\b(what is your mother's maiden name|verify your ssn|send me a code)\b", r"\b(can you do me a quick favor.*gift card)\b"]
         }

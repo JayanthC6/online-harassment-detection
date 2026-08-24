@@ -18,14 +18,16 @@ MAX_LOG_ENTRIES = 500
 _client = None
 _collection = None
 _chat_collection = None
+_audit_collection = None
 _db_enabled = False
 _fallback_store = []  # used only if MongoDB isn't configured/reachable
 _chat_fallback_store = {} # {session_id: [messages]}
+_audit_fallback_store = []  # in-memory audit log — NOT persistent
 
 def _try_connect():
     """Attempt a MongoDB connection once, at import time. Never raises --
     logs a clear reason and falls back to in-memory storage instead."""
-    global _client, _collection, _chat_collection, _db_enabled
+    global _client, _collection, _chat_collection, _audit_collection, _db_enabled
 
     uri = os.environ.get("MONGODB_URI")
     if not uri:
@@ -42,6 +44,7 @@ def _try_connect():
         db = _client["harassment_detection"]
         _collection = db["flagged_messages"]
         _chat_collection = db["chat_history"]
+        _audit_collection = db["audit_logs"]
         _db_enabled = True
         print("[db] Connected to MongoDB -- flagged messages will persist.")
     except Exception as e:
@@ -294,6 +297,66 @@ def detect_anomalies(daily_counts: list, window: int = 7, z_threshold: float = 2
             })
 
     return anomalies
+
+# ── Audit Logging ──────────────────────────────────────────────────────────────
+
+_audit_persistence_warned = False  # emit the banner only once per process
+
+
+def log_audit_event(actor: str, action: str, resource: str, detail: dict | None = None, status: str = "success", error: str | None = None) -> None:
+    """
+    Persist an admin audit event: who did what, to what, and when.
+
+    Schema: { actor, action, resource, detail, status, error, logged_at }
+
+    IMPORTANT: If MongoDB is unavailable, audit records are kept only in
+    memory and will be LOST on restart. This is flagged loudly on stderr
+    (distinct from the main DB warning) so operators cannot miss it.
+    """
+    global _audit_persistence_warned
+    import sys
+
+    entry = {
+        "actor":      actor,
+        "action":     action,
+        "resource":   resource,
+        "detail":     detail or {},
+        "status":     status,
+        "error":      error,
+        "logged_at":  datetime.now(timezone.utc).isoformat(),
+    }
+
+    if _db_enabled and _audit_collection is not None:
+        _audit_collection.insert_one({k: v for k, v in entry.items()})
+    else:
+        # SECURITY WARNING: audit trail is not persisted.
+        if not _audit_persistence_warned:
+            _audit_persistence_warned = True
+            banner = (
+                "\n" + "!" * 60 + "\n"
+                "SECURITY WARNING: AUDIT LOG NOT PERSISTED\n"
+                "!" * 60 + "\n"
+                "MongoDB is unavailable. Admin audit records are being\n"
+                "stored IN MEMORY ONLY and will be LOST on restart.\n"
+                "Accountability is compromised until the database is\n"
+                "restored. Check MONGODB_URI in .env immediately.\n"
+                "!" * 60 + "\n"
+            )
+            print(banner, file=sys.stderr, flush=True)
+
+        _audit_fallback_store.append(entry)
+
+
+def get_audit_log(limit: int = 200) -> list:
+    """Return the most recent audit events."""
+    if _db_enabled and _audit_collection is not None:
+        return list(
+            _audit_collection.find({}, {"_id": 0})
+            .sort("logged_at", -1)
+            .limit(limit)
+        )
+    return list(reversed(_audit_fallback_store[-limit:]))
+
 
 # ── Chatbot History ──
 

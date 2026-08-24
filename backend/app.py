@@ -4,7 +4,6 @@ Flask backend for the Online Harassment Detection System.
 Refactored to use API blueprints.
 """
 import os
-import sys
 
 # Import torch first on Windows to avoid DLL conflicts with other libraries
 try:
@@ -19,11 +18,17 @@ from dotenv import load_dotenv
 
 load_dotenv()  # reads MONGODB_URI from a .env file if present
 
+# Import the shared limiter BEFORE blueprints so the singleton exists
+from extensions import limiter
+
 from api.routes_public import public_bp
 from api.routes_admin import admin_bp
 
 app = Flask(__name__)
 CORS(app)  # allow the React dev server to call this API
+
+# Bind limiter to app after app is created
+limiter.init_app(app)
 
 app.register_blueprint(public_bp)
 app.register_blueprint(admin_bp)

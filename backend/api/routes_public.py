@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import os
@@ -10,6 +10,9 @@ from ml.ocr import extract_and_classify
 from services.parsers import parse_whatsapp_txt, parse_instagram_json
 import db
 from ml.chatbot import generate_chat_response, extract_text_from_file, analyze_file_content
+
+# Import the shared limiter instance (defined in extensions.py to avoid circular imports)
+from extensions import limiter
 
 MAX_CHAT_FILE_MB = 50
 ALLOWED_CHAT_FILE_EXTS = {
@@ -32,6 +35,11 @@ except Exception:
 
 public_bp = Blueprint("public", __name__)
 
+
+def _get_limiter():
+    """Lazy accessor for the Flask-Limiter instance attached to the app."""
+    return getattr(current_app, 'limiter', None)
+
 ALLOWED_AUDIO_EXTENSIONS = {"mp3", "wav", "m4a", "mp4", "mov", "webm", "ogg"}
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 MAX_AUDIO_SIZE_MB = 50
@@ -50,7 +58,13 @@ def health():
     })
 
 @public_bp.route("/predict", methods=["POST"])
+@limiter.limit("30 per minute")
 def predict():
+    # Per-route payload guard: 32 KB max for plain-text JSON requests.
+    # Text is capped at 2000 chars (~8 KB); 32 KB rejects garbage before parsing.
+    cl = request.content_length
+    if cl is not None and cl > 32 * 1024:
+        return jsonify({"error": "Payload too large. Maximum 32 KB for /predict."}), 413
     import os
     ext_api_key = os.environ.get("EXTENSION_API_KEY")
     if ext_api_key:
@@ -112,7 +126,12 @@ def predict_batch():
     return jsonify({"results": results, "count": len(results)})
 
 @public_bp.route("/predict/audio", methods=["POST"])
+@limiter.limit("30 per minute")
 def predict_audio():
+    # Per-route payload guard: 50 MB for audio uploads
+    cl = request.content_length
+    if cl is not None and cl > 50 * 1024 * 1024:
+        return jsonify({"error": "Payload too large. Maximum 50 MB for audio uploads."}), 413
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded. Send it as multipart/form-data under key 'file'."}), 400
 
@@ -125,7 +144,7 @@ def predict_audio():
         return jsonify({"error": f"Unsupported file type '.{ext}'. Allowed: {sorted(ALLOWED_AUDIO_EXTENSIONS)}"}), 400
 
     import tempfile
-    from ml.transcribe import transcribe_audio
+    from ml.transcribe import transcribe
     
     with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as tmp:
         file.save(tmp.name)
@@ -135,7 +154,8 @@ def predict_audio():
             return jsonify({"error": f"File too large ({file_size_mb:.1f}MB). Max {MAX_AUDIO_SIZE_MB}MB."}), 413
 
         try:
-            transcript_text = transcribe_audio(tmp.name)
+            transcript_data = transcribe(tmp.name)
+            transcript_text = transcript_data["text"]
         except Exception as e:
             os.remove(tmp.name)
             return jsonify({"error": f"Transcription failed: {str(e)}"}), 500
@@ -158,7 +178,12 @@ def predict_audio():
     return jsonify(result)
 
 @public_bp.route("/predict/screenshot", methods=["POST"])
+@limiter.limit("30 per minute")
 def predict_screenshot():
+    # Per-route payload guard: 10 MB for image uploads
+    cl = request.content_length
+    if cl is not None and cl > 10 * 1024 * 1024:
+        return jsonify({"error": "Payload too large. Maximum 10 MB for screenshot uploads."}), 413
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded."}), 400
 
@@ -199,6 +224,68 @@ def predict_screenshot():
     result.pop("embedding", None)
     return jsonify(result)
 
+@public_bp.route("/predict/file", methods=["POST"])
+@limiter.limit("30 per minute")
+def predict_file():
+    # Per-route payload guard: 50 MB for document uploads
+    cl = request.content_length
+    if cl is not None and cl > 50 * 1024 * 1024:
+        return jsonify({"error": "Payload too large. Maximum 50 MB for file uploads."}), 413
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded."}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename."}), 400
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ALLOWED_CHAT_FILE_EXTS:
+        return jsonify({"error": f"Unsupported file type. Allowed: {ALLOWED_CHAT_FILE_EXTS}"}), 400
+
+    import tempfile
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as tmp:
+        file.save(tmp.name)
+        file_size_mb = os.path.getsize(tmp.name) / (1024 * 1024)
+        if file_size_mb > 50:
+            os.remove(tmp.name)
+            return jsonify({"error": f"File too large. Max 50MB."}), 413
+
+        try:
+            extracted_text = extract_text_from_file(tmp.name, file.filename)
+        except Exception as e:
+            os.remove(tmp.name)
+            return jsonify({"error": f"Extraction failed: {str(e)}"}), 500
+
+    os.remove(tmp.name)
+    if not extracted_text or not extracted_text.strip():
+        return jsonify({"error": "No text detected in file."}), 400
+        
+    extracted_text = extracted_text.strip()
+    # If text is excessively long, truncate to first 10,000 chars for engine processing
+    if len(extracted_text) > 10000:
+        extracted_text = extracted_text[:10000]
+
+    result = PredictionService.classify_text(extracted_text)
+    result["timestamp"] = datetime.utcnow().isoformat()
+    result["actor_id"] = request.form.get("actor_id", "Anonymous")
+    
+    # Generate bot summary for the file text
+    try:
+        from ml.chatbot import analyze_file_content
+        bot_summary = analyze_file_content(extracted_text, file.filename)
+        result["bot_summary_text"] = bot_summary
+    except Exception as e:
+        result["bot_summary_text"] = "Error: Could not generate bot summary."
+
+    result["text_preview"] = extracted_text[:120]
+    result["text_full"] = extracted_text
+    result = PredictionService.attach_risk_and_similarity(result, extracted_text)
+
+    AdminService.log_message(result)
+
+    result.pop("embedding", None)
+    return jsonify(result)
+
 @public_bp.route("/summarize", methods=["POST"])
 def summarize():
     data = request.get_json(silent=True) or {}
@@ -216,7 +303,12 @@ def summarize():
         return jsonify({"error": str(e)}), 500
 
 @public_bp.route("/predict/conversation", methods=["POST"])
+@limiter.limit("30 per minute")
 def predict_conversation():
+    # Per-route payload guard: 512 KB for conversation JSON
+    cl = request.content_length
+    if cl is not None and cl > 512 * 1024:
+        return jsonify({"error": "Payload too large. Maximum 512 KB for /predict/conversation."}), 413
     data = request.get_json(silent=True) or {}
     messages = data.get("messages", [])
 
