@@ -23,6 +23,7 @@ from extensions import limiter
 
 from api.routes_public import public_bp
 from api.routes_admin import admin_bp
+from api.routes_complaints import complaints_bp
 
 app = Flask(__name__)
 CORS(app)  # allow the React dev server to call this API
@@ -32,6 +33,7 @@ limiter.init_app(app)
 
 app.register_blueprint(public_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(complaints_bp)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

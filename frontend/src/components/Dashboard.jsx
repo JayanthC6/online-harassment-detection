@@ -23,7 +23,7 @@ function resolveInitialSubTab(sidebarTab) {
 
 export default function Dashboard({ refreshKey, activeTab: sidebarTab }) {
   const {
-    stats, reportsData, conversationsData, profilesData,
+    stats, reportsData, conversationsData, profilesData, complaintsData,
     analytics, dailyCounts, anomalies, filters, loading, reportsLoading
   } = useAdminData(refreshKey);
 
@@ -98,6 +98,7 @@ export default function Dashboard({ refreshKey, activeTab: sidebarTab }) {
           <ModeratorQueue
             reportsData={reportsData}
             conversationsData={conversationsData}
+            complaintsData={complaintsData}
             filters={filters}
             loading={reportsLoading}
           />

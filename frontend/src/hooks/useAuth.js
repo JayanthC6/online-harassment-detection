@@ -2,6 +2,20 @@ import { useState, useEffect } from 'react';
 
 export function useAuth() {
   const [token, setToken] = useState(() => localStorage.getItem('adminToken') || '');
+  const [role, setRole] = useState(null);
+
+  useEffect(() => {
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        setRole(payload.role);
+      } catch (e) {
+        setRole(null);
+      }
+    } else {
+      setRole(null);
+    }
+  }, [token]);
 
   const login = (newToken) => {
     setToken(newToken);
@@ -19,5 +33,5 @@ export function useAuth() {
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, []);
 
-  return { token, login, logout };
+  return { token, role, login, logout };
 }

@@ -19,10 +19,14 @@ _client = None
 _collection = None
 _chat_collection = None
 _audit_collection = None
+_users_collection = None
+_complaints_collection = None
 _db_enabled = False
 _fallback_store = []  # used only if MongoDB isn't configured/reachable
 _chat_fallback_store = {} # {session_id: [messages]}
 _audit_fallback_store = []  # in-memory audit log — NOT persistent
+_users_fallback_store = {} # {username: {hash, role}}
+_complaints_fallback_store = []
 
 def _try_connect():
     """Attempt a MongoDB connection once, at import time. Never raises --
@@ -45,6 +49,8 @@ def _try_connect():
         _collection = db["flagged_messages"]
         _chat_collection = db["chat_history"]
         _audit_collection = db["audit_logs"]
+        _users_collection = db["users"]
+        _complaints_collection = db["complaints"]
         _db_enabled = True
         print("[db] Connected to MongoDB -- flagged messages will persist.")
     except Exception as e:
@@ -57,6 +63,9 @@ def _try_connect():
         _client = None
         _collection = None
         _chat_collection = None
+        _audit_collection = None
+        _users_collection = None
+        _complaints_collection = None
         _db_enabled = False
 
 
@@ -378,6 +387,52 @@ def save_chat_session(session_id: str, messages: list) -> None:
         )
     else:
         _chat_fallback_store[session_id] = messages
+
+# ── User Accounts ──
+
+def get_user(username: str) -> dict:
+    if _db_enabled:
+        return _users_collection.find_one({"username": username}, {"_id": 0})
+    return _users_fallback_store.get(username)
+
+def create_user(username: str, password_hash: str, role: str = "User") -> bool:
+    if get_user(username):
+        return False
+    user_doc = {"username": username, "password_hash": password_hash, "role": role, "created_at": datetime.now(timezone.utc).isoformat()}
+    if _db_enabled:
+        _users_collection.insert_one(user_doc)
+    else:
+        _users_fallback_store[username] = user_doc
+    return True
+
+# ── Complaints ──
+
+def create_complaint(user_id: str, data: dict) -> str:
+    from bson import ObjectId
+    doc = {
+        **data,
+        "user_id": user_id,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    if _db_enabled:
+        res = _complaints_collection.insert_one(doc)
+        return str(res.inserted_id)
+    else:
+        import uuid
+        doc["_id"] = str(uuid.uuid4())
+        _complaints_fallback_store.insert(0, doc)
+        return doc["_id"]
+
+def get_complaints_by_user(user_id: str) -> list:
+    if _db_enabled:
+        return list(_complaints_collection.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1))
+    return [c for c in _complaints_fallback_store if c.get("user_id") == user_id]
+
+def get_all_complaints() -> list:
+    if _db_enabled:
+        return list(_complaints_collection.find({}, {"_id": 0}).sort("created_at", -1))
+    return list(_complaints_fallback_store)
 
 # Seed mock data automatically on startup if database is empty
 seed_mock_data_if_empty()

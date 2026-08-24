@@ -380,6 +380,7 @@ def chat():
     data = request.get_json(silent=True) or {}
     session_id = data.get("session_id")
     message = data.get("message")
+    persona = data.get("persona", "user")
 
     if not session_id or not message:
         return jsonify({"error": "session_id and message are required."}), 400
@@ -392,7 +393,7 @@ def chat():
     history.append(user_msg)
     
     # Generate response
-    ai_response_text = generate_chat_response(history)
+    ai_response_text = generate_chat_response(history, persona)
     
     # Append ai response
     ai_msg = {"role": "assistant", "content": ai_response_text}
@@ -413,6 +414,8 @@ def get_chat(session_id):
 def chat_file_upload():
     """Accept a file, extract its text, and return an AI analysis."""
     session_id = request.form.get("session_id")
+    persona = request.form.get("persona", "user")
+    
     if not session_id:
         return jsonify({"error": "session_id is required."}), 400
 
@@ -451,7 +454,7 @@ def chat_file_upload():
         return jsonify({"error": "No readable text found in the file."}), 400
 
     # Run AI analysis
-    analysis = analyze_file_content(extracted_text, file.filename)
+    analysis = analyze_file_content(extracted_text, file.filename, persona)
 
     # Persist as a chat turn so the conversation remembers the file
     history = db.get_chat_session(session_id)

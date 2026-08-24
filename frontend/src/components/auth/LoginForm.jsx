@@ -3,6 +3,9 @@ import PropTypes from 'prop-types';
 import { apiClient } from '../../api/client';
 
 export default function LoginForm({ onLogin }) {
+  const [activeTab, setActiveTab] = useState('user'); // 'user' or 'org'
+  const [isSignUp, setIsSignUp] = useState(false);
+  
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -14,7 +17,12 @@ export default function LoginForm({ onLogin }) {
     setLoading(true);
 
     try {
-      const data = await apiClient('/admin/login', {
+      let endpoint = '/admin/login';
+      if (activeTab === 'user' && isSignUp) {
+        endpoint = '/admin/register';
+      }
+      
+      const data = await apiClient(endpoint, {
         method: 'POST',
         body: JSON.stringify({ username, password })
       });
@@ -28,11 +36,21 @@ export default function LoginForm({ onLogin }) {
 
   return (
     <div className="max-w-md mx-auto mt-12 card overflow-hidden animate-fade-in shadow-neon">
-      <div className="px-6 py-5 border-b border-border bg-surface-solid flex items-center justify-between">
-        <h3 className="font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
-          <span>🔒</span> Admin Access
-        </h3>
+      <div className="flex border-b border-border bg-surface-solid">
+        <button
+          className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider ${activeTab === 'user' ? 'text-primary border-b-2 border-primary' : 'text-text-muted hover:bg-surface-hover'}`}
+          onClick={() => { setActiveTab('user'); setError(''); }}
+        >
+          Victim / User
+        </button>
+        <button
+          className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider ${activeTab === 'org' ? 'text-primary border-b-2 border-primary' : 'text-text-muted hover:bg-surface-hover'}`}
+          onClick={() => { setActiveTab('org'); setError(''); setIsSignUp(false); }}
+        >
+          Organization
+        </button>
       </div>
+      
       <div className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -74,8 +92,20 @@ export default function LoginForm({ onLogin }) {
             disabled={loading}
             className="btn-primary w-full justify-center mt-2"
           >
-            {loading ? 'Authenticating...' : 'Sign In'}
+            {loading ? 'Authenticating...' : (activeTab === 'user' && isSignUp ? 'Sign Up' : 'Sign In')}
           </button>
+          
+          {activeTab === 'user' && (
+            <div className="text-center mt-4">
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-xs text-primary hover:underline"
+              >
+                {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>

@@ -2,13 +2,15 @@ import React from 'react';
 import { Bell, Settings, ShieldCheck, ChevronRight } from 'lucide-react';
 
 const PAGE_LABELS = {
-  analyze:    'Threat Hunt',
-  dashboard:  'Dashboard',
-  incidents:  'Incidents',
-  behavioral: 'Behavioral Intel',
+  analyze:          'Threat Hunt',
+  dashboard:        'Organization Dashboard',
+  incidents:        'Incidents',
+  behavioral:       'Behavioral Intel',
+  submit_complaint: 'File a Complaint',
+  my_tickets:       'My Tickets',
 };
 
-export default function Header({ activeTab, setActiveTab, token, onLogout }) {
+export default function Header({ activeTab, setActiveTab, token, onLogout, role }) {
   return (
     <header
       style={{ left: 240 }}

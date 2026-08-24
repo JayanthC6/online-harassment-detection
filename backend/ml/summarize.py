@@ -29,17 +29,16 @@ SEVERITY_MAP = {
 }
 
 
-def summarize_complaint(text: str, category: str, confidence: float) -> dict:
+def summarize_complaint(text: str, category: str, confidence: float, persona: str = "user") -> dict:
     """
-    Generate a structured incident summary using Groq for text summarization
-    and rule-based logic for severity/action.
+    Generate a structured incident summary using Groq.
 
     Returns:
         {
             "incident_description": str,  # Groq-generated summary
             "category": str,              # human-readable category
             "severity": str,              # rule-based: high/medium/low
-            "suggested_action": str,      # rule-based, NOT LLM-generated
+            "suggested_action": str,      # LLM-generated based on persona
         }
     """
     api_key = os.environ.get("GROQ_API_KEY")
@@ -50,24 +49,36 @@ def summarize_complaint(text: str, category: str, confidence: float) -> dict:
 
     client = Groq(api_key=api_key)
 
-    # The prompt explicitly forbids legal advice / citations
-    prompt = f"""Summarize the following reported incident in 2-3 clear sentences.
-Describe what happened based only on the text provided. Be factual and concise.
+    if persona == "analyst":
+        action_prompt = (
+            "2. **Suggested Action**: Recommend specific investigative tools (like IP tracking, OSINT, metadata extraction) "
+            "and tactical next steps for the organization to solve this complaint."
+        )
+        system_role = "You are a cyber threat analyst assistant for an organization. Output JSON."
+    else:
+        action_prompt = (
+            "2. **Suggested Action**: Provide empathetic, supportive advice and concrete personal safety steps "
+            "(e.g., blocking, documenting, reporting to authorities)."
+        )
+        system_role = "You are an empathetic cyber safety assistant for a victim. Output JSON."
 
-IMPORTANT: Do NOT reference any laws, legal codes, statutes, regulations,
-or provide any form of legal advice. Do NOT generate legal citations.
-Only describe what the text says in plain language.
+    prompt = f"""Analyze the following reported incident:
 
 Reported text: "{text}"
+Detected Category: {category}
 
-Respond with ONLY the summary paragraph, nothing else."""
+Please provide a JSON object with exactly two keys:
+1. "incident_description": A 2-3 sentence factual summary of what happened.
+2. "suggested_action": {action_prompt}
+
+Respond ONLY with valid JSON."""
 
     try:
         chat_completion = client.chat.completions.create(
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a content moderation assistant that summarizes reported incidents. You never provide legal advice or cite laws.",
+                    "content": system_role,
                 },
                 {
                     "role": "user",
@@ -76,13 +87,19 @@ Respond with ONLY the summary paragraph, nothing else."""
             ],
             model="qwen/qwen3.6-27b",
             temperature=0.3,
-            max_tokens=200,
+            max_tokens=300,
+            response_format={"type": "json_object"}
         )
-        incident_description = chat_completion.choices[0].message.content.strip()
         import re
-        incident_description = re.sub(r'<think>.*?</think>', '', incident_description, flags=re.DOTALL).strip()
+        content = chat_completion.choices[0].message.content.strip()
+        content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+        data = json.loads(content)
+        incident_description = data.get("incident_description", "")
+        suggested_action = data.get("suggested_action", "")
     except Exception as e:
-        raise RuntimeError(f"Groq API call failed: {str(e)}")
+        print(f"Groq summarize error: {e}")
+        incident_description = text[:100] + "..."
+        suggested_action = ACTION_MAP.get(category, ACTION_MAP["none"])
 
     # Category label mapping
     category_labels = {
@@ -95,7 +112,7 @@ Respond with ONLY the summary paragraph, nothing else."""
         "incident_description": incident_description,
         "category": category_labels.get(category, category),
         "severity": SEVERITY_MAP.get(category, "low"),
-        "suggested_action": ACTION_MAP.get(category, ACTION_MAP["none"]),
+        "suggested_action": suggested_action,
     }
 
 def summarize_conversation(messages: list, risk_score: float) -> dict:

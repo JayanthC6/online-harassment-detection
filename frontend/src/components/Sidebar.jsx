@@ -1,14 +1,24 @@
 import React from 'react';
-import { LayoutDashboard, Search, AlertTriangle, Brain, Settings, Bell, ShieldCheck } from 'lucide-react';
+import PropTypes from 'prop-types';
+import { LayoutDashboard, Search, AlertTriangle, Brain, ShieldCheck } from 'lucide-react';
 
-const NAV = [
-  { id: 'dashboard',  label: 'Dashboard',         icon: LayoutDashboard },
-  { id: 'analyze',    label: 'Threat Hunt',        icon: Search },
-  { id: 'incidents',  label: 'Incidents',          icon: AlertTriangle },
-  { id: 'behavioral', label: 'Behavioral Intel',   icon: Brain },
-];
+export default function Sidebar({ activeTab, setActiveTab, role }) {
+  const isUserRole = role === 'User';
+  
+  const orgNavItems = [
+    { id: 'dashboard',  label: 'Dashboard',      icon: LayoutDashboard },
+    { id: 'analyze',    label: 'Threat Hunt',    icon: Search },
+    { id: 'incidents',  label: 'Incidents',      icon: AlertTriangle },
+    { id: 'behavioral', label: 'Behavioral Intel', icon: Brain },
+  ];
+  
+  const userNavItems = [
+    { id: 'submit_complaint', label: 'File Complaint', icon: AlertTriangle },
+    { id: 'my_tickets', label: 'My Tickets', icon: LayoutDashboard },
+  ];
+  
+  const navItems = isUserRole ? userNavItems : orgNavItems;
 
-export default function Sidebar({ activeTab, setActiveTab }) {
   return (
     <aside
       style={{ width: 240 }}
@@ -27,7 +37,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         <p className="section-title px-2 mt-2 mb-3">Main Menu</p>
-        {NAV.map(({ id, label, icon: Icon }) => (
+        {navItems.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
@@ -41,17 +51,13 @@ export default function Sidebar({ activeTab, setActiveTab }) {
 
       {/* Footer */}
       <div className="p-3 border-t border-border flex-shrink-0">
-        <button className="nav-item">
-          <Settings size={15} />
-          <span>Settings</span>
-        </button>
         <div className="flex items-center gap-3 mt-3 px-3 py-2">
           <div className="w-7 h-7 rounded-full bg-blue-muted border border-border-2 flex items-center justify-center flex-shrink-0">
             <ShieldCheck size={13} className="text-blue" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-text-primary truncate">Admin</p>
-            <p className="text-2xs text-text-muted">Level 4 Access</p>
+            <p className="text-xs font-semibold text-text-primary truncate">{role || 'Admin'}</p>
+            <p className="text-2xs text-text-muted">Access Level: {role ? 'Standard' : 'Level 4'}</p>
           </div>
         </div>
       </div>

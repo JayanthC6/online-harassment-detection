@@ -89,17 +89,29 @@ export function useAdminData(refreshKey) {
     }
   }, []);
 
+  const [complaintsData, setComplaintsData] = useState([]);
+  
+  const fetchComplaints = useCallback(async () => {
+    try {
+      const r = await apiClient('/admin/complaints');
+      setComplaintsData(r.complaints || []);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     setLoading(true);
-    Promise.all([fetchStats(), fetchReports(), fetchConversations(), fetchProfiles()]).finally(() => setLoading(false));
-  }, [refreshKey, fetchStats, fetchReports, fetchConversations, fetchProfiles]);
+    Promise.all([fetchStats(), fetchReports(), fetchConversations(), fetchProfiles(), fetchComplaints()]).finally(() => setLoading(false));
+  }, [refreshKey, fetchStats, fetchReports, fetchConversations, fetchProfiles, fetchComplaints]);
 
   return {
     stats,
     reportsData,
     conversationsData,
     profilesData,
+    complaintsData,
     analytics,
     dailyCounts,
     anomalies,

@@ -19,7 +19,7 @@ def _strip_think(text: str) -> str:
     return clean if clean else text
 
 
-def generate_chat_response(history: list) -> str:
+def generate_chat_response(history: list, persona: str = "user") -> str:
     """
     Generates a chatbot response using the Groq API.
     Only answers questions related to cyber crimes, digital safety,
@@ -27,6 +27,7 @@ def generate_chat_response(history: list) -> str:
 
     Args:
         history: list of {"role": "user"|"assistant", "content": str}
+        persona: "user" (empathetic/safety) or "analyst" (investigative/tactical)
 
     Returns:
         Markdown-formatted response string.
@@ -36,15 +37,26 @@ def generate_chat_response(history: list) -> str:
     except RuntimeError as e:
         return f"System error: {e}. The cyber assistant is unavailable."
 
-    system_prompt = {
-        "role": "system",
-        "content": (
+    if persona == "analyst":
+        system_content = (
+            "You are ShieldAI's senior cyber investigator and analyst assistant. "
+            "Your role is to assist the organization in analyzing complaints. "
+            "You should suggest standard investigative tools like IP tracking, OSINT (Open Source Intelligence), "
+            "metadata extraction, and cross-referencing logs. Suggest actionable next steps for the analyst to solve the complaint. "
+            "Keep your responses concise, highly tactical, and formatted in Markdown."
+        )
+    else:
+        system_content = (
             "You are ShieldAI's cyber security assistant. You must ONLY provide information "
             "related to cyber crimes, digital safety, incident file details, and cyber news. "
-            "If the user asks about anything else (e.g., cooking recipes, general programming, sports, etc.), "
-            "politely decline and remind them that you are a specialized cyber security assistant. "
+            "Provide empathetic, supportive, and actionable personal safety steps (like blocking, documenting, reporting to authorities). "
+            "If the user asks about anything else, politely decline and remind them that you are a specialized cyber security assistant. "
             "Keep your responses concise, informative, and formatted in Markdown."
-        ),
+        )
+
+    system_prompt = {
+        "role": "system",
+        "content": system_content,
     }
 
     formatted_messages = [system_prompt]

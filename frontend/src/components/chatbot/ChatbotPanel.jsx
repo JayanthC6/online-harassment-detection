@@ -21,7 +21,7 @@ function FilePreview({ file, onRemove }) {
   );
 }
 
-export default function ChatbotPanel() {
+export default function ChatbotPanel({ role }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -48,14 +48,17 @@ export default function ChatbotPanel() {
         if (data.messages && data.messages.length > 0) {
           setMessages(data.messages);
         } else {
+          const isOrg = role && role !== 'User';
           setMessages([{
             role: 'assistant',
-            content: 'Hello! I am your **ShieldAI Cyber Assistant**.\n\nI can help you with:\n- 🛡️ Cyber crime information\n- 📁 File analysis & summaries\n- 📰 Cyber security news\n- 🔐 Digital safety guidance\n\nYou can also **upload a file** (PDF, DOCX, TXT, images…) and I will analyze it for you.'
+            content: isOrg 
+              ? 'Hello! I am your **ShieldAI Investigative Analyst**.\n\nI can help you with:\n- 🛡️ Analyzing cyber threats\n- 📁 Evidence processing\n- 🔍 Recommending investigative tools (OSINT, IP tracking)\n- 🔐 Correlating threat actors'
+              : 'Hello! I am your **ShieldAI Cyber Assistant**.\n\nI can help you with:\n- 🛡️ Cyber crime information\n- 📁 File analysis & summaries\n- 📰 Cyber security news\n- 🔐 Digital safety guidance\n\nYou can also **upload a file** (PDF, DOCX, TXT, images…) and I will analyze it for you.'
           }]);
         }
       })
       .catch(() => {});
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -103,6 +106,8 @@ export default function ChatbotPanel() {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('session_id', sessionId);
+        const persona = role && role !== 'User' ? 'analyst' : 'user';
+        formData.append('persona', persona);
 
         const res = await fetch('/chat/file', { method: 'POST', body: formData });
         const data = await res.json();
@@ -134,10 +139,11 @@ export default function ChatbotPanel() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
     try {
+      const persona = role && role !== 'User' ? 'analyst' : 'user';
       const res = await fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, message: userMessage })
+        body: JSON.stringify({ session_id: sessionId, message: userMessage, persona })
       });
       const data = await res.json();
       setMessages(prev => [...prev, {
@@ -175,7 +181,9 @@ export default function ChatbotPanel() {
               <ShieldAlert size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-text-primary">Cyber Assistant</h3>
+              <h3 className="text-sm font-bold text-text-primary">
+                {role && role !== 'User' ? 'Investigative Analyst' : 'Cyber Assistant'}
+              </h3>
               <p className="text-xs text-blue flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue animate-pulse inline-block" />
                 Online · PDF, DOCX, TXT supported
