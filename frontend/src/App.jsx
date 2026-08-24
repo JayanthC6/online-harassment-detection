@@ -4,10 +4,13 @@ import Dashboard from './components/Dashboard'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import ChatbotPanel from './components/chatbot/ChatbotPanel'
+import { useAuth } from './hooks/useAuth'
+import LoginForm from './components/auth/LoginForm'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('analyze')
   const [refreshKey, setRefreshKey] = useState(0)
+  const { token, login, logout } = useAuth()
 
   const PAGE_TITLES = {
     analyze:    { title: 'Threat Hunt', sub: 'Analyze content for digital safety threats' },
@@ -17,10 +20,12 @@ export default function App() {
   }
   const page = PAGE_TITLES[activeTab] || PAGE_TITLES.analyze
 
+  const isProtectedTab = activeTab === 'dashboard' || activeTab === 'incidents' || activeTab === 'behavioral';
+
   return (
     <div className="bg-bg min-h-screen text-text-primary font-sans antialiased">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-      <Header  activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Header  activeTab={activeTab} setActiveTab={setActiveTab} token={token} onLogout={logout} />
 
       {/* Main content — offset for sidebar + header */}
       <main
@@ -34,17 +39,29 @@ export default function App() {
             <p className="text-sm text-text-muted mt-0.5">{page.sub}</p>
           </div>
 
-          {/* Tabs */}
-          {activeTab === 'analyze' && (
-            <div className="animate-fade-in">
-              <AnalyzeForm onNewResult={() => setRefreshKey(k => k + 1)} />
+          {/* Unauthenticated Access to Protected Tab */}
+          {!token && isProtectedTab ? (
+            <div className="animate-fade-in mt-10">
+              <div className="max-w-md mx-auto text-center mb-6">
+                <p className="text-text-muted">You must be logged in to view this section.</p>
+              </div>
+              <LoginForm onLogin={login} />
             </div>
-          )}
+          ) : (
+            <>
+              {/* Tabs */}
+              {activeTab === 'analyze' && (
+                <div className="animate-fade-in">
+                  <AnalyzeForm onNewResult={() => setRefreshKey(k => k + 1)} />
+                </div>
+              )}
 
-          {(activeTab === 'dashboard' || activeTab === 'incidents' || activeTab === 'behavioral') && (
-            <div className="animate-fade-in">
-              <Dashboard refreshKey={refreshKey} activeTab={activeTab} />
-            </div>
+              {isProtectedTab && (
+                <div className="animate-fade-in">
+                  <Dashboard refreshKey={refreshKey} activeTab={activeTab} />
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>

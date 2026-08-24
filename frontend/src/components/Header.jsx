@@ -8,7 +8,7 @@ const PAGE_LABELS = {
   behavioral: 'Behavioral Intel',
 };
 
-export default function Header({ activeTab, setActiveTab }) {
+export default function Header({ activeTab, setActiveTab, token, onLogout }) {
   return (
     <header
       style={{ left: 240 }}
@@ -23,6 +23,14 @@ export default function Header({ activeTab, setActiveTab }) {
 
       {/* Actions */}
       <div className="flex items-center gap-1">
+        {token && (
+          <button 
+            onClick={onLogout}
+            className="text-xs font-mono px-3 py-1 mr-2 rounded bg-surface-3 text-text-muted hover:text-text-primary hover:bg-surface-solid border border-border transition-colors"
+          >
+            Logout
+          </button>
+        )}
         <button className="w-8 h-8 rounded-md flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-3 transition-colors">
           <Bell size={16} />
         </button>

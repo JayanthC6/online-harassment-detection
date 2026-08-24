@@ -17,8 +17,9 @@ export default function AnalyzeForm({ onNewResult }) {
   const [audioFile, setAudioFile] = useState(null)
   const [importFile, setImportFile] = useState(null)
   const [messages, setMessages] = useState([{ text: '', sender: 'User 1' }])
+  const [documentFile, setDocumentFile] = useState(null)
   
-  const { loading, error, result, predictText, predictAudio, predictConversation, importConversation } = usePredict()
+  const { loading, error, result, predictText, predictAudio, predictConversation, importConversation, predictFile } = usePredict()
 
   /* ── Text analysis ── */
   const handleAnalyze = async () => {
@@ -31,6 +32,13 @@ export default function AnalyzeForm({ onNewResult }) {
   const handleAudioAnalyze = async () => {
     if (!audioFile) return
     const data = await predictAudio(audioFile, actorId)
+    if (data && onNewResult) onNewResult(data)
+  }
+
+  /* ── File analysis ── */
+  const handleFileAnalyze = async () => {
+    if (!documentFile) return
+    const data = await predictFile(documentFile, actorId)
     if (data && onNewResult) onNewResult(data)
   }
 
@@ -82,6 +90,12 @@ export default function AnalyzeForm({ onNewResult }) {
             className={`tab-btn ${mode === 'conversation' ? 'active' : ''}`}
           >
             <MessageSquare size={14} /> Conversation
+          </button>
+          <button
+            onClick={() => setMode('file')}
+            className={`tab-btn ${mode === 'file' ? 'active' : ''}`}
+          >
+            <FileText size={14} /> File Document
           </button>
         </div>
 
@@ -219,7 +233,7 @@ export default function AnalyzeForm({ onNewResult }) {
               </div>
             )}
           </>
-        ) : (
+        ) : mode === 'audio' ? (
           /* ── Audio upload ── */
           <>
             <p className="section-title">Audio / Video Upload</p>
@@ -258,7 +272,46 @@ export default function AnalyzeForm({ onNewResult }) {
               </Button>
             </div>
           </>
-        )}
+        ) : mode === 'file' ? (
+          /* ── File upload ── */
+          <>
+            <p className="section-title">File Upload</p>
+            
+            <div className="mb-4">
+              <input 
+                type="text" 
+                value={actorId}
+                onChange={(e) => setActorId(e.target.value)}
+                className="input max-w-xs"
+                placeholder="Actor ID (optional)"
+              />
+            </div>
+
+            <FileUpload
+              file={documentFile}
+              onFileSelect={setDocumentFile}
+              accept=".txt,.pdf,.png,.jpg,.jpeg"
+              icon={<FileText className="mx-auto h-8 w-8 text-text-muted mb-2" />}
+              activeClasses={{
+                container: '!border-blue !bg-blue-muted',
+                text: 'text-text-primary'
+              }}
+              titleText="Drop a document or image file here"
+              supportedText="Supported: TXT, PDF, PNG, JPG (max 50MB)"
+            />
+
+            <div className="flex justify-end mt-4">
+              <Button
+                onClick={handleFileAnalyze}
+                disabled={!documentFile}
+                loading={loading}
+                loadingText="Extracting & analyzing..."
+              >
+                <Search size={16} /> Analyze File
+              </Button>
+            </div>
+          </>
+        ) : null}
       </Card>
 
       <ErrorAlert error={error} />

@@ -27,43 +27,43 @@ export default function LoginForm({ onLogin }) {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-12 bg-panel border border-slate-700 overflow-hidden">
-      <div className="px-6 py-5 border-b border-slate-700 bg-ink flex items-center justify-between">
-        <h3 className="font-bold text-off-white font-display uppercase tracking-wider flex items-center gap-2">
-          <span>🔒</span> Admin Login
+    <div className="max-w-md mx-auto mt-12 card overflow-hidden animate-fade-in shadow-neon">
+      <div className="px-6 py-5 border-b border-border bg-surface-solid flex items-center justify-between">
+        <h3 className="font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
+          <span>🔒</span> Admin Access
         </h3>
       </div>
       <div className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 bg-slate-900 border-l-4 border-redaction-red text-redaction-red text-sm font-mono">
+            <div className="p-3 bg-critical-bg border-l-4 border-critical text-critical text-sm font-mono">
               {error}
             </div>
           )}
           
           <div>
-            <label className="block text-xs font-bold text-slate-500 font-mono uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-text-muted font-mono uppercase tracking-wider mb-1">
               Username
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="input-dark w-full px-3 py-2 text-sm"
+              className="input w-full"
               placeholder="Enter username"
               required
             />
           </div>
           
           <div>
-            <label className="block text-xs font-bold text-slate-500 font-mono uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-text-muted font-mono uppercase tracking-wider mb-1">
               Password
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="input-dark w-full px-3 py-2 text-sm"
+              className="input w-full"
               placeholder="Enter password"
               required
             />
@@ -72,9 +72,9 @@ export default function LoginForm({ onLogin }) {
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary w-full justify-center"
+            className="btn-primary w-full justify-center mt-2"
           >
-            {loading ? 'Logging in...' : 'Sign In'}
+            {loading ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>
       </div>

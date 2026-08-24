@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { Layers, Activity, Terminal, Lightbulb, Link } from 'lucide-react';
+import { Layers, Activity, Terminal, Lightbulb, Link, Sparkles } from 'lucide-react';
 import Card from './common/Card';
 import RiskBadge from './prediction/RiskBadge';
 import ConfidenceBar from './prediction/ConfidenceBar';
@@ -101,6 +101,18 @@ export default function ResultDisplay({ result }) {
           />
         </Card>
       </div>
+
+      {result.bot_summary_text && (
+        <Card className="bg-blue-muted border-blue">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles size={16} className="text-blue" />
+            <p className="section-title mb-0 text-blue font-bold text-sm">AI Agent Analysis & Recommended Action</p>
+          </div>
+          <div className="text-sm text-text-primary mt-2 whitespace-pre-wrap leading-relaxed">
+            {result.bot_summary_text}
+          </div>
+        </Card>
+      )}
 
       {/* Third row: Evidence panel */}
       <Card className="terminal-block">
