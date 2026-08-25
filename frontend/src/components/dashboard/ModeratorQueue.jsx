@@ -268,7 +268,9 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                       {new Date(c.created_at).toLocaleString()}
                     </td>
                     <td className="px-5 py-3">
-                      <span className="text-xs font-mono bg-surface-3 px-2 py-1 rounded text-text-muted">{c.user_id.substring(0, 8)}...</span>
+                      <span className="text-xs font-mono bg-surface-3 px-2 py-1 rounded text-text-muted">
+                        {(c.user_id || c.actor_id || 'anonymous').substring(0, 8)}...
+                      </span>
                     </td>
                     <td className="px-5 py-3">
                       <div className="max-w-[320px] truncate text-text-primary text-sm">

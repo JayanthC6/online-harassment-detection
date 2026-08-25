@@ -8,6 +8,7 @@ import { useAuth } from './hooks/useAuth'
 import LoginForm from './components/auth/LoginForm'
 import SubmitComplaint from './components/complaints/SubmitComplaint'
 import MyTickets from './components/complaints/MyTickets'
+import HowItWorks from './components/common/HowItWorks'
 
 export default function App() {
   const { token, role, login, logout } = useAuth()
@@ -35,13 +36,30 @@ export default function App() {
     dashboard:        { title: 'Organization Dashboard',  sub: 'Overview of all reported incidents' },
     incidents:        { title: 'Complaint Queue',  sub: 'Review and triage user complaints' },
     behavioral:       { title: 'Behavioral Intelligence', sub: 'Actor profiling and risk trends' },
+    how_it_works:     { title: 'How It Works', sub: 'Understanding the ShieldAI Platform' },
   }
   
   const page = PAGE_TITLES[activeTab] || PAGE_TITLES.login
 
   if (!token) {
+    if (activeTab === 'how_it_works') {
+      return (
+        <div className="bg-bg min-h-screen text-text-primary font-sans antialiased">
+          <HowItWorks onBack={() => setActiveTab('login')} />
+        </div>
+      );
+    }
+    
     return (
-      <div className="bg-bg min-h-screen text-text-primary font-sans antialiased flex flex-col items-center justify-center">
+      <div className="bg-bg min-h-screen text-text-primary font-sans antialiased flex flex-col items-center justify-center relative">
+         <div className="absolute top-6 right-6">
+           <button 
+             onClick={() => setActiveTab('how_it_works')}
+             className="text-sm font-semibold text-text-muted hover:text-primary transition-colors flex items-center gap-1.5"
+           >
+             How It Works
+           </button>
+         </div>
          <div className="mb-6 text-center">
             <h1 className="text-3xl font-bold text-text-primary">{page.title}</h1>
             <p className="text-text-muted mt-2">{page.sub}</p>
@@ -81,6 +99,12 @@ export default function App() {
             {isUserRole && activeTab === 'my_tickets' && (
               <div className="animate-fade-in">
                 <MyTickets refreshKey={refreshKey} />
+              </div>
+            )}
+
+            {isUserRole && activeTab === 'how_it_works' && (
+              <div className="animate-fade-in bg-surface-solid rounded-lg border border-border shadow-sm">
+                <HowItWorks />
               </div>
             )}
 

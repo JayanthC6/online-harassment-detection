@@ -1,0 +1,9 @@
+Use the platform's native reporting tool (usually found via a flag icon or a menu in the user's profile).
+
+### 🚨 Critical Resources (Verified)
+- **helpline_title**: National Cyber Crime Reporting Portal
+- **helpline_desc**: For immediate assistance regarding cybercrime, financial fraud, or severe online threats.
+- **url**: https://cybercrime.gov.in
+- **primary_phone**: 1930 (24/7 helpline by I4C, MHA)
+- **women_helpline_title**: National Women Helpline
+- **women_helpline_phone**: 181

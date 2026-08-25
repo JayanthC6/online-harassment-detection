@@ -14,22 +14,7 @@ Requires GROQ_API_KEY in .env (never hardcoded or committed).
 import os
 import json
 
-
-# ── Rule-based action suggestions (NOT LLM-generated) ──
-ACTION_MAP = {
-    "hate_speech": "Report to platform administrators immediately. Preserve all evidence including screenshots and timestamps. Consider reporting to relevant authorities if the content contains direct threats.",
-    "offensive_language": "Document the incident with screenshots and timestamps. Report the content through the platform's reporting mechanism. Block the offending user if the platform supports it.",
-    "none": "No immediate action required. Continue monitoring for patterns of escalation.",
-}
-
-SEVERITY_MAP = {
-    "hate_speech": "high",
-    "offensive_language": "medium",
-    "none": "low",
-}
-
-
-def summarize_complaint(text: str, category: str, confidence: float, persona: str = "user") -> dict:
+def summarize_complaint(text: str, category: str, confidence: float, risk_score: float = 0.0, persona: str = "user") -> dict:
     """
     Generate a structured incident summary using Groq.
 
@@ -46,21 +31,44 @@ def summarize_complaint(text: str, category: str, confidence: float, persona: st
         raise ValueError("GROQ_API_KEY not set in environment. Add it to backend/.env")
 
     from groq import Groq
+    from services.guidance_service import GuidanceService
 
     client = Groq(api_key=api_key)
 
-    if persona == "analyst":
-        action_prompt = (
-            "2. **Suggested Action**: Recommend specific investigative tools (like IP tracking, OSINT, metadata extraction) "
-            "and tactical next steps for the organization to solve this complaint."
-        )
-        system_role = "You are a cyber threat analyst assistant for an organization. Output JSON."
+    # 1. Fetch real, verified safety content for BOTH personas so severity matches
+    guidance_data = GuidanceService.get_guidance(category, confidence, {}, risk_score)
+    
+    # Derive severity logically since GuidanceService does not return 'tier'
+    if guidance_data.get("show_critical_resources"):
+        severity = "Critical"
+    elif risk_score >= 60:
+        severity = "High"
+    elif risk_score >= 30:
+        severity = "Medium"
     else:
+        severity = "Low"
+        
+    fallback_action = guidance_data.get("report_instructions", "No immediate action required.")
+
+    if persona == "user":
+        # 2. Extract only safe-to-paraphrase content for the LLM
+        llm_context = {
+            "evidence_checklist": guidance_data.get("evidence_checklist", []),
+            "report_instructions": fallback_action,
+            "block_instructions": guidance_data.get("block_instructions", "")
+        }
+        
         action_prompt = (
-            "2. **Suggested Action**: Provide empathetic, supportive advice and concrete personal safety steps "
-            "(e.g., blocking, documenting, reporting to authorities)."
+            "2. **Suggested Action**: Use the following VERIFIED steps as the core substance of your advice. "
+            f"Do not invent new procedures. Rephrase empathetically: {json.dumps(llm_context)}"
         )
         system_role = "You are an empathetic cyber safety assistant for a victim. Output JSON."
+    else:
+        action_prompt = (
+            "2. **Suggested Action**: Recommend tactical next steps using only available data (fusion evidence, threat intel data, "
+            "behavioral profiles, risk scores). Do not suggest IP tracking or OSINT."
+        )
+        system_role = "You are a cyber threat analyst assistant for an organization. Output JSON."
 
     prompt = f"""Analyze the following reported incident:
 
@@ -99,7 +107,16 @@ Respond ONLY with valid JSON."""
     except Exception as e:
         print(f"Groq summarize error: {e}")
         incident_description = text[:100] + "..."
-        suggested_action = ACTION_MAP.get(category, ACTION_MAP["none"])
+        suggested_action = fallback_action
+
+    # 4. Programmatically append Critical Resources (UNTOUCHED BY LLM)
+    if persona == "user" and guidance_data.get("show_critical_resources"):
+        resources = guidance_data.get("critical_resources", {})
+        if resources:
+            block = "\n\n### 🚨 Critical Resources (Verified)\n"
+            for title, details in resources.items():
+                block += f"- **{title}**: {details}\n"
+            suggested_action += block
 
     # Category label mapping
     category_labels = {
@@ -110,8 +127,8 @@ Respond ONLY with valid JSON."""
 
     return {
         "incident_description": incident_description,
-        "category": category_labels.get(category, category),
-        "severity": SEVERITY_MAP.get(category, "low"),
+        "category": category_labels.get(category, category.title() if category else "Unknown"),
+        "severity": severity,
         "suggested_action": suggested_action,
     }
 

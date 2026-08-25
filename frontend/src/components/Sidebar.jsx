@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { LayoutDashboard, Search, AlertTriangle, Brain, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Search, AlertTriangle, Brain, ShieldCheck, HelpCircle } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, role }) {
   const isUserRole = role === 'User';
@@ -15,6 +15,7 @@ export default function Sidebar({ activeTab, setActiveTab, role }) {
   const userNavItems = [
     { id: 'submit_complaint', label: 'File Complaint', icon: AlertTriangle },
     { id: 'my_tickets', label: 'My Tickets', icon: LayoutDashboard },
+    { id: 'how_it_works', label: 'How It Works', icon: HelpCircle },
   ];
   
   const navItems = isUserRole ? userNavItems : orgNavItems;

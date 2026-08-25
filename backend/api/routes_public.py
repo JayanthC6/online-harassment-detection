@@ -94,6 +94,52 @@ def predict():
     result.pop("embedding", None)
     return jsonify(result)
 
+DEMO_EXAMPLES = {
+    "harassment_example": "Everyone would be better off if you just disappeared. We know you don't belong here, and soon everyone else will too.",
+    "phishing_example": "URGENT: Your account has been suspended for security reasons. Click here to verify your identity immediately: http://paypa1.com/account-verify-now",
+    "threat_example": "I know where you live. If you don't send me $5000 in Bitcoin by tomorrow, I will ruin your life and hurt your family.",
+    "clean_example": "Hey, are we still meeting for lunch tomorrow at 12? Let me know!"
+}
+
+@public_bp.route("/demo/analyze", methods=["POST"])
+@limiter.limit("5 per minute")
+def demo_analyze():
+    data = request.get_json(silent=True) or {}
+    example_id = data.get("example_id")
+    
+    if example_id not in DEMO_EXAMPLES:
+        return jsonify({"error": "Invalid or missing example_id. Only preset examples are permitted."}), 400
+        
+    text = DEMO_EXAMPLES[example_id]
+    
+    # Process the text using the ML pipeline
+    result = PredictionService.classify_text(text)
+    result["text_preview"] = text[:120]
+    result["timestamp"] = datetime.utcnow().isoformat()
+    result["actor_id"] = "DemoVisitor"
+    result = PredictionService.attach_risk_and_similarity(result, text)
+    
+    # Generate guidance without persisting to DB
+    try:
+        from services.guidance_service import GuidanceService
+        primary_label = result.get("primary_label", "none")
+        risk_score = result.get("risk_score", 0)
+        
+        guidance_data = GuidanceService.get_guidance(primary_label, risk_score)
+        result["severity"] = guidance_data.get("severity", "Low")
+        
+        checklist = guidance_data.get("evidence_checklist", [])
+        if checklist and len(checklist) > 0:
+            result["guidance_snippet"] = checklist[0]
+        else:
+            result["guidance_snippet"] = "No specific guidance required."
+    except Exception as e:
+        result["severity"] = "Unknown"
+        result["guidance_snippet"] = "Error fetching guidance."
+        
+    result.pop("embedding", None)
+    return jsonify(result)
+
 @public_bp.route("/predict/batch", methods=["POST"])
 def predict_batch():
     data = request.get_json(silent=True) or {}

@@ -9,7 +9,7 @@ MAX_LOG_ENTRIES = 500
 class AdminService:
     @staticmethod
     def log_conversation(entry: dict) -> None:
-        entry = {**entry, "logged_at": datetime.now(timezone.utc).isoformat()}
+        entry["logged_at"] = datetime.now(timezone.utc).isoformat()
         if db_instance.is_persistent:
             db_instance.conversations.insert_one(entry)
         else:
@@ -21,7 +21,7 @@ class AdminService:
 
     @staticmethod
     def log_message(entry: dict) -> None:
-        entry = {**entry, "logged_at": datetime.now(timezone.utc).isoformat()}
+        entry["logged_at"] = datetime.now(timezone.utc).isoformat()
         if db_instance.is_persistent:
             db_instance.collection.insert_one(entry)
         else:
