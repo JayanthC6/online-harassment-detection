@@ -123,9 +123,13 @@ def demo_analyze():
     try:
         from services.guidance_service import GuidanceService
         primary_label = result.get("primary_label", "none")
+        primary_confidence = result.get("confidence", 0.0)
+        secondary_labels = result.get("secondary_labels", {})
         risk_score = result.get("risk_score", 0)
         
-        guidance_data = GuidanceService.get_guidance(primary_label, risk_score)
+        guidance_data = GuidanceService.get_guidance(
+            primary_label, primary_confidence, secondary_labels, risk_score
+        )
         result["severity"] = guidance_data.get("severity", "Low")
         
         checklist = guidance_data.get("evidence_checklist", [])
@@ -135,7 +139,7 @@ def demo_analyze():
             result["guidance_snippet"] = "No specific guidance required."
     except Exception as e:
         result["severity"] = "Unknown"
-        result["guidance_snippet"] = "Error fetching guidance."
+        result["guidance_snippet"] = f"Error fetching guidance: {e}"
         
     result.pop("embedding", None)
     return jsonify(result)
