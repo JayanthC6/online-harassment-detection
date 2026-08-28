@@ -64,3 +64,16 @@ class GuidanceService:
             "show_critical_resources": show_critical_resources,
             "critical_resources": config.get("critical_resources", {}) if show_critical_resources else None
         }
+
+    @classmethod
+    def compute_severity(cls, show_critical_resources, risk_score):
+        """Compute standardized severity tier based on risk score and critical flags."""
+        if show_critical_resources:
+            return "Critical"
+        elif risk_score >= 60:
+            return "High"
+        elif risk_score >= 30:
+            return "Medium"
+        else:
+            return "Low"
+

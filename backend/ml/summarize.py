@@ -39,14 +39,10 @@ def summarize_complaint(text: str, category: str, confidence: float, risk_score:
     guidance_data = GuidanceService.get_guidance(category, confidence, {}, risk_score)
     
     # Derive severity logically since GuidanceService does not return 'tier'
-    if guidance_data.get("show_critical_resources"):
-        severity = "Critical"
-    elif risk_score >= 60:
-        severity = "High"
-    elif risk_score >= 30:
-        severity = "Medium"
-    else:
-        severity = "Low"
+    severity = GuidanceService.compute_severity(
+        guidance_data.get("show_critical_resources", False), 
+        risk_score
+    )
         
     fallback_action = guidance_data.get("report_instructions", "No immediate action required.")
 

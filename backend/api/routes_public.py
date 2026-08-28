@@ -131,14 +131,10 @@ def demo_analyze():
             primary_label, primary_confidence, secondary_labels, risk_score
         )
         
-        if guidance_data.get("show_critical_resources"):
-            result["severity"] = "Critical"
-        elif risk_score >= 80:
-            result["severity"] = "High"
-        elif risk_score >= 60:
-            result["severity"] = "Medium"
-        else:
-            result["severity"] = "Low"
+        result["severity"] = GuidanceService.compute_severity(
+            guidance_data.get("show_critical_resources", False),
+            risk_score
+        )
         
         checklist = guidance_data.get("evidence_checklist", [])
         if checklist and len(checklist) > 0:
