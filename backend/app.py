@@ -35,5 +35,12 @@ app.register_blueprint(public_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(complaints_bp)
 
+@app.errorhandler(404)
+def not_found(e):
+    from flask import jsonify, request
+    if request.path.startswith('/api/') or request.path.startswith('/demo/') or request.accept_mimetypes.accept_json:
+        return jsonify(error="Not found"), 404
+    return jsonify(error="Not found"), 404
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

@@ -33,7 +33,7 @@ export default function HowItWorks({ onBack }) {
     setLoadingId(example_id);
     setError(null);
     try {
-      const res = await fetch('/api/public/demo/analyze', {
+      const res = await fetch('/api/demo/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ example_id })

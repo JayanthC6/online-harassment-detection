@@ -2,7 +2,18 @@ import { useState, useEffect } from 'react';
 
 export function useAuth() {
   const [token, setToken] = useState(() => localStorage.getItem('adminToken') || '');
-  const [role, setRole] = useState(null);
+  
+  const [role, setRole] = useState(() => {
+    const t = localStorage.getItem('adminToken');
+    if (t) {
+      try {
+        return JSON.parse(atob(t.split('.')[1])).role;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
 
   useEffect(() => {
     if (token) {
