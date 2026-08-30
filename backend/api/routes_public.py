@@ -92,6 +92,7 @@ def predict():
     AdminService.log_message(result)
 
     result.pop("embedding", None)
+    result.pop("_id", None)  # MongoDB ObjectId is not JSON serializable
     return jsonify(result)
 
 DEMO_EXAMPLES = {
