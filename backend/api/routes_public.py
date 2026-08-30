@@ -176,6 +176,7 @@ def predict_batch():
         AdminService.log_message(r)
             
         r.pop("embedding", None)
+        r.pop("_id", None)  # MongoDB ObjectId is not JSON serializable
         results.append(r)
 
     return jsonify({"results": results, "count": len(results)})

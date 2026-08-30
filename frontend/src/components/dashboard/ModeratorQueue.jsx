@@ -263,9 +263,13 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                 </tr>
               ) : (
                 (complaintsData || []).map((c, idx) => (
-                  <tr key={idx} className="hover:bg-surface-2 transition-colors group">
+                  <tr 
+                    key={idx} 
+                    className="hover:bg-surface-2 transition-colors group cursor-pointer"
+                    onClick={() => setSelectedReport(c)}
+                  >
                     <td className="px-5 py-3 text-text-muted text-xs font-mono">
-                      {new Date(c.created_at).toLocaleString()}
+                      {new Date(c.logged_at).toLocaleString()}
                     </td>
                     <td className="px-5 py-3">
                       <span className="text-xs font-mono bg-surface-3 px-2 py-1 rounded text-text-muted">

@@ -129,8 +129,12 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
         try:
             from .threat_intel import analyze_text_for_threat_intel
             threat_data = analyze_text_for_threat_intel(text)
+        except ImportError as e:
+            # Let missing dependencies bubble up loudly to avoid silent failure of a whole feature block
+            raise RuntimeError(f"Missing dependency for threat intel: {e}") from e
         except Exception as e:
-            print(f"Error fetching threat intel: {e}")
+            import logging
+            logging.error(f"Error fetching threat intel: {e}")
             threat_data = {"urls": [], "emails": []}
             
         result["threat_intel"] = threat_data
@@ -233,9 +237,9 @@ class HeuristicMultiLabelAdapter(ModelAdapter):
             if not candidates:
                 candidates = fused_labels
                 
-            # Sort candidates by (severity_tier ASC, confidence DESC)
+            # Sort candidates by (severity_tier ASC, confidence DESC, alphabetical ASC)
             # Default to tier 3 (lowest priority) if a category is missing from the mapping
-            best_label = min(candidates.keys(), key=lambda k: (severity_tiers.get(k, 3), -candidates[k]))
+            best_label = min(candidates.keys(), key=lambda k: (severity_tiers.get(k, 3), -candidates[k], k))
             best_conf = fused_labels[best_label]
             
             secondary_labels = {k: v for k, v in fused_labels.items() if k != best_label}
