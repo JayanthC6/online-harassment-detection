@@ -131,11 +131,11 @@ class AdminService:
         
         if risk_level:
             if risk_level == "high":
-                query["risk_score"] = {"$gte": 75}
+                query["severity_tier"] = {"$in": ["High", "Critical"]}
             elif risk_level == "medium":
-                query["risk_score"] = {"$gte": 40, "$lt": 75}
+                query["severity_tier"] = "Medium"
             elif risk_level == "low":
-                query["risk_score"] = {"$lt": 40}
+                query["severity_tier"] = "Low"
                 
         if date_from or date_to:
             date_query = {}
@@ -177,11 +177,11 @@ class AdminService:
                 filtered = [e for e in filtered if e.get("cluster_id") == cluster_id]
                 
             if risk_level == "high":
-                filtered = [e for e in filtered if e.get("risk_score", 0) >= 75]
+                filtered = [e for e in filtered if e.get("severity_tier", "Low") in ["High", "Critical"]]
             elif risk_level == "medium":
-                filtered = [e for e in filtered if 40 <= e.get("risk_score", 0) < 75]
+                filtered = [e for e in filtered if e.get("severity_tier", "Low") == "Medium"]
             elif risk_level == "low":
-                filtered = [e for e in filtered if e.get("risk_score", 0) < 40]
+                filtered = [e for e in filtered if e.get("severity_tier", "Low") == "Low"]
                 
             if date_from:
                 filtered = [e for e in filtered if e.get("logged_at", "") >= date_from]
@@ -420,9 +420,16 @@ class AdminService:
     @staticmethod
     def dismiss_incident(incident_id: str) -> None:
         """Mark an incident as reviewed/dismissed (sets dismissed=True)."""
+        from services.email_service import EmailService
+        actor_id_to_notify = None
+        
         if db_instance.is_persistent:
             from bson import ObjectId
             try:
+                incident = db_instance.collection.find_one({"_id": ObjectId(incident_id)})
+                if incident:
+                    actor_id_to_notify = incident.get("actor_id")
+                    
                 db_instance.collection.update_one(
                     {"_id": ObjectId(incident_id)},
                     {"$set": {"dismissed": True}},
@@ -432,15 +439,26 @@ class AdminService:
         else:
             for entry in db_instance.fallback_store:
                 if str(entry.get("_id", "")) == incident_id:
+                    actor_id_to_notify = entry.get("actor_id")
                     entry["dismissed"] = True
-                    return
+                    break
+                    
+        if actor_id_to_notify:
+            EmailService.send_status_update(actor_id_to_notify, incident_id, "dismiss")
 
     @staticmethod
     def override_classification(incident_id: str, new_label: str) -> None:
         """Override the primary label of an incident."""
+        from services.email_service import EmailService
+        actor_id_to_notify = None
+        
         if db_instance.is_persistent:
             from bson import ObjectId
             try:
+                incident = db_instance.collection.find_one({"_id": ObjectId(incident_id)})
+                if incident:
+                    actor_id_to_notify = incident.get("actor_id")
+                    
                 db_instance.collection.update_one(
                     {"_id": ObjectId(incident_id)},
                     {"$set": {"primary_label": new_label, "overridden": True}},
@@ -450,9 +468,13 @@ class AdminService:
         else:
             for entry in db_instance.fallback_store:
                 if str(entry.get("_id", "")) == incident_id:
+                    actor_id_to_notify = entry.get("actor_id")
                     entry["primary_label"] = new_label
                     entry["overridden"] = True
-                    return
+                    break
+                    
+        if actor_id_to_notify:
+            EmailService.send_status_update(actor_id_to_notify, incident_id, "override", {"new_label": new_label})
 
     @staticmethod
     def ban_actor(actor_id: str, reason: str) -> None:

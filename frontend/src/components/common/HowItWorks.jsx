@@ -1,10 +1,55 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Shield, AlertTriangle, Eye, HelpCircle, Phone, Globe, Loader2, Play } from 'lucide-react';
+import { ArrowLeft, Shield, AlertTriangle, Eye, HelpCircle, Phone, Globe, Loader2, Play, Search } from 'lucide-react';
+import { apiClient } from '../../api/client';
 
-export default function HowItWorks({ onBack }) {
+export default function HowItWorks({ onBack, isLoggedIn }) {
   const [loadingId, setLoadingId] = useState(null);
   const [results, setResults] = useState({});
   const [error, setError] = useState(null);
+
+  const [liveText, setLiveText] = useState('');
+  const [liveResult, setLiveResult] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const handleLiveScan = async () => {
+    if (!liveText.trim()) return;
+    setIsScanning(true);
+    setError(null);
+    setLiveResult(null);
+    setSubmitSuccess(false);
+    
+    try {
+      const data = await apiClient('/predict', {
+        method: 'POST',
+        body: JSON.stringify({ text: liveText, persist: false })
+      });
+      setLiveResult(data);
+    } catch (err) {
+      setError(err.message || 'Failed to analyze');
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleSubmitToAdmins = async () => {
+    if (!liveText.trim() || !liveResult) return;
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      await apiClient('/complaints', {
+        method: 'POST',
+        body: JSON.stringify({ text: liveText }),
+      });
+      setSubmitSuccess(true);
+    } catch (err) {
+      setError(err.message || 'Failed to submit complaint');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const DEMO_CARDS = [
     {
@@ -66,7 +111,7 @@ export default function HowItWorks({ onBack }) {
           Understanding ShieldAI
         </h2>
         <p className="text-text-secondary mb-8 leading-relaxed">
-          ShieldAI is a digital safety triage platform designed to help organizations and individuals securely report and analyze cyber threats.
+          ShieldAI is a digital safety triage platform designed to help organizations and analysts securely classify, prioritize, and investigate cyber threats.
         </p>
 
         <div className="space-y-8">
@@ -74,13 +119,13 @@ export default function HowItWorks({ onBack }) {
           <section>
             <h3 className="text-lg font-bold text-text-primary border-b border-border pb-2 mb-4 flex items-center gap-2">
               <span className="bg-surface-3 text-text-primary rounded-full w-6 h-6 flex items-center justify-center text-xs">1</span>
-              The Process
+              The Triage Pipeline
             </h3>
             <ul className="space-y-3 text-sm text-text-secondary list-disc pl-5">
-              <li><strong>Submit a Complaint:</strong> Provide details and any evidence (like screenshots or text logs) of the incident.</li>
-              <li><strong>AI Analysis:</strong> Our system automatically analyzes the content, identifies potential threat categories, and assigns a preliminary severity level.</li>
-              <li><strong>Analyst Review Queue:</strong> Your complaint is added to a secure queue for human review by our authorized analysts.</li>
-              <li><strong>Status Tracking:</strong> You can check your "My Tickets" tab to view the AI-generated severity and any recommended guidance actions.</li>
+              <li><strong>Data Ingestion:</strong> Incoming reports, texts, and multimodal content are securely ingested into the platform.</li>
+              <li><strong>AI Analysis:</strong> Our hybrid neurosymbolic engine analyzes the content, identifying threat vectors (like phishing, hate speech, or harassment).</li>
+              <li><strong>Scoring & Prioritization:</strong> Incidents are automatically assigned a severity score based on the risk detected, allowing analysts to focus on high-priority items.</li>
+              <li><strong>Guided Investigation:</strong> Analysts use the dashboard and behavioral intel to track malicious actors and generate compliance-ready reports.</li>
             </ul>
           </section>
 
@@ -88,13 +133,13 @@ export default function HowItWorks({ onBack }) {
           <section>
             <h3 className="text-lg font-bold text-text-primary border-b border-border pb-2 mb-4 flex items-center gap-2">
               <span className="bg-surface-3 text-text-primary rounded-full w-6 h-6 flex items-center justify-center text-xs">2</span>
-              What Can Be Reported?
+              Supported Threat Categories
             </h3>
-            <p className="text-sm text-text-secondary mb-3">You can report various forms of digital harassment and online threats, including but not limited to:</p>
+            <p className="text-sm text-text-secondary mb-3">ShieldAI's models are trained to detect and classify a wide range of digital threats, including:</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="bg-surface-2 p-3 rounded border border-border">
                 <p className="font-semibold text-text-primary text-sm mb-1">Harassment & Bullying</p>
-                <p className="text-xs text-text-muted">Repeated unwanted contact, targeted insults, or coordinated harassment.</p>
+                <p className="text-xs text-text-muted">Targeted insults, sustained harassment, and severe cyberbullying.</p>
               </div>
               <div className="bg-surface-2 p-3 rounded border border-border">
                 <p className="font-semibold text-text-primary text-sm mb-1">Threats</p>
@@ -102,26 +147,30 @@ export default function HowItWorks({ onBack }) {
               </div>
               <div className="bg-surface-2 p-3 rounded border border-border">
                 <p className="font-semibold text-text-primary text-sm mb-1">Extortion & Blackmail</p>
-                <p className="text-xs text-text-muted">Demanding money or actions under threat of exposing private information.</p>
+                <p className="text-xs text-text-muted">Ransomware demands or threats of exposing private data (doxxing/sextortion).</p>
               </div>
               <div className="bg-surface-2 p-3 rounded border border-border">
                 <p className="font-semibold text-text-primary text-sm mb-1">Phishing & Scams</p>
-                <p className="text-xs text-text-muted">Fraudulent attempts to steal credentials, money, or identity.</p>
+                <p className="text-xs text-text-muted">Fraudulent attempts to compromise credentials, including malicious URLs.</p>
               </div>
             </div>
           </section>
 
-          {/* SECTION 3: Try It Live */}
+          {/* SECTION 3: Try It Live / Scanner */}
           <section>
             <h3 className="text-lg font-bold text-text-primary border-b border-border pb-2 mb-4 flex items-center gap-2">
               <span className="bg-surface-3 text-text-primary rounded-full w-6 h-6 flex items-center justify-center text-xs">3</span>
-              Try It Live
+              {isLoggedIn ? 'Live Analysis Sandbox' : 'Try It Live'}
             </h3>
             <p className="text-sm text-text-secondary mb-4">
-              Select one of the examples below to see how our AI engine classifies content in real-time. 
-              <span className="ml-2 inline-flex items-center gap-1 bg-blue/20 text-blue px-2 py-0.5 rounded text-xs font-semibold">
-                <Play size={12} fill="currentColor" /> Live Analysis
-              </span>
+              {isLoggedIn 
+                ? "Paste a text payload or email snippet below to see how the ShieldAI engine parses and classifies the content in real-time." 
+                : "Select one of the examples below to see how our AI engine classifies content in real-time."}
+              {!isLoggedIn && (
+                <span className="ml-2 inline-flex items-center gap-1 bg-blue/20 text-blue px-2 py-0.5 rounded text-xs font-semibold">
+                  <Play size={12} fill="currentColor" /> Live Analysis
+                </span>
+              )}
             </p>
             
             {error && (
@@ -130,139 +179,114 @@ export default function HowItWorks({ onBack }) {
               </div>
             )}
 
-            <div className="space-y-4">
-              {DEMO_CARDS.map(card => {
-                const res = results[card.id];
-                const isLoading = loadingId === card.id;
+            {isLoggedIn ? (
+              <div className="bg-surface-2 p-4 rounded-lg border border-border">
+                <textarea
+                  value={liveText}
+                  onChange={(e) => setLiveText(e.target.value)}
+                  placeholder="Paste the harassing message, threat, or describe the incident here..."
+                  className="input w-full h-24 resize-none mb-3"
+                />
+                <button
+                  onClick={handleLiveScan}
+                  disabled={isScanning || !liveText.trim()}
+                  className="btn-primary flex items-center gap-2 w-full justify-center mb-4 disabled:opacity-50"
+                >
+                  {isScanning ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                  {isScanning ? 'Scanning...' : 'Scan Now'}
+                </button>
 
-                return (
-                  <div key={card.id} className="bg-surface-2 p-4 rounded-lg border border-border">
-                    <div className="flex justify-between items-start gap-4 mb-3">
-                      <div>
-                        <p className="font-semibold text-text-primary text-sm mb-1">{card.title} Example</p>
-                        <p className="text-sm text-text-muted italic">"{card.text}"</p>
-                      </div>
-                      <button 
-                        onClick={() => handleAnalyze(card.id)}
-                        disabled={isLoading}
-                        className="btn-primary text-xs py-1.5 px-3 whitespace-nowrap flex items-center gap-1 disabled:opacity-50"
-                      >
-                        {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} fill="currentColor" />}
-                        {isLoading ? 'Analyzing...' : 'Analyze'}
-                      </button>
+                {liveResult && (
+                  <div className="mt-4 pt-4 border-t border-border animate-fade-in">
+                    <div className="flex items-center gap-4 mb-3">
+                      <span className={`badge ${
+                          liveResult.primary_label === 'hate_speech' || liveResult.primary_label === 'threat' ? 'badge-danger' :
+                          liveResult.primary_label === 'scam' || liveResult.primary_label === 'phishing' ? 'badge-critical' :
+                          liveResult.primary_label === 'offensive_language' ? 'badge-warning' :
+                          liveResult.primary_label === 'none' || liveResult.primary_label === 'clean' ? 'badge-success' : 'badge-muted'
+                        } capitalize`}>
+                        {(liveResult.primary_label || 'none').replace(/_/g, ' ')}
+                      </span>
+                      
+                      <span className={`text-sm font-bold ${
+                        liveResult.severity === 'Critical' ? 'text-critical' :
+                        liveResult.severity === 'High' ? 'text-orange-500' :
+                        liveResult.severity === 'Medium' ? 'text-yellow-500' :
+                        'text-success'
+                      }`}>
+                        Severity: {liveResult.severity}
+                      </span>
                     </div>
 
-                    {res && (
-                      <div className="mt-3 pt-3 border-t border-border animate-fade-in">
-                        <div className="flex items-center gap-4 mb-2">
-                          <span className={`badge ${
-                              res.primary_label === 'hate_speech' || res.primary_label === 'threat' ? 'badge-danger' :
-                              res.primary_label === 'scam' || res.primary_label === 'phishing' ? 'badge-critical' :
-                              res.primary_label === 'offensive_language' ? 'badge-warning' :
-                              res.primary_label === 'none' || res.primary_label === 'clean' ? 'badge-success' : 'badge-muted'
-                            } capitalize`}>
-                            {(res.primary_label || 'none').replace(/_/g, ' ')}
-                          </span>
-                          
-                          <span className={`text-xs font-semibold ${
-                            res.severity === 'Critical' ? 'text-critical' :
-                            res.severity === 'High' ? 'text-orange-500' :
-                            res.severity === 'Medium' ? 'text-yellow-500' :
-                            'text-success'
-                          }`}>
-                            Severity: {res.severity}
-                          </span>
+                    <div className="bg-surface-3 p-3 rounded text-sm text-text-primary flex items-start gap-2 mb-4">
+                      <Shield size={16} className="text-primary shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold block mb-0.5">Recommended Action:</span>
+                        <span className="text-text-secondary">{liveResult.guidance_snippet}</span>
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {DEMO_CARDS.map(card => {
+                  const res = results[card.id];
+                  const isLoading = loadingId === card.id;
+
+                  return (
+                    <div key={card.id} className="bg-surface-2 p-4 rounded-lg border border-border">
+                      <div className="flex justify-between items-start gap-4 mb-3">
+                        <div>
+                          <p className="font-semibold text-text-primary text-sm mb-1">{card.title} Example</p>
+                          <p className="text-sm text-text-muted italic">"{card.text}"</p>
                         </div>
-                        <div className="bg-surface-3 p-3 rounded text-sm text-text-primary flex items-start gap-2">
-                          <Shield size={16} className="text-primary shrink-0 mt-0.5" />
-                          <div>
-                            <span className="font-semibold block mb-0.5">Recommended Action:</span>
-                            <span className="text-text-secondary">{res.guidance_snippet}</span>
+                        <button 
+                          onClick={() => handleAnalyze(card.id)}
+                          disabled={isLoading}
+                          className="btn-primary text-xs py-1.5 px-3 whitespace-nowrap flex items-center gap-1 disabled:opacity-50"
+                        >
+                          {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} fill="currentColor" />}
+                          {isLoading ? 'Analyzing...' : 'Analyze'}
+                        </button>
+                      </div>
+
+                      {res && (
+                        <div className="mt-3 pt-3 border-t border-border animate-fade-in">
+                          <div className="flex items-center gap-4 mb-2">
+                            <span className={`badge ${
+                                res.primary_label === 'hate_speech' || res.primary_label === 'threat' ? 'badge-danger' :
+                                res.primary_label === 'scam' || res.primary_label === 'phishing' ? 'badge-critical' :
+                                res.primary_label === 'offensive_language' ? 'badge-warning' :
+                                res.primary_label === 'none' || res.primary_label === 'clean' ? 'badge-success' : 'badge-muted'
+                              } capitalize`}>
+                              {(res.primary_label || 'none').replace(/_/g, ' ')}
+                            </span>
+                            
+                            <span className={`text-xs font-semibold ${
+                              res.severity === 'Critical' ? 'text-critical' :
+                              res.severity === 'High' ? 'text-orange-500' :
+                              res.severity === 'Medium' ? 'text-yellow-500' :
+                              'text-success'
+                            }`}>
+                              Severity: {res.severity}
+                            </span>
+                          </div>
+                          <div className="bg-surface-3 p-3 rounded text-sm text-text-primary flex items-start gap-2">
+                            <Shield size={16} className="text-primary shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-semibold block mb-0.5">Recommended Action:</span>
+                              <span className="text-text-secondary">{res.guidance_snippet}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* SECTION 4: Honest Limitations */}
-          <section className="bg-critical-bg/20 border border-critical/30 rounded-lg p-5">
-            <h3 className="text-lg font-bold text-critical flex items-center gap-2 mb-3">
-              <AlertTriangle size={20} />
-              Platform Limitations & Emergencies
-            </h3>
-            <p className="text-sm text-text-primary font-medium mb-2">
-              This platform is NOT a substitute for emergency services.
-            </p>
-            <ul className="space-y-2 text-sm text-text-secondary list-disc pl-5 mb-4">
-              <li><strong>No Real-time Monitoring:</strong> The system does not have 24/7 human monitoring.</li>
-              <li><strong>No Guaranteed Response Times:</strong> Review and action on your complaint may take time depending on the organization's queue.</li>
-              <li><strong>No Direct Law Enforcement Coordination:</strong> Filing a report here does not automatically dispatch police.</li>
-            </ul>
-            <div className="bg-critical/10 p-3 rounded-md border-l-4 border-critical">
-              <p className="text-sm text-critical font-bold">
-                Action Required: If you are in immediate danger or need urgent help, do not wait for a response here — contact the resources below or local emergency services directly first.
-              </p>
-            </div>
-          </section>
-
-          {/* SECTION 5: Privacy */}
-          <section>
-            <h3 className="text-lg font-bold text-text-primary border-b border-border pb-2 mb-4 flex items-center gap-2">
-              <Eye className="text-primary" size={20} />
-              Privacy & Data Handling
-            </h3>
-            <p className="text-sm text-text-secondary mb-2">
-              We take your data seriously. Here is exactly what happens to the information you submit:
-            </p>
-            <ul className="space-y-2 text-sm text-text-secondary list-disc pl-5">
-              <li><strong>Secure Storage:</strong> Your complaint details and evidence are stored securely in our database.</li>
-              <li><strong>Authorized Access Only:</strong> Submitted data is visible ONLY to you and authorized organizational analysts/moderators reviewing the queue.</li>
-              <li><strong>No End-to-End Encryption:</strong> While stored securely, data is not end-to-end encrypted or fully anonymized, as moderators need to view the evidence to provide assistance.</li>
-            </ul>
-          </section>
-
-          {/* SECTION 6: Critical Resources */}
-          <section>
-            <h3 className="text-lg font-bold text-text-primary border-b border-border pb-2 mb-4 flex items-center gap-2">
-              <Shield className="text-success" size={20} />
-              Independent Critical Resources
-            </h3>
-            <p className="text-sm text-text-secondary mb-4">
-              You can also contact these resources directly, any time, independent of filing a complaint here:
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-surface-2 p-4 rounded-lg border border-border flex gap-3">
-                <div className="bg-success/20 p-2 rounded-full h-fit">
-                  <Phone size={18} className="text-success" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-text-primary text-sm mb-1">National Cyber Crime Reporting Portal</h4>
-                  <p className="text-xs text-text-muted mb-2">For immediate assistance regarding cybercrime, financial fraud, or severe online threats.</p>
-                  <p className="text-xs font-mono font-bold text-success flex items-center gap-1">
-                    Call: 1930 <span className="text-text-muted font-sans font-normal">(24/7 helpline by I4C, MHA)</span>
-                  </p>
-                  <a href="https://cybercrime.gov.in" target="_blank" rel="noopener noreferrer" className="text-xs text-blue hover:underline flex items-center gap-1 mt-1">
-                    <Globe size={12} /> cybercrime.gov.in
-                  </a>
-                </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-
-              <div className="bg-surface-2 p-4 rounded-lg border border-border flex gap-3">
-                <div className="bg-blue-muted p-2 rounded-full h-fit border border-blue/20">
-                  <Phone size={18} className="text-blue" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-text-primary text-sm mb-1">National Women Helpline</h4>
-                  <p className="text-xs text-text-muted mb-2">24/7 emergency and non-emergency support for women.</p>
-                  <p className="text-xs font-mono font-bold text-blue">Call: 181</p>
-                </div>
-              </div>
-            </div>
+            )}
           </section>
         </div>
       </div>

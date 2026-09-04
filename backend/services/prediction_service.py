@@ -128,6 +128,11 @@ class PredictionService:
             primary_label, primary_conf, secondary_labels, result["risk_score"], platform
         )
 
+        result["severity_tier"] = GuidanceService.compute_severity(
+            result["guidance"].get("show_critical_resources", False),
+            result["risk_score"]
+        )
+
         return result
 
     @staticmethod

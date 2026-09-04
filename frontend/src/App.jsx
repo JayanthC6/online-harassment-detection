@@ -16,7 +16,6 @@ export default function App() {
   // Determine default tab based on role
   const getDefaultTab = () => {
     if (!token) return 'login';
-    if (role === 'User') return 'submit_complaint';
     return 'dashboard';
   };
 
@@ -71,9 +70,6 @@ export default function App() {
     );
   }
 
-  const isUserRole = role === 'User';
-  const isOrgRole = !isUserRole;
-
   return (
     <div className="bg-bg min-h-screen text-text-primary font-sans antialiased">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} role={role} />
@@ -90,31 +86,19 @@ export default function App() {
           </div>
 
           <>
-            {isUserRole && activeTab === 'submit_complaint' && (
-              <div className="animate-fade-in">
-                <SubmitComplaint onNewResult={() => setActiveTab('my_tickets')} />
-              </div>
-            )}
-            
-            {isUserRole && activeTab === 'my_tickets' && (
-              <div className="animate-fade-in">
-                <MyTickets refreshKey={refreshKey} />
-              </div>
-            )}
-
-            {isUserRole && activeTab === 'how_it_works' && (
+            {activeTab === 'how_it_works' && (
               <div className="animate-fade-in bg-surface-solid rounded-lg border border-border shadow-sm">
-                <HowItWorks />
+                <HowItWorks isLoggedIn={true} />
               </div>
             )}
 
-            {isOrgRole && activeTab === 'analyze' && (
+            {activeTab === 'analyze' && (
               <div className="animate-fade-in">
                 <AnalyzeForm onNewResult={() => setRefreshKey(k => k + 1)} />
               </div>
             )}
 
-            {isOrgRole && (activeTab === 'dashboard' || activeTab === 'incidents' || activeTab === 'behavioral') && (
+            {(activeTab === 'dashboard' || activeTab === 'incidents' || activeTab === 'behavioral') && (
               <div className="animate-fade-in">
                 <Dashboard refreshKey={refreshKey} activeTab={activeTab} />
               </div>

@@ -5,20 +5,12 @@ import { LayoutDashboard, Search, AlertTriangle, Brain, ShieldCheck, HelpCircle 
 export default function Sidebar({ activeTab, setActiveTab, role }) {
   const isUserRole = role === 'User';
   
-  const orgNavItems = [
+  const navItems = [
     { id: 'dashboard',  label: 'Dashboard',      icon: LayoutDashboard },
     { id: 'analyze',    label: 'Threat Hunt',    icon: Search },
     { id: 'incidents',  label: 'Incidents',      icon: AlertTriangle },
     { id: 'behavioral', label: 'Behavioral Intel', icon: Brain },
   ];
-  
-  const userNavItems = [
-    { id: 'submit_complaint', label: 'File Complaint', icon: AlertTriangle },
-    { id: 'my_tickets', label: 'My Tickets', icon: LayoutDashboard },
-    { id: 'how_it_works', label: 'How It Works', icon: HelpCircle },
-  ];
-  
-  const navItems = isUserRole ? userNavItems : orgNavItems;
 
   return (
     <aside

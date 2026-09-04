@@ -15,8 +15,11 @@ def _groq_client():
 
 def _strip_think(text: str) -> str:
     """Remove <think>...</think> reasoning blocks Qwen outputs."""
+    if "<think>" in text and "</think>" not in text:
+        text = text.split("<think>")[0]
+    
     clean = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-    return clean if clean else text
+    return clean if clean else "I'm sorry, I was interrupted while processing your request. Please try again with a shorter query."
 
 
 def generate_chat_response(history: list, persona: str = "user") -> str:
@@ -50,9 +53,11 @@ def generate_chat_response(history: list, persona: str = "user") -> str:
         system_content = (
             "You are ShieldAI's cyber security assistant. You must ONLY provide information "
             "related to cyber crimes, digital safety, incident file details, and cyber news. "
-            "Provide empathetic, supportive, and actionable personal safety steps (like blocking, documenting, reporting to authorities). "
+            "Provide empathetic, supportive, and actionable personal safety steps. "
             "If the user asks about anything else, politely decline and remind them that you are a specialized cyber security assistant. "
-            "Keep your responses concise, informative, and formatted in Markdown."
+            "CRITICAL INSTRUCTION: You must keep your responses EXTREMELY short and concise. "
+            "Answer in exactly one short paragraph (under 3 sentences). Do NOT use lists, bullet points, or long explanations. "
+            "Do NOT output a <think> block or any reasoning process under any circumstances. Answer directly."
         )
 
     system_prompt = {
@@ -71,8 +76,8 @@ def generate_chat_response(history: list, persona: str = "user") -> str:
         completion = client.chat.completions.create(
             messages=formatted_messages,
             model=MODEL,
-            temperature=0.3,
-            max_tokens=700,
+            temperature=0.5,
+            max_tokens=2000,
         )
         return _strip_think(completion.choices[0].message.content.strip())
     except Exception as e:

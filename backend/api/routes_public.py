@@ -76,6 +76,7 @@ def predict():
 
     data = request.get_json(silent=True) or {}
     text = data.get("text", "")
+    persist = data.get("persist", False)
 
     if not text or not isinstance(text, str):
         return jsonify({"error": "Request body must include a non-empty 'text' string."}), 400
@@ -89,7 +90,8 @@ def predict():
     result["actor_id"] = data.get("actor_id", "Anonymous")
     result = PredictionService.attach_risk_and_similarity(result, text)
 
-    AdminService.log_message(result)
+    if persist:
+        AdminService.log_message(result)
 
     result.pop("embedding", None)
     result.pop("_id", None)  # MongoDB ObjectId is not JSON serializable
@@ -132,10 +134,7 @@ def demo_analyze():
             primary_label, primary_confidence, secondary_labels, risk_score
         )
         
-        result["severity"] = GuidanceService.compute_severity(
-            guidance_data.get("show_critical_resources", False),
-            risk_score
-        )
+        result["severity"] = result.get("severity_tier", "Unknown")
         
         checklist = guidance_data.get("evidence_checklist", [])
         if checklist and len(checklist) > 0:

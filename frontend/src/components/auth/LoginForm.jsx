@@ -3,9 +3,6 @@ import PropTypes from 'prop-types';
 import { apiClient } from '../../api/client';
 
 export default function LoginForm({ onLogin }) {
-  const [activeTab, setActiveTab] = useState('user'); // 'user' or 'org'
-  const [isSignUp, setIsSignUp] = useState(false);
-  
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,12 +14,7 @@ export default function LoginForm({ onLogin }) {
     setLoading(true);
 
     try {
-      let endpoint = '/admin/login';
-      if (activeTab === 'user' && isSignUp) {
-        endpoint = '/admin/register';
-      }
-      
-      const data = await apiClient(endpoint, {
+      const data = await apiClient('/admin/login', {
         method: 'POST',
         body: JSON.stringify({ username, password })
       });
@@ -36,19 +28,8 @@ export default function LoginForm({ onLogin }) {
 
   return (
     <div className="max-w-md mx-auto mt-12 card overflow-hidden animate-fade-in shadow-neon">
-      <div className="flex border-b border-border bg-surface-solid">
-        <button
-          className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider ${activeTab === 'user' ? 'text-primary border-b-2 border-primary' : 'text-text-muted hover:bg-surface-hover'}`}
-          onClick={() => { setActiveTab('user'); setError(''); }}
-        >
-          Victim / User
-        </button>
-        <button
-          className={`flex-1 py-4 text-sm font-bold uppercase tracking-wider ${activeTab === 'org' ? 'text-primary border-b-2 border-primary' : 'text-text-muted hover:bg-surface-hover'}`}
-          onClick={() => { setActiveTab('org'); setError(''); setIsSignUp(false); }}
-        >
-          Organization
-        </button>
+      <div className="bg-surface-solid border-b border-border p-4 text-center">
+        <h2 className="text-lg font-bold text-primary font-mono tracking-wider uppercase">Analyst Console</h2>
       </div>
       
       <div className="p-6">
@@ -92,20 +73,8 @@ export default function LoginForm({ onLogin }) {
             disabled={loading}
             className="btn-primary w-full justify-center mt-2"
           >
-            {loading ? 'Authenticating...' : (activeTab === 'user' && isSignUp ? 'Sign Up' : 'Sign In')}
+            {loading ? 'Authenticating...' : 'Sign In'}
           </button>
-          
-          {activeTab === 'user' && (
-            <div className="text-center mt-4">
-              <button
-                type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-xs text-primary hover:underline"
-              >
-                {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
-              </button>
-            </div>
-          )}
         </form>
       </div>
     </div>

@@ -7,7 +7,7 @@ import ConversationDetailsDrawer from './ConversationDetailsDrawer';
 import RedactionBar from '../common/RedactionBar';
 
 export default function ModeratorQueue({ reportsData, conversationsData, complaintsData, filters, loading }) {
-  const [queueType, setQueueType] = useState('complaints'); // 'messages' | 'conversations' | 'complaints'
+  const [queueType, setQueueType] = useState('messages'); // 'messages' | 'conversations'
 
   const { reports, total: messagesTotal, total_pages: messagesPages } = reportsData;
   const { conversations, total: convTotal, total_pages: convPages } = conversationsData || { conversations: [], total: 0, total_pages: 0 };
@@ -46,12 +46,6 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
             className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${queueType === 'conversations' ? 'bg-surface-3 text-text-primary' : 'text-text-muted hover:text-text-secondary'}`}
           >
             Conversations
-          </button>
-          <button
-            onClick={() => { setQueueType('complaints'); filters.setPage(1); }}
-            className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${queueType === 'complaints' ? 'bg-surface-3 text-text-primary' : 'text-text-muted hover:text-text-secondary'}`}
-          >
-            User Complaints
           </button>
         </div>
       </div>
