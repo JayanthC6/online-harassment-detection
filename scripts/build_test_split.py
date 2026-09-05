@@ -61,6 +61,7 @@ import time
 import zipfile
 import subprocess
 import importlib
+import importlib.metadata  # explicit submodule import — importlib alone does NOT expose .metadata
 import warnings
 from datetime import datetime, timezone
 from pathlib import Path
@@ -445,6 +446,24 @@ def build_split(jigsaw_zip_path) -> tuple:
         pct = 100.0 * pos / len(y_test_array)
         print(f"   {label:<38} {pos:>5,}  ({pct:.1f}%)")
 
+    # ── Reproducibility caveat (must be read before trusting this split) ──────
+    # iterative_train_test_split (skmultilearn 0.2.0) does NOT accept a
+    # random_state parameter — it constructs IterativeStratification internally
+    # with random_state=None and relies on the caller setting np.random.seed().
+    # Global numpy seeds are a weak guarantee: they can be overridden by any
+    # upstream import, and the iteration order of IterativeStratification is
+    # order-dependent on the input data. The split below mirrors the notebook
+    # as closely as possible, but exact byte-for-byte reproduction cannot be
+    # guaranteed without the original Colab session's full numpy random state.
+    # The F1 proximity check in the verification step is the real evidence of
+    # correctness — not the seed value alone.
+    installed_skml = _pkg_version("scikit-multilearn")
+    original_skml_note = (
+        "unknown — pip freeze was not captured in the training notebook. "
+        f"Installed now: {installed_skml}. "
+        "If versions differ, iterative stratification output may vary."
+    )
+
     split_metadata = {
         "concatenation_order":    concatenation_order,
         "source_sizes":           source_sizes,
@@ -461,6 +480,15 @@ def build_split(jigsaw_zip_path) -> tuple:
             "X_train, y_train, X_temp, y_temp = iterative_train_test_split(X, y, test_size=0.2)",
             "X_val, y_val, X_test, y_test = iterative_train_test_split(X_temp, y_temp, test_size=0.5)",
         ],
+        "reproducibility_caveat": (
+            "iterative_train_test_split (skmultilearn 0.2.0) does not accept "
+            "random_state directly; it uses np.random.seed() as the only seeding "
+            "mechanism, which is not a reliable reproduction guarantee. "
+            "Exact split reproduction is not guaranteed by the library even with "
+            "identical seeds. The F1 proximity check (VERIFIED / DISCREPANCY in the "
+            "verification field) is the real evidence of split correctness."
+        ),
+        "scikit_multilearn_version_note": original_skml_note,
         "label_order": LABELS,
         "test_label_positive_counts": {
             label: int(y_test_array[:, i].sum())
@@ -526,7 +554,10 @@ def batch_predict_transformer(texts: list, batch_size: int, device, model, token
     import numpy as np
     import torch
 
-    # Reproduce the id2label remapping from predict_transformer.py
+    # Reproduce the id2label remapping from predict_transformer.py.
+    # The HF model's config.id2label returns generic 'LABEL_0'..'LABEL_5' —
+    # confirmed by live inspection of Jayant62003/shieldai-distilbert-multilabel.
+    # The canonical positional mapping is defined here and must match LABELS exactly.
     id2label = model.config.id2label
     if id2label and "LABEL_0" in id2label.values():
         id2label = {
@@ -537,6 +568,29 @@ def batch_predict_transformer(texts: list, batch_size: int, device, model, token
             4: "Profanity",
             5: "Clean",
         }
+
+    # Hard-fail if id2label doesn't cover every label in LABELS.
+    # Catches any future model push that changes the label schema.
+    id2label_values = set(id2label.values())
+    for label in LABELS:
+        if label not in id2label_values:
+            raise ValueError(
+                f"Label '{label}' is not present in the model's id2label mapping.\n"
+                f"  id2label values: {sorted(id2label_values)}\n"
+                f"  LABELS expected: {LABELS}\n"
+                "Fix the id2label remapping above or update LABELS to match the model."
+            )
+
+    # Hard-fail if thresholds.json doesn't cover every label.
+    # A missing threshold would silently use 0.5, producing undetected wrong scores.
+    for label in LABELS:
+        if label not in thresholds:
+            raise ValueError(
+                f"Label '{label}' has no calibrated threshold in thresholds.json.\n"
+                f"  thresholds keys: {sorted(thresholds.keys())}\n"
+                f"  LABELS expected: {LABELS}\n"
+                "The model and script label schemas are out of sync."
+            )
 
     all_probs = []
     n = len(texts)
@@ -569,14 +623,22 @@ def batch_predict_transformer(texts: list, batch_size: int, device, model, token
         )
 
     print()
-    all_probs = __import__("numpy").vstack(all_probs)  # (N, num_labels)
+    import numpy as np
+    all_probs = np.vstack(all_probs)  # (N, num_labels)
 
-    # Apply calibrated thresholds in LABELS order
-    y_pred = __import__("numpy").zeros_like(all_probs, dtype=int)
+    # Apply calibrated thresholds in LABELS order.
+    # col_idx lookup is now a hard assert — no silent positional fallback.
+    y_pred = np.zeros_like(all_probs, dtype=int)
     for i, label in enumerate(LABELS):
-        # Find column index in the model output that matches this label
-        col_idx = next((k for k, v in id2label.items() if v == label), i)
-        thresh  = thresholds.get(label, 0.5)
+        # id2label is int-keyed; find the model output column for this label
+        col_idx_matches = [k for k, v in id2label.items() if v == label]
+        if len(col_idx_matches) != 1:
+            raise ValueError(
+                f"Expected exactly one id2label entry for '{label}', "
+                f"got {col_idx_matches}. id2label={id2label}"
+            )
+        col_idx = col_idx_matches[0]
+        thresh  = thresholds[label]  # KeyError if missing — intentional, no fallback
         y_pred[:, i] = (all_probs[:, col_idx] >= thresh).astype(int)
 
     return y_pred, all_probs
