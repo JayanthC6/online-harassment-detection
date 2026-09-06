@@ -5,7 +5,10 @@ import { LayoutDashboard, Search, AlertTriangle, Brain, ShieldCheck, HelpCircle 
 export default function Sidebar({ activeTab, setActiveTab, role }) {
   const isUserRole = role === 'User';
   
-  const navItems = [
+  const navItems = isUserRole ? [
+    { id: 'instant_analysis', label: 'Instant Analysis', icon: Search },
+    { id: 'my_history',       label: 'My History',       icon: LayoutDashboard },
+  ] : [
     { id: 'dashboard',  label: 'Dashboard',      icon: LayoutDashboard },
     { id: 'analyze',    label: 'Threat Hunt',    icon: Search },
     { id: 'incidents',  label: 'Incidents',      icon: AlertTriangle },

@@ -39,24 +39,9 @@ def admin_login():
     except AppException as e:
         return jsonify({"error": str(e)}), e.status_code
 
-@admin_bp.route("/admin/register", methods=["POST"])
-def admin_register():
-    """Public - register a new standard User."""
-    data = request.get_json(silent=True) or {}
-    username = data.get("username", "").strip()
-    password = data.get("password", "")
-    
-    if not username or not password:
-        return jsonify({"error": "username and password are required"}), 400
-        
-    try:
-        token = AuthService.register(username, password, role="User")
-        return jsonify({"token": token, "message": "Registration successful"})
-    except AppException as e:
-        return jsonify({"error": str(e)}), e.status_code
-
 
 # ── Read-only admin endpoints (Admin | Moderator | Viewer) ────────────────────
+
 
 @admin_bp.route("/admin/stats", methods=["GET"])
 @token_required

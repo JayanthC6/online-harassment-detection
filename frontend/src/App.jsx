@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
-import AnalyzeForm from './components/AnalyzeForm'
+import InstantAnalysisForm from './components/analysis/InstantAnalysisForm'
 import Dashboard from './components/Dashboard'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import ChatbotPanel from './components/chatbot/ChatbotPanel'
 import { useAuth } from './hooks/useAuth'
 import LoginForm from './components/auth/LoginForm'
-import SubmitComplaint from './components/complaints/SubmitComplaint'
-import MyTickets from './components/complaints/MyTickets'
+import MyHistory from './components/complaints/MyTickets' // We'll just reuse/rename this component file shortly
 import HowItWorks from './components/common/HowItWorks'
 
 export default function App() {
@@ -16,6 +15,8 @@ export default function App() {
   // Determine default tab based on role
   const getDefaultTab = () => {
     if (!token) return 'login';
+    // If Admin/Moderator, default to dashboard. If User, default to instant_analysis.
+    if (role === 'User') return 'instant_analysis';
     return 'dashboard';
   };
 
@@ -29,9 +30,8 @@ export default function App() {
 
   const PAGE_TITLES = {
     login:            { title: 'Welcome to ShieldAI', sub: 'Cyber Threat Triage Platform' },
-    submit_complaint: { title: 'File a Complaint', sub: 'Securely report cyber threats or harassment' },
-    my_tickets:       { title: 'My Tickets', sub: 'Status of your reported incidents' },
-    analyze:          { title: 'Threat Hunt', sub: 'Analyze content for digital safety threats' },
+    instant_analysis: { title: 'Instant Analysis', sub: 'Instantly check content for digital safety threats' },
+    my_history:       { title: 'My History', sub: 'Your past content analysis checks' },
     dashboard:        { title: 'Organization Dashboard',  sub: 'Overview of all reported incidents' },
     incidents:        { title: 'Complaint Queue',  sub: 'Review and triage user complaints' },
     behavioral:       { title: 'Behavioral Intelligence', sub: 'Actor profiling and risk trends' },
@@ -92,13 +92,19 @@ export default function App() {
               </div>
             )}
 
-            {activeTab === 'analyze' && (
+            {activeTab === 'instant_analysis' && role === 'User' && (
               <div className="animate-fade-in">
-                <AnalyzeForm onNewResult={() => setRefreshKey(k => k + 1)} />
+                <InstantAnalysisForm onNewResult={() => setRefreshKey(k => k + 1)} />
               </div>
             )}
 
-            {(activeTab === 'dashboard' || activeTab === 'incidents' || activeTab === 'behavioral') && (
+            {activeTab === 'my_history' && role === 'User' && (
+              <div className="animate-fade-in">
+                <MyHistory key={refreshKey} />
+              </div>
+            )}
+
+            {(activeTab === 'dashboard' || activeTab === 'incidents' || activeTab === 'behavioral') && role !== 'User' && (
               <div className="animate-fade-in">
                 <Dashboard refreshKey={refreshKey} activeTab={activeTab} />
               </div>

@@ -45,6 +45,27 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
+def token_optional(f):
+    """Optional JWT authentication. Injects token_data into wrapped view if valid."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+
+        if not token:
+            kwargs["token_data"] = None
+            return f(*args, **kwargs)
+
+        try:
+            payload = jwt.decode(token, Config.JWT_SECRET_KEY, algorithms=["HS256"])
+            kwargs["token_data"] = payload
+        except Exception:
+            kwargs["token_data"] = None
+
+        return f(*args, **kwargs)
+    return decorated
 
 def require_role(*roles):
     """

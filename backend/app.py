@@ -24,6 +24,7 @@ from extensions import limiter
 from api.routes_public import public_bp
 from api.routes_admin import admin_bp
 from api.routes_complaints import complaints_bp
+from api.routes_auth import auth_bp
 
 app = Flask(__name__)
 CORS(app)  # allow the React dev server to call this API
@@ -34,6 +35,7 @@ limiter.init_app(app)
 app.register_blueprint(public_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(complaints_bp)
+app.register_blueprint(auth_bp)
 
 @app.errorhandler(404)
 def not_found(e):

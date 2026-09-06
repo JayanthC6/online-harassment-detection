@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { apiClient } from '../../api/client';
 
 export default function LoginForm({ onLogin }) {
+  const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -14,7 +15,8 @@ export default function LoginForm({ onLogin }) {
     setLoading(true);
 
     try {
-      const data = await apiClient('/admin/login', {
+      const endpoint = isRegistering ? '/auth/register' : '/admin/login';
+      const data = await apiClient(endpoint, {
         method: 'POST',
         body: JSON.stringify({ username, password })
       });
@@ -29,7 +31,9 @@ export default function LoginForm({ onLogin }) {
   return (
     <div className="max-w-md mx-auto mt-12 card overflow-hidden animate-fade-in shadow-neon">
       <div className="bg-surface-solid border-b border-border p-4 text-center">
-        <h2 className="text-lg font-bold text-primary font-mono tracking-wider uppercase">Analyst Console</h2>
+        <h2 className="text-lg font-bold text-primary font-mono tracking-wider uppercase">
+          {isRegistering ? 'Create Account' : 'Sign In'}
+        </h2>
       </div>
       
       <div className="p-6">
@@ -42,14 +46,14 @@ export default function LoginForm({ onLogin }) {
           
           <div>
             <label className="block text-xs font-bold text-text-muted font-mono uppercase tracking-wider mb-1">
-              Username
+              Email / Username
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="input w-full"
-              placeholder="Enter username"
+              placeholder="Enter email or username"
               required
             />
           </div>
@@ -67,15 +71,33 @@ export default function LoginForm({ onLogin }) {
               required
             />
           </div>
+
+          {isRegistering && (
+            <div className="p-3 bg-blue-muted/30 border-l-4 border-blue text-xs text-text-secondary">
+              <strong>Disclaimer:</strong> This tool provides automated guidance only and is not a substitute for reporting to official resources. No human reviews or acts on what you paste here. 
+              <br/><br/>
+              Your email is used <em>solely</em> to let you view your personal analysis history. We do not sell or share your data.
+            </div>
+          )}
           
           <button
             type="submit"
             disabled={loading}
             className="btn-primary w-full justify-center mt-2"
           >
-            {loading ? 'Authenticating...' : 'Sign In'}
+            {loading ? (isRegistering ? 'Creating...' : 'Authenticating...') : (isRegistering ? 'Register' : 'Sign In')}
           </button>
         </form>
+
+        <div className="mt-4 text-center">
+          <button 
+            type="button" 
+            onClick={() => setIsRegistering(!isRegistering)}
+            className="text-xs text-text-muted hover:text-primary transition-colors"
+          >
+            {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register'}
+          </button>
+        </div>
       </div>
     </div>
   );

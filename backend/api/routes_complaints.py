@@ -2,147 +2,69 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 import os
 import tempfile
+from bson.objectid import ObjectId
 
 from api.dependencies import token_required, require_role
 from services.prediction_service import PredictionService
 from services.admin_service import AdminService
-from ml.ocr import extract_and_classify
 from core.database import db_instance
 
 complaints_bp = Blueprint("complaints", __name__)
 
-ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
-ALLOWED_AUDIO_EXTENSIONS = {"mp3", "wav", "m4a", "mp4", "mov", "webm", "ogg"}
-
-from extensions import limiter
-
-@complaints_bp.route("/complaints", methods=["POST"])
+@complaints_bp.route("/history/my", methods=["GET"])
 @token_required
-@limiter.limit("10 per minute")
-def create_complaint(token_data):
-    """Users submit a complaint (text, image, or audio)"""
-    user_id = token_data.get("user")
-    
-    # Can be multipart/form-data for files or application/json for text
-    if request.is_json:
-        data = request.get_json(silent=True) or {}
-        text = data.get("text", "")
-        if not text:
-            return jsonify({"error": "text is required"}), 400
-            
-        result = PredictionService.classify_text(text)
-        result["text_preview"] = text[:120]
-        result["text_full"] = text
-        result = PredictionService.attach_risk_and_similarity(result, text)
-        result.pop("embedding", None)
-        
-        complaint_data = {
-            "type": "text",
-            "content": text,
-            "ai_analysis": result
-        }
-        
-    elif "file" in request.files:
-        file = request.files["file"]
-        if file.filename == "":
-            return jsonify({"error": "Empty filename."}), 400
-            
-        ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
-        
-        if ext in ALLOWED_IMAGE_EXTENSIONS:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as tmp:
-                file.save(tmp.name)
-                try:
-                    result = extract_and_classify(tmp.name, PredictionService.classify_text)
-                    extracted_text = result.get("extracted_text", "")
-                    result = PredictionService.attach_risk_and_similarity(result, extracted_text)
-                    result.pop("embedding", None)
-                    complaint_data = {
-                        "type": "image",
-                        "content": extracted_text,
-                        "ai_analysis": result
-                    }
-                    result = {**result, "text_preview": extracted_text[:120], "text_full": extracted_text}
-                except Exception as e:
-                    os.remove(tmp.name)
-                    return jsonify({"error": f"OCR/Analysis failed: {str(e)}"}), 500
-            os.remove(tmp.name)
-            
-        elif ext in ALLOWED_AUDIO_EXTENSIONS:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as tmp:
-                file.save(tmp.name)
-                try:
-                    from ml.transcribe import transcribe
-                    transcript_data = transcribe(tmp.name)
-                    extracted_text = transcript_data["text"]
-                    result = PredictionService.classify_text(extracted_text)
-                    result = PredictionService.attach_risk_and_similarity(result, extracted_text)
-                    result.pop("embedding", None)
-                    complaint_data = {
-                        "type": "audio",
-                        "content": extracted_text,
-                        "ai_analysis": result
-                    }
-                    result = {**result, "text_preview": extracted_text[:120], "text_full": extracted_text}
-                except Exception as e:
-                    os.remove(tmp.name)
-                    return jsonify({"error": f"Transcription failed: {str(e)}"}), 500
-            os.remove(tmp.name)
-            
-        else:
-             return jsonify({"error": "Unsupported file type."}), 400
-    else:
-        return jsonify({"error": "Invalid payload."}), 400
-
-    entry = {
-        "actor_id": user_id,
-        "source": "user_complaint",
-        **complaint_data,
-        **result
-    }
-    
-    # Generate suggested action using the summarize endpoint logic
-    try:
-        from ml.summarize import summarize_complaint
-        cat = result.get("primary_label", result.get("category", "none"))
-        conf = result.get("confidence", 0)
-        risk = result.get("risk_score", 0)
-        summary = summarize_complaint(entry.get("text_full", ""), cat, conf, risk_score=risk, persona="user")
-        entry["user_guidance"] = summary.get("suggested_action", "")
-        entry["severity_tier"] = summary.get("severity", "Low")
-        entry["incident_description"] = summary.get("incident_description", "")
-    except Exception as e:
-        print(f"Failed to generate guidance: {e}")
-        entry["user_guidance"] = ""
-        entry["severity_tier"] = "Low"
-        entry["incident_description"] = ""
-
-    AdminService.log_message(entry)
-    
-    # Retrieve the _id generated by log_message if available
-    complaint_id = str(entry.get("_id", "unknown"))
-    return jsonify({"message": "Complaint submitted successfully", "complaint_id": complaint_id})
-
-
-@complaints_bp.route("/complaints/my", methods=["GET"])
-@token_required
-def get_my_complaints(token_data):
-    """Users view their own complaints"""
+def get_my_history(token_data):
+    """Users view their own analysis history"""
     user_id = token_data.get("user")
     if db_instance.is_persistent:
-        complaints = list(db_instance.collection.find({"actor_id": user_id, "source": "user_complaint"}, {"_id": 0}).sort("logged_at", -1))
+        complaints = list(db_instance.collection.find({"actor_id": user_id, "source": "self_serve"}, {"_id": 1, "logged_at": 1, "text_preview": 1, "primary_label": 1, "confidence": 1, "risk_score": 1, "severity_tier": 1, "category": 1, "actor_id": 1, "source": 1}).sort("logged_at", -1))
+        # Convert ObjectId to string for JSON serialization
+        for c in complaints:
+            if "_id" in c:
+                c["_id"] = str(c["_id"])
     else:
-        complaints = [c for c in db_instance.fallback_store if c.get("actor_id") == user_id and c.get("source") == "user_complaint"]
+        complaints = [c for c in db_instance.fallback_store if c.get("actor_id") == user_id and c.get("source") == "self_serve"]
     return jsonify({"complaints": complaints})
 
+@complaints_bp.route("/history/<entry_id>", methods=["DELETE"])
+@token_required
+def delete_history_entry(entry_id, token_data):
+    """Users delete their own history entry"""
+    user_id = token_data.get("user")
+    
+    if db_instance.is_persistent:
+        try:
+            doc = db_instance.collection.find_one({"_id": ObjectId(entry_id)})
+        except Exception:
+            return jsonify({"error": "Invalid ID format"}), 400
+            
+        if not doc:
+            return jsonify({"error": "Not found"}), 404
+            
+        if doc.get("actor_id") != user_id:
+            return jsonify({"error": "Forbidden: Cannot delete another user's history"}), 403
+            
+        db_instance.collection.delete_one({"_id": ObjectId(entry_id)})
+        return jsonify({"message": "Deleted successfully"})
+    else:
+        # Fallback store
+        for i, doc in enumerate(db_instance.fallback_store):
+            # In fallback store, we don't have _id (unless added manually), we might match by something else.
+            # But wait, fallback store doesn't have _id strings properly assigned, maybe we should just simulate it or match by index/timestamp.
+            if str(doc.get("_id", i)) == entry_id:
+                if doc.get("actor_id") != user_id:
+                    return jsonify({"error": "Forbidden: Cannot delete another user's history"}), 403
+                del db_instance.fallback_store[i]
+                return jsonify({"message": "Deleted successfully"})
+        return jsonify({"error": "Not found"}), 404
 
 @complaints_bp.route("/admin/complaints", methods=["GET"])
 @token_required
 @require_role("Admin", "Moderator")
 def get_all_complaints(token_data):
-    """Analysts view all complaints"""
+    """Analysts view all complaints (left intact as per requirements, but hidden in UI)"""
     if db_instance.is_persistent:
-        complaints = list(db_instance.collection.find({"source": "user_complaint"}, {"_id": 0}).sort("logged_at", -1))
+        complaints = list(db_instance.collection.find({"source": {"$ne": "self_serve"}}, {"_id": 0}).sort("logged_at", -1))
     else:
-        complaints = [c for c in db_instance.fallback_store if c.get("source") == "user_complaint"]
+        complaints = [c for c in db_instance.fallback_store if c.get("source") != "self_serve"]
     return jsonify({"complaints": complaints})
