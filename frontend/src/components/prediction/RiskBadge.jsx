@@ -17,18 +17,18 @@ function getCategoryBadgeClass(category) {
   return 'badge-muted';
 }
 
-export default function RiskBadge({ isHarassing, category, riskScore }) {
-  const score = Math.round(riskScore ?? 0);
+export default function RiskBadge({ safetyStatus, severityTier, category, threatScore }) {
+  const score = Math.round(threatScore ?? 0);
   const catLabel = (category || 'none').replace(/_/g, ' ').replace(/\//g, ' / ');
 
   return (
     <div className="flex flex-col gap-4 w-full">
       {/* Status pill */}
       <div className="flex items-center gap-2">
-        {isHarassing ? (
+        {safetyStatus !== 'Safe' ? (
           <span className="badge badge-danger text-sm">
             <ShieldAlert size={14} />
-            Threat Detected
+            {safetyStatus || 'Threat Detected'}
           </span>
         ) : (
           <span className="badge badge-success text-sm">
@@ -42,21 +42,21 @@ export default function RiskBadge({ isHarassing, category, riskScore }) {
       </div>
 
       {/* Large score display */}
-      {riskScore != null && (
+      {threatScore != null && (
         <div className="flex items-end gap-3">
           <span className="text-4xl font-extrabold text-text-primary tabular-nums font-mono">
             {score}
           </span>
           <div className="mb-1">
             <span className={`score-pill ${getScoreClass(score)}`}>
-              {score >= 80 ? 'Critical' : score >= 55 ? 'High' : score >= 30 ? 'Medium' : 'Low'}
+              {severityTier || (score >= 80 ? 'Critical' : score >= 55 ? 'High' : score >= 30 ? 'Medium' : 'Low')}
             </span>
           </div>
         </div>
       )}
 
       {/* Score bar */}
-      {riskScore != null && (
+      {threatScore != null && (
         <div className="space-y-1.5">
           <div className="progress-bar h-2">
             <div
@@ -66,7 +66,7 @@ export default function RiskBadge({ isHarassing, category, riskScore }) {
               style={{ width: `${score}%` }}
             />
           </div>
-          <p className="text-2xs text-text-muted">Risk Score / 100</p>
+          <p className="text-2xs text-text-muted">Threat Score / 100</p>
         </div>
       )}
     </div>
@@ -74,7 +74,8 @@ export default function RiskBadge({ isHarassing, category, riskScore }) {
 }
 
 RiskBadge.propTypes = {
-  isHarassing: PropTypes.bool.isRequired,
-  category:    PropTypes.string.isRequired,
-  riskScore:   PropTypes.number,
+  safetyStatus: PropTypes.string,
+  severityTier: PropTypes.string,
+  category:     PropTypes.string.isRequired,
+  threatScore:  PropTypes.number,
 };

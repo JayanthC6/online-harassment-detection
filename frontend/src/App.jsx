@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import InstantAnalysisForm from './components/analysis/InstantAnalysisForm'
+import AnalyzeForm from './components/AnalyzeForm'
 import Dashboard from './components/Dashboard'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import ChatbotPanel from './components/chatbot/ChatbotPanel'
 import { useAuth } from './hooks/useAuth'
 import LoginForm from './components/auth/LoginForm'
-import MyHistory from './components/complaints/MyTickets' // We'll just reuse/rename this component file shortly
+import MyHistory from './components/complaints/MyHistory'
 import HowItWorks from './components/common/HowItWorks'
 
 export default function App() {
@@ -15,8 +16,8 @@ export default function App() {
   // Determine default tab based on role
   const getDefaultTab = () => {
     if (!token) return 'login';
-    // If Admin/Moderator, default to dashboard. If User, default to instant_analysis.
-    if (role === 'User') return 'instant_analysis';
+    // If Admin/Moderator, default to dashboard. If User/Guest, default to analyze.
+    if (role === 'User' || role === 'Guest') return 'analyze';
     return 'dashboard';
   };
 
@@ -36,6 +37,7 @@ export default function App() {
     incidents:        { title: 'Complaint Queue',  sub: 'Review and triage user complaints' },
     behavioral:       { title: 'Behavioral Intelligence', sub: 'Actor profiling and risk trends' },
     how_it_works:     { title: 'How It Works', sub: 'Understanding the ShieldAI Platform' },
+    analyze:          { title: 'Threat Hunt', sub: 'Manual analysis of content or files' },
   }
   
   const page = PAGE_TITLES[activeTab] || PAGE_TITLES.login
@@ -92,9 +94,11 @@ export default function App() {
               </div>
             )}
 
-            {activeTab === 'instant_analysis' && role === 'User' && (
+
+
+            {activeTab === 'analyze' && (
               <div className="animate-fade-in">
-                <InstantAnalysisForm onNewResult={() => setRefreshKey(k => k + 1)} />
+                <AnalyzeForm onNewResult={() => setRefreshKey(k => k + 1)} />
               </div>
             )}
 
@@ -104,7 +108,7 @@ export default function App() {
               </div>
             )}
 
-            {(activeTab === 'dashboard' || activeTab === 'incidents' || activeTab === 'behavioral') && role !== 'User' && (
+            {(activeTab === 'dashboard' || activeTab === 'incidents' || activeTab === 'behavioral') && role !== 'User' && role !== 'Guest' && (
               <div className="animate-fade-in">
                 <Dashboard refreshKey={refreshKey} activeTab={activeTab} />
               </div>

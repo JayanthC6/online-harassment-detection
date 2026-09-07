@@ -5,6 +5,7 @@ export function useAuth() {
   
   const [role, setRole] = useState(() => {
     const t = localStorage.getItem('adminToken');
+    if (t === 'GUEST') return 'Guest';
     if (t) {
       try {
         return JSON.parse(atob(t.split('.')[1])).role;
@@ -16,7 +17,9 @@ export function useAuth() {
   });
 
   useEffect(() => {
-    if (token) {
+    if (token === 'GUEST') {
+      setRole('Guest');
+    } else if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setRole(payload.role);

@@ -1,0 +1,59 @@
+{
+  "generated_at_utc": "2026-09-05T16:01:45.999147+00:00",
+  "script": "scripts/build_test_split.py",
+  "label_mapping_source": "notebooks/ShieldAI_MultiLabel_FineTuning.ipynb",
+  "split": {
+    "concatenation_order": [
+      "Jigsaw",
+      "HateXplain",
+      "OLID"
+    ],
+    "source_sizes": {
+      "Jigsaw": 159571,
+      "HateXplain": 15383,
+      "OLID": 13240
+    },
+    "total_unified_rows": 188194,
+    "split_sizes": {
+      "train": 150642,
+      "val": 18767,
+      "test": 18785
+    },
+    "random_seed": 42,
+    "split_strategy": "skmultilearn.model_selection.iterative_train_test_split",
+    "split_call_sequence": [
+      "np.random.seed(42)",
+      "X_train, y_train, X_temp, y_temp = iterative_train_test_split(X, y, test_size=0.2)",
+      "X_val, y_val, X_test, y_test = iterative_train_test_split(X_temp, y_temp, test_size=0.5)"
+    ],
+    "reproducibility_caveat": "iterative_train_test_split (skmultilearn 0.2.0) does not accept random_state directly; it uses np.random.seed() as the only seeding mechanism, which is not a reliable reproduction guarantee. Exact split reproduction is not guaranteed by the library even with identical seeds. The F1 proximity check (VERIFIED / DISCREPANCY in the verification field) is the real evidence of split correctness.",
+    "scikit_multilearn_version_note": "unknown \u2014 pip freeze was not captured in the training notebook. Installed now: 0.2.0. If versions differ, iterative stratification output may vary.",
+    "label_order": [
+      "Hate Speech",
+      "Cyberbullying / Harassment",
+      "Threat",
+      "Toxicity / Offensive Language",
+      "Profanity",
+      "Clean"
+    ],
+    "test_label_positive_counts": {
+      "Hate Speech": 722,
+      "Cyberbullying / Harassment": 1176,
+      "Threat": 50,
+      "Toxicity / Offensive Language": 2408,
+      "Profanity": 940,
+      "Clean": 15843
+    }
+  },
+  "env_versions": {
+    "numpy": "1.26.4",
+    "pandas": "2.2.2",
+    "scikit_multilearn": "0.2.0",
+    "datasets": "5.0.0",
+    "transformers": "5.2.0",
+    "torch": "2.13.0+cpu",
+    "scikit_learn": "1.4.2",
+    "huggingface_hub": "1.5.0"
+  },
+  "verification": null
+}

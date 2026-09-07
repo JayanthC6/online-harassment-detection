@@ -10,6 +10,7 @@ from ml.ocr import extract_and_classify
 from services.parsers import parse_whatsapp_txt, parse_instagram_json
 import db
 from ml.chatbot import generate_chat_response, extract_text_from_file, analyze_file_content
+from ml.adapters.threat_intel import mask_pii, extract_pii
 
 # Import the shared limiter instance (defined in extensions.py to avoid circular imports)
 from extensions import limiter
@@ -126,8 +127,9 @@ def predict_instant(token_data):
     return jsonify(result)
 
 @public_bp.route("/predict", methods=["POST"])
+@token_optional
 @limiter.limit("30 per minute")
-def predict():
+def predict(token_data):
     # Per-route payload guard: 32 KB max for plain-text JSON requests.
     # Text is capped at 2000 chars (~8 KB); 32 KB rejects garbage before parsing.
     cl = request.content_length
@@ -152,14 +154,19 @@ def predict():
         return jsonify({"error": "Text exceeds 2000 character limit."}), 400
 
     result = PredictionService.classify_text(text)
+    result["pii_categories"] = extract_pii(text)
     result["text_preview"] = text[:120]
     result["text_full"] = text  # full text needed by /predict/explain for LIG
     result["timestamp"] = datetime.utcnow().isoformat()
     result["actor_id"] = data.get("actor_id", "Anonymous")
     result = PredictionService.attach_risk_and_similarity(result, text)
 
-    if persist:
-        AdminService.log_message(result)
+    if persist and token_data:
+        masked_result = result.copy()
+        masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
+        masked_result["text_full"] = mask_pii(result.get("text_full", ""))
+        masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+        AdminService.log_message(masked_result)
 
     result.pop("embedding", None)
     result.pop("_id", None)  # MongoDB ObjectId is not JSON serializable
@@ -217,9 +224,12 @@ def demo_analyze():
     return jsonify(result)
 
 @public_bp.route("/predict/batch", methods=["POST"])
-def predict_batch():
+@token_optional
+@limiter.limit("30 per minute")
+def predict_batch(token_data):
     data = request.get_json(silent=True) or {}
     texts = data.get("texts", [])
+    persist = data.get("persist", False)
 
     if not isinstance(texts, list) or len(texts) == 0:
         return jsonify({"error": "Provide a non-empty 'texts' array."}), 400
@@ -236,11 +246,16 @@ def predict_batch():
             continue
 
         r = PredictionService.classify_text(text)
+        r["pii_categories"] = extract_pii(text)
         r["text_preview"] = text[:120]
         r["timestamp"] = datetime.utcnow().isoformat()
         r = PredictionService.attach_risk_and_similarity(r, text)
         
-        AdminService.log_message(r)
+        if persist and token_data:
+            masked_r = r.copy()
+            masked_r["text_preview"] = mask_pii(r.get("text_preview", ""))
+            masked_r["evidence"] = mask_pii(r.get("evidence", ""))
+            AdminService.log_message(masked_r)
             
         r.pop("embedding", None)
         r.pop("_id", None)  # MongoDB ObjectId is not JSON serializable
@@ -249,8 +264,9 @@ def predict_batch():
     return jsonify({"results": results, "count": len(results)})
 
 @public_bp.route("/predict/audio", methods=["POST"])
+@token_optional
 @limiter.limit("30 per minute")
-def predict_audio():
+def predict_audio(token_data):
     # Per-route payload guard: 50 MB for audio uploads
     cl = request.content_length
     if cl is not None and cl > 50 * 1024 * 1024:
@@ -289,20 +305,28 @@ def predict_audio():
         return jsonify({"error": "Could not detect any speech in the file."}), 400
 
     result = PredictionService.classify_text(transcript_text)
+    result["pii_categories"] = extract_pii(transcript_text)
     result["text_preview"] = transcript_text[:120]
     result["timestamp"] = datetime.utcnow().isoformat()
     result["transcript"] = transcript_text
     result["actor_id"] = request.form.get("actor_id", "Anonymous")
     result = PredictionService.attach_risk_and_similarity(result, transcript_text)
 
-    AdminService.log_message({**result, "text_preview": transcript_text[:120]})
+    persist = request.form.get("persist", "false").lower() == "true"
+    if persist and token_data:
+        masked_result = result.copy()
+        masked_result["transcript"] = mask_pii(result.get("transcript", ""))
+        masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
+        masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+        AdminService.log_message(masked_result)
 
     result.pop("embedding", None)
     return jsonify(result)
 
 @public_bp.route("/predict/screenshot", methods=["POST"])
+@token_optional
 @limiter.limit("30 per minute")
-def predict_screenshot():
+def predict_screenshot(token_data):
     # Per-route payload guard: 10 MB for image uploads
     cl = request.content_length
     if cl is not None and cl > 10 * 1024 * 1024:
@@ -337,19 +361,27 @@ def predict_screenshot():
     if not extracted_text:
         return jsonify({"error": "No text detected in screenshot."}), 400
 
+    result["pii_categories"] = extract_pii(extracted_text)
     result["timestamp"] = datetime.utcnow().isoformat()
     result["actor_id"] = request.form.get("actor_id", "Anonymous")
     result["platform"] = request.form.get("platform", "generic")
     result = PredictionService.attach_risk_and_similarity(result, extracted_text)
 
-    AdminService.log_message({**result, "text_preview": extracted_text[:120]})
+    persist = request.form.get("persist", "false").lower() == "true"
+    if persist and token_data:
+        masked_result = result.copy()
+        masked_result["text_preview"] = mask_pii(result.get("text_preview", "") or extracted_text[:120])
+        masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+        masked_result["extracted_text"] = mask_pii(result.get("extracted_text", ""))
+        AdminService.log_message(masked_result)
 
     result.pop("embedding", None)
     return jsonify(result)
 
 @public_bp.route("/predict/file", methods=["POST"])
+@token_optional
 @limiter.limit("30 per minute")
-def predict_file():
+def predict_file(token_data):
     # Per-route payload guard: 50 MB for document uploads
     cl = request.content_length
     if cl is not None and cl > 50 * 1024 * 1024:
@@ -389,6 +421,7 @@ def predict_file():
         extracted_text = extracted_text[:10000]
 
     result = PredictionService.classify_text(extracted_text)
+    result["pii_categories"] = extract_pii(extracted_text)
     result["timestamp"] = datetime.utcnow().isoformat()
     result["actor_id"] = request.form.get("actor_id", "Anonymous")
     
@@ -404,7 +437,13 @@ def predict_file():
     result["text_full"] = extracted_text
     result = PredictionService.attach_risk_and_similarity(result, extracted_text)
 
-    AdminService.log_message(result)
+    persist = request.form.get("persist", "false").lower() == "true"
+    if persist and token_data:
+        masked_result = result.copy()
+        masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
+        masked_result["text_full"] = mask_pii(result.get("text_full", ""))
+        masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+        AdminService.log_message(masked_result)
 
     result.pop("embedding", None)
     return jsonify(result)
@@ -426,14 +465,16 @@ def summarize():
         return jsonify({"error": str(e)}), 500
 
 @public_bp.route("/predict/conversation", methods=["POST"])
+@token_optional
 @limiter.limit("30 per minute")
-def predict_conversation():
+def predict_conversation(token_data):
     # Per-route payload guard: 512 KB for conversation JSON
     cl = request.content_length
     if cl is not None and cl > 512 * 1024:
         return jsonify({"error": "Payload too large. Maximum 512 KB for /predict/conversation."}), 413
     data = request.get_json(silent=True) or {}
     messages = data.get("messages", [])
+    persist = data.get("persist", False)
 
     if not isinstance(messages, list) or len(messages) == 0:
         return jsonify({"error": "Provide a non-empty 'messages' array."}), 400
@@ -443,6 +484,7 @@ def predict_conversation():
     valid_messages = []
     for msg in messages:
         if isinstance(msg, dict) and "text" in msg and isinstance(msg["text"], str) and msg["text"].strip():
+            msg["pii_categories"] = extract_pii(msg["text"])
             valid_messages.append(msg)
             
     if not valid_messages:
@@ -450,13 +492,26 @@ def predict_conversation():
 
     try:
         result = PredictionService.analyze_conversation(valid_messages)
-        AdminService.log_conversation(result)
+        
+        if persist and token_data:
+            masked_result = result.copy()
+            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+            masked_messages = []
+            for m in valid_messages:
+                masked_m = m.copy()
+                masked_m["text"] = mask_pii(m.get("text", ""))
+                masked_messages.append(masked_m)
+            masked_result["messages"] = masked_messages
+            AdminService.log_conversation(masked_result)
+            
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @public_bp.route("/predict/conversation/import", methods=["POST"])
-def import_conversation():
+@token_optional
+@limiter.limit("30 per minute")
+def import_conversation(token_data):
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded."}), 400
 
@@ -487,8 +542,23 @@ def import_conversation():
         # Attach platform to first message so it carries over
         messages[0]["platform"] = platform
         
+        for msg in messages:
+            msg["pii_categories"] = extract_pii(msg.get("text", ""))
+        
         result = PredictionService.analyze_conversation(messages)
-        AdminService.log_conversation(result)
+        
+        persist = request.form.get("persist", "false").lower() == "true"
+        if persist and token_data:
+            masked_result = result.copy()
+            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+            masked_messages = []
+            for m in messages:
+                masked_m = m.copy()
+                masked_m["text"] = mask_pii(m.get("text", ""))
+                masked_messages.append(masked_m)
+            masked_result["messages"] = masked_messages
+            AdminService.log_conversation(masked_result)
+            
         return jsonify(result)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -499,6 +569,7 @@ def import_conversation():
             os.remove(file_path)
 
 @public_bp.route("/chat", methods=["POST"])
+@limiter.limit("30 per minute")
 def chat():
     data = request.get_json(silent=True) or {}
     session_id = data.get("session_id")

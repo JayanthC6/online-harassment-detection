@@ -3,11 +3,11 @@ import PropTypes from 'prop-types';
 import { LayoutDashboard, Search, AlertTriangle, Brain, ShieldCheck, HelpCircle } from 'lucide-react';
 
 export default function Sidebar({ activeTab, setActiveTab, role }) {
-  const isUserRole = role === 'User';
+  const isUserRole = role === 'User' || role === 'Guest';
   
   const navItems = isUserRole ? [
-    { id: 'instant_analysis', label: 'Instant Analysis', icon: Search },
-    { id: 'my_history',       label: 'My History',       icon: LayoutDashboard },
+    { id: 'analyze', label: 'Analyze Content', icon: Search },
+    ...(role === 'User' ? [{ id: 'my_history', label: 'My History', icon: LayoutDashboard }] : []),
   ] : [
     { id: 'dashboard',  label: 'Dashboard',      icon: LayoutDashboard },
     { id: 'analyze',    label: 'Threat Hunt',    icon: Search },

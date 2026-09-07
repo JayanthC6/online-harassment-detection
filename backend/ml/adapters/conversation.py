@@ -37,19 +37,21 @@ class ConversationAdapter:
                 "prediction": prediction
             })
 
-        # 2. Contextual Escalation Intelligence
+        # 2. Contextual Escalation Intelligence & Aggregate Stats
         escalation_score = 0
         escalation_level = "None"
         escalation_reason = []
         conversation_risk = 0
         
-        # Track previous messages to detect escalation
-        max_prev_risk = 0
-        prev_categories = set()
+        # Stats
+        total_messages = len(analyzed_messages)
+        per_category_counts = {}
+        high_risk_message_count = 0
+        threat_labeled_count = 0
         
+        # Pass 1: compute risk for all messages and gather stats
         for msg in analyzed_messages:
             pred = msg["prediction"]
-            # Base risk of this message
             primary_cat = pred.get("primary_label", pred.get("category", "none"))
             conf = pred.get("confidence", 0)
             
@@ -59,39 +61,71 @@ class ConversationAdapter:
             )
             msg["risk_score"] = msg_risk
             
-            # Detect repeated toxicity
-            if primary_cat != "Clean":
-                if primary_cat in prev_categories:
-                    escalation_score += 15
-                    escalation_reason.append(f"Repeated toxicity: {primary_cat}")
-                prev_categories.add(primary_cat)
-            
-            # Detect escalation in severity
-            if msg_risk > max_prev_risk and max_prev_risk > 0 and msg_risk > 40:
-                diff = msg_risk - max_prev_risk
-                if diff > 20:
-                    escalation_score += 25
-                    escalation_reason.append(f"Severe escalation detected (Risk jumped by {round(diff, 1)})")
-                else:
-                    escalation_score += 10
-                    escalation_reason.append(f"Escalation detected (Risk increased)")
-                    
-            max_prev_risk = max(max_prev_risk, msg_risk)
-            
-            # The base conversation risk is roughly the highest individual message risk
             conversation_risk = max(conversation_risk, msg_risk)
             
+            if msg_risk >= 70:
+                high_risk_message_count += 1
+            if primary_cat == "Threat":
+                threat_labeled_count += 1
+                
+            if primary_cat != "Clean":
+                per_category_counts[primary_cat] = per_category_counts.get(primary_cat, 0) + 1
+
+        repeated_harassment = any(count >= 2 for count in per_category_counts.values())
+        threat_frequency = threat_labeled_count / total_messages if total_messages > 0 else 0.0
+
+        # Escalation Detection
+        if total_messages >= 10:
+            mid = total_messages // 2
+            first_half = analyzed_messages[:mid]
+            second_half = analyzed_messages[mid:]
+            
+            first_half_avg = sum(m["risk_score"] for m in first_half) / len(first_half) if first_half else 0
+            second_half_avg = sum(m["risk_score"] for m in second_half) / len(second_half) if second_half else 0
+            
+            has_high_severity_second_half = any(m["risk_score"] >= 70 for m in second_half)
+            
+            if second_half_avg > first_half_avg * 1.25 and has_high_severity_second_half:
+                escalation_score = 40
+                escalation_level = "High"
+                escalation_reason.append(f"Macro escalation detected (First half avg: {first_half_avg:.1f}, Second half avg: {second_half_avg:.1f})")
+            else:
+                escalation_score = 0
+                escalation_level = "None"
+        else:
+            # Fallback for < 10 messages: existing naive logic
+            max_prev_risk = 0
+            prev_categories = set()
+            for msg in analyzed_messages:
+                primary_cat = msg["prediction"].get("primary_label", "Clean")
+                msg_risk = msg["risk_score"]
+                
+                if primary_cat != "Clean":
+                    if primary_cat in prev_categories:
+                        escalation_score += 15
+                        escalation_reason.append(f"Repeated toxicity: {primary_cat}")
+                    prev_categories.add(primary_cat)
+                
+                if msg_risk > max_prev_risk and max_prev_risk > 0 and msg_risk > 40:
+                    diff = msg_risk - max_prev_risk
+                    if diff > 20:
+                        escalation_score += 25
+                        escalation_reason.append(f"Severe escalation detected (Risk jumped by {round(diff, 1)})")
+                    else:
+                        escalation_score += 10
+                        escalation_reason.append(f"Escalation detected (Risk increased)")
+                max_prev_risk = max(max_prev_risk, msg_risk)
+                
+            if escalation_score >= 40:
+                escalation_level = "High"
+            elif escalation_score >= 15:
+                escalation_level = "Medium"
+            elif escalation_score > 0:
+                escalation_level = "Low"
+
         # Add escalation score to conversation risk
         conversation_risk += (escalation_score * 0.5)
         conversation_risk = min(100.0, round(conversation_risk, 1))
-        
-        # Determine escalation level
-        if escalation_score >= 40:
-            escalation_level = "High"
-        elif escalation_score >= 15:
-            escalation_level = "Medium"
-        elif escalation_score > 0:
-            escalation_level = "Low"
             
         if not escalation_reason:
             escalation_reason = ["No significant escalation detected."]
@@ -123,5 +157,10 @@ class ConversationAdapter:
             "conversation_risk": conversation_risk,
             "primary_label": conv_primary,
             "secondary_labels": conv_secondary,
-            "model": "conversation-adapter(" + analyzed_messages[-1]["prediction"]["model"] + ")" if analyzed_messages else "unknown"
+            "model": "conversation-adapter(" + analyzed_messages[-1]["prediction"]["model"] + ")" if analyzed_messages else "unknown",
+            "total_messages": total_messages,
+            "per_category_counts": per_category_counts,
+            "high_risk_message_count": high_risk_message_count,
+            "repeated_harassment": repeated_harassment,
+            "threat_frequency": threat_frequency
         }

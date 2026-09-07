@@ -89,14 +89,24 @@ export default function LoginForm({ onLogin }) {
           </button>
         </form>
 
-        <div className="mt-4 text-center">
+        <div className="mt-4 text-center space-y-3">
           <button 
             type="button" 
             onClick={() => setIsRegistering(!isRegistering)}
-            className="text-xs text-text-muted hover:text-primary transition-colors"
+            className="text-xs text-text-muted hover:text-primary transition-colors block w-full"
           >
             {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register'}
           </button>
+          
+          <div className="flex items-center justify-center gap-2 pt-2 border-t border-border">
+            <button 
+              type="button" 
+              onClick={() => onLogin('GUEST')}
+              className="text-xs font-semibold text-text-secondary hover:text-primary transition-colors"
+            >
+              Continue as Guest &rarr;
+            </button>
+          </div>
         </div>
       </div>
     </div>

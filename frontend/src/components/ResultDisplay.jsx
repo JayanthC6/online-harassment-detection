@@ -31,9 +31,10 @@ export default function ResultDisplay({ result }) {
         <Card className="col-span-1">
           <p className="section-title">Risk Classification</p>
           <RiskBadge
-            isHarassing={isHarassing}
+            safetyStatus={result.safety_status}
+            severityTier={result.severity_tier}
             category={result.category}
-            riskScore={result.risk_score}
+            threatScore={result.threat_score}
           />
         </Card>
 
@@ -114,6 +115,47 @@ export default function ResultDisplay({ result }) {
         </Card>
       )}
 
+      {/* Threat Intel / Malicious URLs */}
+      {result.malicious_urls && result.malicious_urls.filter(u => u.status !== 'Safe').length > 0 && (
+        <Card className="border border-danger/30 bg-background-elevated">
+          <div className="flex items-center gap-2 mb-4">
+            <Link size={14} className="text-danger" />
+            <p className="section-title mb-0 text-danger font-bold text-sm">Threat Intel Warning</p>
+          </div>
+          <div className="space-y-3">
+            {result.malicious_urls.filter(u => u.status !== 'Safe').map((urlObj, idx) => {
+              let badgeColor = "bg-surface text-text-muted border-border"; // Unknown (Gray/Muted)
+              if (urlObj.status === "High Risk") {
+                badgeColor = "bg-danger/20 text-danger border-danger/50"; // Red
+              } else if (urlObj.status === "Suspicious") {
+                badgeColor = "bg-warning/20 text-warning border-warning/50"; // Orange/Yellow
+              }
+
+              return (
+                <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between p-3 rounded bg-surface/50 border border-border/50 gap-3">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className={`text-xs px-2 py-0.5 rounded border font-semibold whitespace-nowrap ${badgeColor}`}>
+                      {urlObj.status}
+                    </span>
+                    <span className="text-sm font-mono text-text-primary truncate" title={urlObj.url}>
+                      {urlObj.url}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs md:justify-end shrink-0">
+                    <span className="text-text-secondary">
+                      Reason: <span className="font-semibold text-text-primary">{urlObj.reason}</span>
+                    </span>
+                    <span className="px-2 py-1 bg-background rounded border border-border font-mono">
+                      Risk: {urlObj.risk_score}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
       {/* Third row: Evidence panel */}
       <Card className="terminal-block">
         <div className="flex items-center gap-2 px-1 pb-3 border-b border-border mb-4">
@@ -128,20 +170,11 @@ export default function ResultDisplay({ result }) {
         <div className="font-mono text-xs leading-relaxed text-text-muted space-y-2 max-h-64 overflow-y-auto">
           <p className="text-blue">{'>'} Forensic evidence extraction complete.</p>
 
-          {result.explanation && result.explanation.length > 0 && (
+          {result.evidence && (
             <>
-              <p className="text-text-secondary">{'>'} Flagged tokens:</p>
-              <div className="pl-4">
-                <ToxicWordHighlight explanation={result.explanation} />
-              </div>
-            </>
-          )}
-
-          {result.transcript && (
-            <>
-              <p className="text-text-secondary mt-3">{'>'} Audio transcript:</p>
-              <div className="pl-4 text-text-primary border-l-2 border-blue ml-2">
-                {result.transcript}
+              <p className="text-text-secondary">{'>'} Detected Evidence:</p>
+              <div className="pl-4 text-text-primary border-l-2 border-blue ml-2 whitespace-pre-wrap">
+                {result.evidence}
               </div>
             </>
           )}

@@ -173,7 +173,8 @@ def analyze_text_for_threat_intel(text):
     
     intel = {
         "urls": [],
-        "emails": []
+        "emails": [],
+        "malicious_urls": []
     }
     
     for url in urls:
@@ -184,18 +185,66 @@ def analyze_text_for_threat_intel(text):
         }
         
         sb_status = check_safe_browsing(url)
+        age = check_domain_age(domain)
+        squat = check_typosquatting(domain)
+        
         if sb_status:
             url_intel["safe_browsing"] = sb_status
-            
-        age = check_domain_age(domain)
         if age is not None:
             url_intel["domain_age_days"] = age
-            
-        squat = check_typosquatting(domain)
         if squat:
             url_intel["typosquat_match"] = squat
             
         intel["urls"].append(url_intel)
+        
+        # Build malicious_url structure
+        m_url = {
+            "url": url,
+            "domain": domain,
+            "status": "Safe",
+            "risk_score": 0,
+            "reason": "Verified Clean"
+        }
+        
+        is_high_risk = False
+        
+        # Check Typosquatting first
+        if squat:
+            m_url["status"] = "High Risk"
+            m_url["risk_score"] = 85
+            m_url["reason"] = f"Typosquatting of {squat}"
+            is_high_risk = True
+            
+        # Check Safe Browsing (overrides typosquatting if more severe)
+        if sb_status and sb_status != "safe":
+            m_url["status"] = "High Risk"
+            m_url["risk_score"] = 90
+            m_url["reason"] = f"Google Safe Browsing ({sb_status})"
+            is_high_risk = True
+            
+        if not is_high_risk:
+            if sb_status == "safe":
+                if age is not None:
+                    if age < 30:
+                        m_url["status"] = "Suspicious"
+                        m_url["risk_score"] = 40
+                        m_url["reason"] = f"Suspiciously New Domain ({age} days old)"
+                    else:
+                        m_url["status"] = "Safe"
+                        m_url["risk_score"] = 0
+                        m_url["reason"] = "Verified Clean"
+                else:
+                    # Safe Browsing clean, but WHOIS failed/timeout -> Unknown
+                    m_url["status"] = "Unknown"
+                    m_url["risk_score"] = 25
+                    m_url["reason"] = "Verification Failed / Timed Out"
+            else:
+                # Safe Browsing failed/timeout (sb_status is None)
+                m_url["status"] = "Unknown"
+                m_url["risk_score"] = 25
+                m_url["reason"] = "Verification Failed / Timed Out"
+
+        intel["malicious_urls"].append(m_url)
         
     for email in emails:
         email_intel = {
@@ -209,3 +258,50 @@ def analyze_text_for_threat_intel(text):
         intel["emails"].append(email_intel)
         
     return intel
+
+# Cycle 2: PII Detection and Masking
+
+AADHAAR_REGEX = re.compile(r'\b[2-9]{1}[0-9]{3}\s?[0-9]{4}\s?[0-9]{4}\b')
+PAN_REGEX = re.compile(r'\b[A-Z]{5}[0-9]{4}[A-Z]{1}\b')
+PHONE_REGEX = re.compile(r'\b(?:\+91[-.\s]?)?[6789]\d{9}\b')
+
+def extract_pii(text: str) -> list:
+    """Returns a list of detected PII categories."""
+    if not text or not isinstance(text, str):
+        return []
+    
+    categories = []
+    
+    # Check Aadhaar first
+    aadhaar_matches = AADHAAR_REGEX.findall(text)
+    if aadhaar_matches:
+        categories.append("Aadhaar")
+        
+    # Check PAN
+    if PAN_REGEX.search(text):
+        categories.append("PAN")
+        
+    # Check Phone - if Aadhaar matches overlap, we need to be careful not to count phone separately
+    # But for extraction, we can just do a simple search. Wait, if it's just Aadhaar, we don't want to falsely flag as Phone too.
+    # It's better to mask Aadhaar first and then check for Phone.
+    text_masked_aadhaar = AADHAAR_REGEX.sub("[AADHAAR REDACTED]", text)
+    if PHONE_REGEX.search(text_masked_aadhaar):
+        categories.append("Phone")
+        
+    return categories
+
+def mask_pii(text: str) -> str:
+    """Masks Aadhaar, PAN, and Indian phone numbers in the text."""
+    if not text or not isinstance(text, str):
+        return text
+        
+    # 1. Mask Aadhaar FIRST to prevent overlapping Phone regex matches
+    text = AADHAAR_REGEX.sub("[AADHAAR REDACTED]", text)
+    
+    # 2. Mask PAN
+    text = PAN_REGEX.sub("[PAN REDACTED]", text)
+    
+    # 3. Mask Phone
+    text = PHONE_REGEX.sub("[PHONE REDACTED]", text)
+    
+    return text

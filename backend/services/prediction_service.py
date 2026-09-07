@@ -133,11 +133,31 @@ class PredictionService:
             result["risk_score"]
         )
 
+        # Unified Threat Analysis (Phase 1)
+        result["threat_score"] = result["risk_score"]
+        result["safety_status"] = "Safe" if result["severity_tier"] == "Safe" else "At Risk"
+        result["evidence"] = text_for_embedding if result["severity_tier"] != "Safe" else "No specific threat evidence detected."
+
+        if "threat_intel" in result and "malicious_urls" in result["threat_intel"]:
+            result["malicious_urls"] = result["threat_intel"]["malicious_urls"]
+        elif "malicious_urls" not in result:
+            result["malicious_urls"] = []
+
         return result
 
     @staticmethod
     def analyze_conversation(messages: list) -> dict:
         result = PredictionService.get_conversation_adapter().predict_conversation(messages)
+        
+        # Aggregate malicious_urls from all messages
+        all_malicious_urls = []
+        for msg in result.get("messages", []):
+            if "threat_intel" in msg and "malicious_urls" in msg["threat_intel"]:
+                # To avoid duplicates if multiple messages have the same URL
+                for m_url in msg["threat_intel"]["malicious_urls"]:
+                    if not any(u["url"] == m_url["url"] for u in all_malicious_urls):
+                        all_malicious_urls.append(m_url)
+        result["malicious_urls"] = all_malicious_urls
         
         try:
             from ml.summarize import summarize_conversation
@@ -168,5 +188,15 @@ class PredictionService:
         result["guidance"] = GuidanceService.get_guidance(
             primary_label, primary_conf, secondary_labels, result["conversation_risk"], platform
         )
+
+        result["severity_tier"] = GuidanceService.compute_severity(
+            result["guidance"].get("show_critical_resources", False),
+            result["conversation_risk"]
+        )
+
+        # Unified Threat Analysis (Phase 1)
+        result["threat_score"] = result["conversation_risk"]
+        result["safety_status"] = "Safe" if result["severity_tier"] == "Safe" else "At Risk"
+        result["evidence"] = highest_risk_msg.get("text", "No specific threat evidence detected.") if result["severity_tier"] != "Safe" else "No specific threat evidence detected."
             
         return result

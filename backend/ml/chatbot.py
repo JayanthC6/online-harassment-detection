@@ -77,7 +77,7 @@ def generate_chat_response(history: list, persona: str = "user") -> str:
             messages=formatted_messages,
             model=MODEL,
             temperature=0.5,
-            max_tokens=2000,
+            max_tokens=500,
         )
         return _strip_think(completion.choices[0].message.content.strip())
     except Exception as e:

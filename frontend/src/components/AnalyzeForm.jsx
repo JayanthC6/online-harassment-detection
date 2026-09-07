@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { FileText, Mic, Image, Search, Sparkles, MessageSquare, Plus, Trash2 } from 'lucide-react'
+import { FileText, Mic, Image, Search, Sparkles, MessageSquare, Plus, Trash2, EyeOff } from 'lucide-react'
 import { usePredict } from '../hooks/usePredict'
 import ResultDisplay from './ResultDisplay'
 import Card from './common/Card'
@@ -18,41 +18,42 @@ export default function AnalyzeForm({ onNewResult }) {
   const [importFile, setImportFile] = useState(null)
   const [messages, setMessages] = useState([{ text: '', sender: 'User 1' }])
   const [documentFile, setDocumentFile] = useState(null)
+  const [doNotSave, setDoNotSave] = useState(false)
   
   const { loading, error, result, predictText, predictAudio, predictConversation, importConversation, predictFile } = usePredict()
 
   /* ── Text analysis ── */
   const handleAnalyze = async () => {
     if (!text.trim()) return
-    const data = await predictText(text, actorId)
+    const data = await predictText(text, actorId, !doNotSave)
     if (data && onNewResult) onNewResult(data)
   }
 
   /* ── Audio analysis ── */
   const handleAudioAnalyze = async () => {
     if (!audioFile) return
-    const data = await predictAudio(audioFile, actorId)
+    const data = await predictAudio(audioFile, actorId, !doNotSave)
     if (data && onNewResult) onNewResult(data)
   }
 
   /* ── File analysis ── */
   const handleFileAnalyze = async () => {
     if (!documentFile) return
-    const data = await predictFile(documentFile, actorId)
+    const data = await predictFile(documentFile, actorId, !doNotSave)
     if (data && onNewResult) onNewResult(data)
   }
 
   /* ── Conversation analysis ── */
   const handleConversationAnalyze = async () => {
     if (importFile) {
-      const data = await importConversation(importFile);
+      const data = await importConversation(importFile, !doNotSave);
       if (data && onNewResult) onNewResult(data);
       return;
     }
     
     const validMessages = messages.filter(m => m.text.trim());
     if (validMessages.length === 0) return;
-    const data = await predictConversation(validMessages);
+    const data = await predictConversation(validMessages, !doNotSave);
     if (data && onNewResult) onNewResult(data);
   }
 
@@ -97,6 +98,20 @@ export default function AnalyzeForm({ onNewResult }) {
           >
             <FileText size={14} /> File Document
           </button>
+        </div>
+
+        <div className="mb-6 flex items-center gap-2 px-1">
+          <input
+            type="checkbox"
+            id="privacy-toggle"
+            checked={doNotSave}
+            onChange={(e) => setDoNotSave(e.target.checked)}
+            className="w-4 h-4 rounded border-border bg-surface text-blue focus:ring-blue focus:ring-offset-bg"
+          />
+          <label htmlFor="privacy-toggle" className="text-sm font-semibold text-text-secondary flex items-center gap-1.5 cursor-pointer">
+            <EyeOff size={14} className="text-text-muted" />
+            Keep this analysis private (Do not save to history)
+          </label>
         </div>
 
         {mode === 'conversation' ? (

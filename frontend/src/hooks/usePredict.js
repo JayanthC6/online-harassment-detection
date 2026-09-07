@@ -26,35 +26,39 @@ export function usePredict() {
     }
   };
 
-  const predictText = (text, actorId) => executePredict('/predict', { text, actor_id: actorId });
+  const predictText = (text, actorId, persist = true) => executePredict('/predict', { text, actor_id: actorId, persist });
   
-  const predictConversation = (messages) => executePredict('/predict/conversation', { messages });
+  const predictConversation = (messages, persist = true) => executePredict('/predict/conversation', { messages, persist });
   
-  const predictAudio = (file, actorId) => {
+  const predictAudio = (file, actorId, persist = true) => {
     const formData = new FormData();
     formData.append('file', file);
     if (actorId) formData.append('actor_id', actorId);
+    formData.append('persist', persist);
     return executePredict('/predict/audio', formData, true);
   };
   
-  const predictScreenshot = (file, actorId, platform = "generic") => {
+  const predictScreenshot = (file, actorId, platform = "generic", persist = true) => {
     const formData = new FormData();
     formData.append('file', file);
     if (actorId) formData.append('actor_id', actorId);
     formData.append('platform', platform);
+    formData.append('persist', persist);
     return executePredict('/predict/screenshot', formData, true);
   };
 
-  const importConversation = (file) => {
+  const importConversation = (file, persist = true) => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('persist', persist);
     return executePredict('/predict/conversation/import', formData, true);
   };
 
-  const predictFile = (file, actorId) => {
+  const predictFile = (file, actorId, persist = true) => {
     const formData = new FormData();
     formData.append('file', file);
     if (actorId) formData.append('actor_id', actorId);
+    formData.append('persist', persist);
     return executePredict('/predict/file', formData, true);
   };
 
