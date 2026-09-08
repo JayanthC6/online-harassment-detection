@@ -166,6 +166,8 @@ def predict(token_data):
         masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
         masked_result["text_full"] = mask_pii(result.get("text_full", ""))
         masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+        masked_result["source"] = "self_serve"
+        masked_result["user_id"] = token_data.get("user") if token_data else None
         AdminService.log_message(masked_result)
 
     result.pop("embedding", None)
@@ -255,6 +257,8 @@ def predict_batch(token_data):
             masked_r = r.copy()
             masked_r["text_preview"] = mask_pii(r.get("text_preview", ""))
             masked_r["evidence"] = mask_pii(r.get("evidence", ""))
+            masked_r["source"] = "self_serve"
+            masked_r["user_id"] = token_data.get("user") if token_data else None
             AdminService.log_message(masked_r)
             
         r.pop("embedding", None)
@@ -318,6 +322,8 @@ def predict_audio(token_data):
         masked_result["transcript"] = mask_pii(result.get("transcript", ""))
         masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
         masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+        masked_result["source"] = "self_serve"
+        masked_result["user_id"] = token_data.get("user") if token_data else None
         AdminService.log_message(masked_result)
 
     result.pop("embedding", None)
@@ -373,6 +379,8 @@ def predict_screenshot(token_data):
         masked_result["text_preview"] = mask_pii(result.get("text_preview", "") or extracted_text[:120])
         masked_result["evidence"] = mask_pii(result.get("evidence", ""))
         masked_result["extracted_text"] = mask_pii(result.get("extracted_text", ""))
+        masked_result["source"] = "self_serve"
+        masked_result["user_id"] = token_data.get("user") if token_data else None
         AdminService.log_message(masked_result)
 
     result.pop("embedding", None)
@@ -443,6 +451,8 @@ def predict_file(token_data):
         masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
         masked_result["text_full"] = mask_pii(result.get("text_full", ""))
         masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+        masked_result["source"] = "self_serve"
+        masked_result["user_id"] = token_data.get("user") if token_data else None
         AdminService.log_message(masked_result)
 
     result.pop("embedding", None)
@@ -502,6 +512,8 @@ def predict_conversation(token_data):
                 masked_m["text"] = mask_pii(m.get("text", ""))
                 masked_messages.append(masked_m)
             masked_result["messages"] = masked_messages
+            masked_result["source"] = "self_serve"
+            masked_result["user_id"] = token_data.get("user") if token_data else None
             AdminService.log_conversation(masked_result)
             
         return jsonify(result)
@@ -557,6 +569,8 @@ def import_conversation(token_data):
                 masked_m["text"] = mask_pii(m.get("text", ""))
                 masked_messages.append(masked_m)
             masked_result["messages"] = masked_messages
+            masked_result["source"] = "self_serve"
+            masked_result["user_id"] = token_data.get("user") if token_data else None
             AdminService.log_conversation(masked_result)
             
         return jsonify(result)

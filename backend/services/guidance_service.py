@@ -74,6 +74,8 @@ class GuidanceService:
             return "High"
         elif risk_score >= 30:
             return "Medium"
-        else:
+        elif risk_score >= 15:
             return "Low"
+        else:
+            return "Safe"
 
