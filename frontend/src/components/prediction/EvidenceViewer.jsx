@@ -90,6 +90,31 @@ export default function EvidenceViewer({ result }) {
           </>
         )}
 
+        {result.threat_intel?.emails?.length > 0 && (
+          <>
+            <p className="text-warning mt-3">{'>'} Threat Intel — Emails:</p>
+            {result.threat_intel.emails.map((e, i) => (
+              <div key={i} className="pl-4 space-y-0.5">
+                <p className="text-text-primary">{e.email}</p>
+                {e.breach_count != null && (
+                  <p className={e.breach_count > 0 ? "text-danger" : "text-success"}>
+                    ↳ Known Breaches (HIBP): {e.breach_count}
+                  </p>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+
+        {result.pii_categories?.length > 0 && (
+          <>
+            <p className="text-danger mt-3">{'>'} PII Detected & Masked:</p>
+            <div className="pl-4 text-text-primary">
+              {result.pii_categories.join(', ')}
+            </div>
+          </>
+        )}
+
         <p className="animate-pulse-soft text-text-muted mt-2">_</p>
       </div>
     </Card>

@@ -263,7 +263,8 @@ def analyze_text_for_threat_intel(text):
 
 AADHAAR_REGEX = re.compile(r'\b[2-9]{1}[0-9]{3}\s?[0-9]{4}\s?[0-9]{4}\b')
 PAN_REGEX = re.compile(r'\b[A-Z]{5}[0-9]{4}[A-Z]{1}\b')
-PHONE_REGEX = re.compile(r'\b(?:\+91[-.\s]?)?[6789]\d{9}\b')
+PHONE_REGEX = re.compile(r'(?:(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})|\b\d{3}[-.\s]?\d{4}\b')
+EMAIL_REGEX = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b')
 
 def extract_pii(text: str) -> list:
     """Returns a list of detected PII categories."""
@@ -288,6 +289,10 @@ def extract_pii(text: str) -> list:
     if PHONE_REGEX.search(text_masked_aadhaar):
         categories.append("Phone")
         
+    # Check Email
+    if EMAIL_REGEX.search(text):
+        categories.append("Email")
+        
     return categories
 
 def mask_pii(text: str) -> str:
@@ -303,5 +308,8 @@ def mask_pii(text: str) -> str:
     
     # 3. Mask Phone
     text = PHONE_REGEX.sub("[PHONE REDACTED]", text)
+    
+    # 4. Mask Email
+    text = EMAIL_REGEX.sub("[EMAIL REDACTED]", text)
     
     return text

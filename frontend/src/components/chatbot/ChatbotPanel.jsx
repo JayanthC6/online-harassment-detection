@@ -29,7 +29,7 @@ export default function ChatbotPanel({ role }) {
   const [sessionId, setSessionId] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileError, setFileError] = useState('');
-  const [activeEvidencePlan, setActiveEvidencePlan] = useState(null);
+  const [activePredictionContext, setActivePredictionContext] = useState(null);
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -60,13 +60,13 @@ export default function ChatbotPanel({ role }) {
       })
       .catch(() => {});
 
-    const handleEvidencePlanEvent = (e) => {
-      setActiveEvidencePlan(e.detail);
+    const handlePredictionContextEvent = (e) => {
+      setActivePredictionContext(e.detail);
     };
-    window.addEventListener('setChatbotEvidencePlan', handleEvidencePlanEvent);
+    window.addEventListener('setChatbotPredictionContext', handlePredictionContextEvent);
     
     return () => {
-      window.removeEventListener('setChatbotEvidencePlan', handleEvidencePlanEvent);
+      window.removeEventListener('setChatbotPredictionContext', handlePredictionContextEvent);
     };
   }, [role]);
 
@@ -153,7 +153,7 @@ export default function ChatbotPanel({ role }) {
       const res = await fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, message: userMessage, persona, evidence_plan: activeEvidencePlan })
+        body: JSON.stringify({ session_id: sessionId, message: userMessage, persona, prediction_context: activePredictionContext })
       });
       const data = await res.json();
       setMessages(prev => [...prev, {

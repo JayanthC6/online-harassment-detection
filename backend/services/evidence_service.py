@@ -57,6 +57,13 @@ class EvidenceService:
             pii_specific = playbooks.get("pii_exposed", {})
             if "safety_actions" in pii_specific:
                 safety = pii_specific["safety_actions"] + safety
+
+        # Clear out inappropriate threat responses if the content is safe
+        if severity_tier == "Safe" or primary_label.lower() in ["none", "clean"]:
+            checklist = []
+            preservation = []
+            safety = []
+            recommended = ["No specific action required. Continue as normal."]
                 
         # Deduplicate lists while preserving order
         def dedupe(seq):

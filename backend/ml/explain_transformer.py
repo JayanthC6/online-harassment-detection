@@ -188,15 +188,22 @@ def compute_ig_attributions(text: str, label: str, n_steps: int = 50) -> dict:
         return torch.sigmoid(outputs.logits[:, label_idx])
 
     # ── Run LIG ──
-    lig = LayerIntegratedGradients(forward_func, embed_layer)
-
-    attributions, delta = lig.attribute(
-        inputs=input_ids,
-        baselines=baseline_ids,
-        n_steps=n_steps,
-        return_convergence_delta=True,
-        internal_batch_size=8,
-    )
+    # Captum mutates the module by adding global forward hooks.
+    # We must lock this section so concurrent requests don't capture each other's activations.
+    import threading
+    if not hasattr(compute_ig_attributions, "_ig_lock"):
+        compute_ig_attributions._ig_lock = threading.Lock()
+        
+    with compute_ig_attributions._ig_lock:
+        lig = LayerIntegratedGradients(forward_func, embed_layer)
+    
+        attributions, delta = lig.attribute(
+            inputs=input_ids,
+            baselines=baseline_ids,
+            n_steps=n_steps,
+            return_convergence_delta=True,
+            internal_batch_size=8,
+        )
     # attributions: (1, seq_len, embed_dim=768) — sum across embed dim → per-token scalar
     attr_scores = attributions.sum(dim=-1).squeeze(0)  # shape: (seq_len,)
 

@@ -12,12 +12,12 @@ export default function PersonalizedSafetyPlan({ result }) {
 
   React.useEffect(() => {
     if (plan) {
-      window.dispatchEvent(new CustomEvent('setChatbotEvidencePlan', { detail: plan }));
+      window.dispatchEvent(new CustomEvent('setChatbotPredictionContext', { detail: result }));
     }
     return () => {
-      window.dispatchEvent(new CustomEvent('setChatbotEvidencePlan', { detail: null }));
+      window.dispatchEvent(new CustomEvent('setChatbotPredictionContext', { detail: null }));
     };
-  }, [plan]);
+  }, [plan, result]);
 
   if (!plan) return null;
 
@@ -98,20 +98,20 @@ export default function PersonalizedSafetyPlan({ result }) {
 
         {/* Right Column: Actions and Viewer */}
         <div className="space-y-6">
-          <Card className="border-danger/30 bg-danger/5">
-            <h3 className="text-sm font-semibold text-danger mb-4 flex items-center gap-2">
-              <ShieldAlert size={16} />
+          <Card className={result.severity_tier === 'Safe' ? "border-success/30 bg-success/5" : "border-danger/30 bg-danger/5"}>
+            <h3 className={`text-sm font-semibold mb-4 flex items-center gap-2 ${result.severity_tier === 'Safe' ? 'text-success' : 'text-danger'}`}>
+              {result.severity_tier === 'Safe' ? <CheckCircle size={16} /> : <ShieldAlert size={16} />}
               Immediate Safety Actions
             </h3>
             <ul className="space-y-3">
               {plan.safety_actions?.map((item, idx) => (
                 <li key={idx} className="text-sm text-text-primary flex items-start gap-2 bg-background p-2 rounded border border-border/50">
-                  <ArrowRight size={14} className="text-danger mt-0.5 shrink-0" />
+                  <ArrowRight size={14} className={`${result.severity_tier === 'Safe' ? 'text-success' : 'text-danger'} mt-0.5 shrink-0`} />
                   <span className="leading-snug">{item}</span>
                 </li>
               ))}
               {(!plan.safety_actions || plan.safety_actions.length === 0) && (
-                <li className="text-sm text-text-muted italic">No immediate safety actions identified.</li>
+                <li className="text-sm text-text-muted italic">No immediate safety actions required.</li>
               )}
             </ul>
           </Card>

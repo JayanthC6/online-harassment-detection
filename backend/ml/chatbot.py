@@ -22,7 +22,7 @@ def _strip_think(text: str) -> str:
     return clean if clean else "I'm sorry, I was interrupted while processing your request. Please try again with a shorter query."
 
 
-def generate_chat_response(history: list, persona: str = "user", evidence_plan: dict = None) -> str:
+def generate_chat_response(history: list, persona: str = "user", prediction_context: dict = None) -> str:
     """
     Generates a chatbot response using the Groq API.
     Only answers questions related to cyber crimes, digital safety,
@@ -31,7 +31,7 @@ def generate_chat_response(history: list, persona: str = "user", evidence_plan: 
     Args:
         history: list of {"role": "user"|"assistant", "content": str}
         persona: "user" (empathetic/safety) or "analyst" (investigative/tactical)
-        evidence_plan: optional dict containing the structured action plan
+        prediction_context: optional dict containing the full prediction result
 
     Returns:
         Markdown-formatted response string.
@@ -57,21 +57,37 @@ def generate_chat_response(history: list, persona: str = "user", evidence_plan: 
             "Provide empathetic, supportive, and actionable personal safety steps. "
             "If the user asks about anything else, politely decline and remind them that you are a specialized cyber security assistant. "
         )
-        if evidence_plan:
+        
+        if prediction_context:
+            evidence_plan = prediction_context.get("evidence_plan", {})
+            threat_intel = prediction_context.get("threat_intel", {})
+            
+            # Format context string
             system_content += f"""
             
-You have analyzed an incident with the following Personalized Safety & Evidence Plan:
+You have analyzed an incident with the following details:
+Current case context:
+- Source: {prediction_context.get("source", "Unknown")}
+- Category: {prediction_context.get("category", "Unknown")}
+- Risk Score: {prediction_context.get("risk_score", "Unknown")}/100
+- PII detected: {", ".join(prediction_context.get("pii_categories", [])) if prediction_context.get("pii_categories") else "No"}
+- Messages flagged: {prediction_context.get("text_full", "Unknown")}
+- Similar past incidents: {len(prediction_context.get("similar_reports", []))} matches
+- Threat intel URLs: {len(threat_intel.get("urls", []))}
+- Threat intel Emails: {len(threat_intel.get("emails", []))}
+
+Structured Action Plan:
 Case Summary: {evidence_plan.get("case_summary", "")}
 Evidence to Preserve: {", ".join(evidence_plan.get("evidence_checklist", []))}
 Safety Actions: {", ".join(evidence_plan.get("safety_actions", []))}
 
 CRITICAL INSTRUCTION: You MUST structure your response into exactly these three sections, using Markdown headers:
 ### Detected Evidence
-(Briefly summarize what was flagged based on the plan)
+(Briefly summarize what was flagged based on the plan and context)
 ### AI Interpretation
-(Assess the severity and context)
+(Assess the severity and context, explain why it's high risk if applicable)
 ### General Advice
-(Provide empathetic advice aligned with the safety actions)
+(Provide empathetic advice aligned with the safety actions and next steps)
 
 Do not output a <think> block or any reasoning process under any circumstances. Answer directly.
 """

@@ -107,6 +107,7 @@ def predict_instant(token_data):
     if token_data:
         history_entry = {
             "actor_id": actor_id,
+            "user_id": token_data.get("user"),
             "source": "self_serve",
             "type": "text",
             "content": text,
@@ -639,7 +640,7 @@ def chat():
     session_id = data.get("session_id")
     message = data.get("message")
     persona = data.get("persona", "user")
-    evidence_plan = data.get("evidence_plan")
+    prediction_context = data.get("prediction_context")
 
     if not session_id or not message:
         return jsonify({"error": "session_id and message are required."}), 400
@@ -652,7 +653,7 @@ def chat():
     history.append(user_msg)
     
     # Generate response
-    ai_response_text = generate_chat_response(history, persona, evidence_plan)
+    ai_response_text = generate_chat_response(history, persona, prediction_context)
     
     # Append ai response
     ai_msg = {"role": "assistant", "content": ai_response_text}
