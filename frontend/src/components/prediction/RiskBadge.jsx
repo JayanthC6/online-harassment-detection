@@ -25,7 +25,7 @@ export default function RiskBadge({ safetyStatus, severityTier, category, threat
     <div className="flex flex-col gap-4 w-full">
       {/* Status pill */}
       <div className="flex items-center gap-2">
-        {safetyStatus !== 'Safe' ? (
+        {(safetyStatus || severityTier) !== 'Safe' ? (
           <span className="badge badge-danger text-sm">
             <ShieldAlert size={14} />
             {safetyStatus || 'Threat Detected'}
@@ -33,7 +33,7 @@ export default function RiskBadge({ safetyStatus, severityTier, category, threat
         ) : (
           <span className="badge badge-success text-sm">
             <ShieldCheck size={14} />
-            Safe
+            No Threat Detected
           </span>
         )}
         <span className={`badge ${getCategoryBadgeClass(category)} capitalize text-xs`}>
