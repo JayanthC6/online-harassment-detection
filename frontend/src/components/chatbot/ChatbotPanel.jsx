@@ -29,6 +29,7 @@ export default function ChatbotPanel({ role }) {
   const [sessionId, setSessionId] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileError, setFileError] = useState('');
+  const [activeEvidencePlan, setActiveEvidencePlan] = useState(null);
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -58,6 +59,15 @@ export default function ChatbotPanel({ role }) {
         }
       })
       .catch(() => {});
+
+    const handleEvidencePlanEvent = (e) => {
+      setActiveEvidencePlan(e.detail);
+    };
+    window.addEventListener('setChatbotEvidencePlan', handleEvidencePlanEvent);
+    
+    return () => {
+      window.removeEventListener('setChatbotEvidencePlan', handleEvidencePlanEvent);
+    };
   }, [role]);
 
   useEffect(() => {
@@ -143,7 +153,7 @@ export default function ChatbotPanel({ role }) {
       const res = await fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, message: userMessage, persona })
+        body: JSON.stringify({ session_id: sessionId, message: userMessage, persona, evidence_plan: activeEvidencePlan })
       });
       const data = await res.json();
       setMessages(prev => [...prev, {

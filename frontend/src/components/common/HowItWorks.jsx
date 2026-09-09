@@ -21,7 +21,7 @@ export default function HowItWorks({ onBack, isLoggedIn }) {
     setSubmitSuccess(false);
     
     try {
-      const data = await apiClient('/predict', {
+      const data = await apiClient('/predict/instant', {
         method: 'POST',
         body: JSON.stringify({ text: liveText, persist: false })
       });

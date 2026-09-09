@@ -26,7 +26,7 @@ export function usePredict() {
     }
   };
 
-  const predictText = (text, actorId, persist = true) => executePredict('/predict', { text, actor_id: actorId, persist });
+  const predictText = (text, actorId, persist = true) => executePredict('/predict/instant', { text, actor_id: actorId, persist });
   
   const predictConversation = (messages, persist = true) => executePredict('/predict/conversation', { messages, persist });
   

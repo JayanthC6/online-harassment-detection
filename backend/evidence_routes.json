@@ -1,0 +1,67 @@
+{
+  "/predict": {
+    "status": 200,
+    "primary_label": "Extortion",
+    "evidence_plan_present": true,
+    "evidence_plan_keys": [
+      "case_summary",
+      "evidence_checklist",
+      "preservation_guidance",
+      "recommended_steps",
+      "safety_actions",
+      "why_flagged"
+    ]
+  },
+  "/predict/instant": {
+    "status": 200,
+    "primary_label": "Extortion",
+    "evidence_plan_present": true,
+    "evidence_plan_keys": [
+      "case_summary",
+      "evidence_checklist",
+      "preservation_guidance",
+      "recommended_steps",
+      "safety_actions",
+      "why_flagged"
+    ]
+  },
+  "/predict/batch": {
+    "status": 200,
+    "count": 2,
+    "first_primary_label": "Extortion",
+    "evidence_plan_present_in_first": true,
+    "evidence_plan_keys": [
+      "case_summary",
+      "evidence_checklist",
+      "preservation_guidance",
+      "recommended_steps",
+      "safety_actions",
+      "why_flagged"
+    ]
+  },
+  "/predict/conversation": {
+    "status": 200,
+    "primary_label": "Extortion",
+    "evidence_plan_present": true,
+    "evidence_plan_keys": [
+      "case_summary",
+      "evidence_checklist",
+      "preservation_guidance",
+      "recommended_steps",
+      "safety_actions",
+      "why_flagged"
+    ]
+  },
+  "/predict/audio": {
+    "status": "SKIPPED (requires multipart file upload)"
+  },
+  "/predict/screenshot": {
+    "status": "SKIPPED (requires multipart image upload)"
+  },
+  "/predict/file": {
+    "status": "SKIPPED (requires multipart file upload)"
+  },
+  "/predict/conversation/import": {
+    "status": "SKIPPED (requires multipart txt/json upload)"
+  }
+}

@@ -9,6 +9,7 @@ import PredictionSummary from './prediction/PredictionSummary';
 import ConversationResultDisplay from './ConversationResultDisplay';
 import GuidancePanel from './prediction/GuidancePanel';
 import ExplainPanel from './prediction/ExplainPanel';
+import PersonalizedSafetyPlan from './prediction/PersonalizedSafetyPlan';
 
 function getSecondaryTier(label) {
   const l = label.toLowerCase();
@@ -156,76 +157,80 @@ export default function ResultDisplay({ result }) {
         </Card>
       )}
 
-      {/* Third row: Evidence panel */}
-      <Card className="terminal-block">
-        <div className="flex items-center gap-2 px-1 pb-3 border-b border-border mb-4">
-          <div className="flex gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-danger opacity-60" />
-            <div className="w-2.5 h-2.5 rounded-full bg-warning opacity-40" />
-            <div className="w-2.5 h-2.5 rounded-full bg-success opacity-40" />
+      {/* Third row: Personalized Safety & Evidence Plan */}
+      {result.evidence_plan ? (
+        <PersonalizedSafetyPlan result={result} />
+      ) : (
+        <Card className="terminal-block">
+          <div className="flex items-center gap-2 px-1 pb-3 border-b border-border mb-4">
+            <div className="flex gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-danger opacity-60" />
+              <div className="w-2.5 h-2.5 rounded-full bg-warning opacity-40" />
+              <div className="w-2.5 h-2.5 rounded-full bg-success opacity-40" />
+            </div>
+            <span className="text-2xs text-text-muted font-mono ml-2">analysis_output.log</span>
           </div>
-          <span className="text-2xs text-text-muted font-mono ml-2">analysis_output.log</span>
-        </div>
 
-        <div className="font-mono text-xs leading-relaxed text-text-muted space-y-2 max-h-64 overflow-y-auto">
-          <p className="text-blue">{'>'} Forensic evidence extraction complete.</p>
+          <div className="font-mono text-xs leading-relaxed text-text-muted space-y-2 max-h-64 overflow-y-auto">
+            <p className="text-blue">{'>'} Forensic evidence extraction complete.</p>
 
-          {result.evidence && (
-            <>
-              <p className="text-text-secondary">{'>'} Detected Evidence:</p>
-              <div className="pl-4 text-text-primary border-l-2 border-blue ml-2 whitespace-pre-wrap">
-                {result.evidence}
-              </div>
-            </>
-          )}
-
-          {result.extracted_text && (
-            <>
-              <p className="text-text-secondary mt-3">{'>'} OCR extraction:</p>
-              <div className="pl-4 text-text-primary border-l-2 border-blue ml-2">
-                {result.extracted_text}
-              </div>
-            </>
-          )}
-
-          {result.similar_reports?.length > 0 && (
-            <>
-              <p className="text-danger mt-3">{'>'} Correlated incidents ({result.similar_reports.length}):</p>
-              {result.similar_reports.map((sr, i) => (
-                <div key={i} className="pl-4 flex items-start gap-2">
-                  <span className="text-danger mt-0.5">▸</span>
-                  <span className="text-text-muted">
-                    "{sr.text_preview}" —{' '}
-                    <span className="text-warning">{Math.round(sr.similarity * 100)}% match</span>
-                  </span>
+            {result.evidence && (
+              <>
+                <p className="text-text-secondary">{'>'} Detected Evidence:</p>
+                <div className="pl-4 text-text-primary border-l-2 border-blue ml-2 whitespace-pre-wrap">
+                  {result.evidence}
                 </div>
-              ))}
-            </>
-          )}
+              </>
+            )}
 
-          {result.threat_intel?.urls?.length > 0 && (
-            <>
-              <p className="text-warning mt-3">{'>'} Threat Intel — URLs:</p>
-              {result.threat_intel.urls.map((u, i) => (
-                <div key={i} className="pl-4 space-y-0.5">
-                  <p className="text-text-primary">{u.url}</p>
-                  {u.typosquat_match && (
-                    <p className="text-danger">↳ Typosquatting: spoofing {u.typosquat_match}</p>
-                  )}
-                  {u.domain_age_days != null && (
-                    <p className="text-text-muted">↳ Domain age: {u.domain_age_days} days</p>
-                  )}
-                  {u.safe_browsing && u.safe_browsing !== 'safe' && (
-                    <p className="text-danger">↳ Safe Browsing: {u.safe_browsing}</p>
-                  )}
+            {result.extracted_text && (
+              <>
+                <p className="text-text-secondary mt-3">{'>'} OCR extraction:</p>
+                <div className="pl-4 text-text-primary border-l-2 border-blue ml-2">
+                  {result.extracted_text}
                 </div>
-              ))}
-            </>
-          )}
+              </>
+            )}
 
-          <p className="animate-pulse-soft text-text-muted mt-2">_</p>
-        </div>
-      </Card>
+            {result.similar_reports?.length > 0 && (
+              <>
+                <p className="text-danger mt-3">{'>'} Correlated incidents ({result.similar_reports.length}):</p>
+                {result.similar_reports.map((sr, i) => (
+                  <div key={i} className="pl-4 flex items-start gap-2">
+                    <span className="text-danger mt-0.5">▸</span>
+                    <span className="text-text-muted">
+                      "{sr.text_preview}" —{' '}
+                      <span className="text-warning">{Math.round(sr.similarity * 100)}% match</span>
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {result.threat_intel?.urls?.length > 0 && (
+              <>
+                <p className="text-warning mt-3">{'>'} Threat Intel — URLs:</p>
+                {result.threat_intel.urls.map((u, i) => (
+                  <div key={i} className="pl-4 space-y-0.5">
+                    <p className="text-text-primary">{u.url}</p>
+                    {u.typosquat_match && (
+                      <p className="text-danger">↳ Typosquatting: spoofing {u.typosquat_match}</p>
+                    )}
+                    {u.domain_age_days != null && (
+                      <p className="text-text-muted">↳ Domain age: {u.domain_age_days} days</p>
+                    )}
+                    {u.safe_browsing && u.safe_browsing !== 'safe' && (
+                      <p className="text-danger">↳ Safe Browsing: {u.safe_browsing}</p>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+
+            <p className="animate-pulse-soft text-text-muted mt-2">_</p>
+          </div>
+        </Card>
+      )}
 
       {/* Incident Intelligence / Explainability panel */}
       {result.primary_label && (result.text_full || result.text_preview || result.transcript || result.extracted_text) && (

@@ -1,0 +1,111 @@
+{
+  "general": {
+    "evidence_checklist": [
+      "Original text or message",
+      "Timestamp of the incident",
+      "Sender information or username"
+    ],
+    "preservation_guidance": [
+      "Do not delete the original message or post.",
+      "Take screenshots immediately as a backup.",
+      "Ensure timestamps are visible in any screenshots."
+    ],
+    "safety_actions": [
+      "Do not engage with the sender.",
+      "Block the user on the platform."
+    ],
+    "recommended_steps": [
+      "Monitor for any further communication.",
+      "Consider reporting the incident to the platform's support."
+    ]
+  },
+  "threat": {
+    "evidence_checklist": [
+      "Explicit threat content",
+      "Any mentioned locations or personal details",
+      "Sender information"
+    ],
+    "preservation_guidance": [
+      "Immediately secure the device and take screenshots.",
+      "Do not alter or delete any communication history.",
+      "Save any related emails or attachments securely."
+    ],
+    "safety_actions": [
+      "Ensure your physical safety and secure your location.",
+      "Do not confront the individual making the threat."
+    ],
+    "recommended_steps": [
+      "Contact local law enforcement immediately.",
+      "Provide this generated report to the authorities."
+    ]
+  },
+  "scam": {
+    "evidence_checklist": [
+      "Requested payment methods or links",
+      "Sender email headers or phone number"
+    ],
+    "preservation_guidance": [
+      "Do not click on any links.",
+      "Preserve the original email with headers intact."
+    ],
+    "safety_actions": [
+      "Do not send money or provide personal information.",
+      "Update passwords for any potentially compromised accounts."
+    ],
+    "recommended_steps": [
+      "Report the scam to your bank or financial institution if applicable.",
+      "Report to relevant cybercrime authorities."
+    ]
+  },
+  "phishing": {
+    "evidence_checklist": [
+      "Malicious URLs or domains",
+      "Spoofed sender addresses"
+    ],
+    "preservation_guidance": [
+      "Do not click any links or download attachments.",
+      "Save the email or message without opening it again."
+    ],
+    "safety_actions": [
+      "Do not enter any credentials.",
+      "Enable Two-Factor Authentication on your accounts."
+    ],
+    "recommended_steps": [
+      "Report the phishing attempt to your IT department or email provider.",
+      "Monitor your accounts for suspicious activity."
+    ]
+  },
+  "hate_speech": {
+    "evidence_checklist": [
+      "Specific discriminatory language used",
+      "Context of the conversation"
+    ],
+    "preservation_guidance": [
+      "Document the posts via screenshots including context."
+    ],
+    "safety_actions": [
+      "Block the sender and restrict who can contact you.",
+      "Limit your online visibility temporarily if targeted."
+    ],
+    "recommended_steps": [
+      "Report the user to the platform's moderation team."
+    ]
+  },
+  "whatsapp": {
+    "evidence_checklist": [
+      "WhatsApp conversation export file",
+      "Phone numbers of participants"
+    ],
+    "preservation_guidance": [
+      "Export the chat history via WhatsApp 'Export Chat' feature without media.",
+      "Do not clear the chat on your phone."
+    ]
+  },
+  "pii_exposed": {
+    "safety_actions": [
+      "Contact financial institutions if financial details were exposed.",
+      "Set up identity theft monitoring if SSN or sensitive IDs were exposed.",
+      "Lock your credit file if necessary."
+    ]
+  }
+}

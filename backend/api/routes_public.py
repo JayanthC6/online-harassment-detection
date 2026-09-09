@@ -113,13 +113,14 @@ def predict_instant(token_data):
             "ai_analysis": result,
             **result
         }
-        # Log to DB but we might need a custom method so analysts don't see it?
-        # The prompt says: "This history is visible only to the account owner... 
-        # Do not expose the existing analyst/Trust & Safety console or its RBAC 
-        # anywhere in this deployment... Leave that code intact in the repo... 
-        # just make sure no route, link, or public-facing config in this deployment can reach it."
-        # Using AdminService.log_message(history_entry) stores it in flagged_messages.
-        # This is fine because the Admin console won't be exposed.
+        
+        is_public_user = token_data.get("role", "").lower() == "user"
+        if is_public_user:
+            history_entry["text_preview"] = mask_pii(history_entry.get("text_preview", ""))
+            history_entry["text_full"] = mask_pii(history_entry.get("text_full", ""))
+            history_entry["evidence"] = mask_pii(history_entry.get("evidence", ""))
+            history_entry["content"] = mask_pii(history_entry.get("content", ""))
+            
         AdminService.log_message(history_entry)
 
     result.pop("embedding", None)
@@ -162,13 +163,20 @@ def predict(token_data):
     result = PredictionService.attach_risk_and_similarity(result, text)
 
     if persist and token_data:
-        masked_result = result.copy()
-        masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
-        masked_result["text_full"] = mask_pii(result.get("text_full", ""))
-        masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-        masked_result["source"] = "self_serve"
-        masked_result["user_id"] = token_data.get("user") if token_data else None
-        AdminService.log_message(masked_result)
+        is_public_user = token_data.get("role", "").lower() == "user"
+        if is_public_user:
+            masked_result = result.copy()
+            masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
+            masked_result["text_full"] = mask_pii(result.get("text_full", ""))
+            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+            masked_result["source"] = "self_serve"
+            masked_result["user_id"] = token_data.get("user")
+            AdminService.log_message(masked_result)
+        else:
+            result_copy = result.copy()
+            result_copy["source"] = "self_serve"
+            result_copy["user_id"] = token_data.get("user")
+            AdminService.log_message(result_copy)
 
     result.pop("embedding", None)
     result.pop("_id", None)  # MongoDB ObjectId is not JSON serializable
@@ -254,12 +262,19 @@ def predict_batch(token_data):
         r = PredictionService.attach_risk_and_similarity(r, text)
         
         if persist and token_data:
-            masked_r = r.copy()
-            masked_r["text_preview"] = mask_pii(r.get("text_preview", ""))
-            masked_r["evidence"] = mask_pii(r.get("evidence", ""))
-            masked_r["source"] = "self_serve"
-            masked_r["user_id"] = token_data.get("user") if token_data else None
-            AdminService.log_message(masked_r)
+            is_public_user = token_data.get("role", "").lower() == "user"
+            if is_public_user:
+                masked_r = r.copy()
+                masked_r["text_preview"] = mask_pii(r.get("text_preview", ""))
+                masked_r["evidence"] = mask_pii(r.get("evidence", ""))
+                masked_r["source"] = "self_serve"
+                masked_r["user_id"] = token_data.get("user")
+                AdminService.log_message(masked_r)
+            else:
+                r_copy = r.copy()
+                r_copy["source"] = "self_serve"
+                r_copy["user_id"] = token_data.get("user")
+                AdminService.log_message(r_copy)
             
         r.pop("embedding", None)
         r.pop("_id", None)  # MongoDB ObjectId is not JSON serializable
@@ -318,13 +333,20 @@ def predict_audio(token_data):
 
     persist = request.form.get("persist", "false").lower() == "true"
     if persist and token_data:
-        masked_result = result.copy()
-        masked_result["transcript"] = mask_pii(result.get("transcript", ""))
-        masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
-        masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-        masked_result["source"] = "self_serve"
-        masked_result["user_id"] = token_data.get("user") if token_data else None
-        AdminService.log_message(masked_result)
+        is_public_user = token_data.get("role", "").lower() == "user"
+        if is_public_user:
+            masked_result = result.copy()
+            masked_result["transcript"] = mask_pii(result.get("transcript", ""))
+            masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
+            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+            masked_result["source"] = "self_serve"
+            masked_result["user_id"] = token_data.get("user")
+            AdminService.log_message(masked_result)
+        else:
+            result_copy = result.copy()
+            result_copy["source"] = "self_serve"
+            result_copy["user_id"] = token_data.get("user")
+            AdminService.log_message(result_copy)
 
     result.pop("embedding", None)
     return jsonify(result)
@@ -375,13 +397,20 @@ def predict_screenshot(token_data):
 
     persist = request.form.get("persist", "false").lower() == "true"
     if persist and token_data:
-        masked_result = result.copy()
-        masked_result["text_preview"] = mask_pii(result.get("text_preview", "") or extracted_text[:120])
-        masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-        masked_result["extracted_text"] = mask_pii(result.get("extracted_text", ""))
-        masked_result["source"] = "self_serve"
-        masked_result["user_id"] = token_data.get("user") if token_data else None
-        AdminService.log_message(masked_result)
+        is_public_user = token_data.get("role", "").lower() == "user"
+        if is_public_user:
+            masked_result = result.copy()
+            masked_result["text_preview"] = mask_pii(result.get("text_preview", "") or extracted_text[:120])
+            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+            masked_result["extracted_text"] = mask_pii(result.get("extracted_text", ""))
+            masked_result["source"] = "self_serve"
+            masked_result["user_id"] = token_data.get("user")
+            AdminService.log_message(masked_result)
+        else:
+            result_copy = result.copy()
+            result_copy["source"] = "self_serve"
+            result_copy["user_id"] = token_data.get("user")
+            AdminService.log_message(result_copy)
 
     result.pop("embedding", None)
     return jsonify(result)
@@ -447,13 +476,20 @@ def predict_file(token_data):
 
     persist = request.form.get("persist", "false").lower() == "true"
     if persist and token_data:
-        masked_result = result.copy()
-        masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
-        masked_result["text_full"] = mask_pii(result.get("text_full", ""))
-        masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-        masked_result["source"] = "self_serve"
-        masked_result["user_id"] = token_data.get("user") if token_data else None
-        AdminService.log_message(masked_result)
+        is_public_user = token_data.get("role", "").lower() == "user"
+        if is_public_user:
+            masked_result = result.copy()
+            masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
+            masked_result["text_full"] = mask_pii(result.get("text_full", ""))
+            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+            masked_result["source"] = "self_serve"
+            masked_result["user_id"] = token_data.get("user")
+            AdminService.log_message(masked_result)
+        else:
+            result_copy = result.copy()
+            result_copy["source"] = "self_serve"
+            result_copy["user_id"] = token_data.get("user")
+            AdminService.log_message(result_copy)
 
     result.pop("embedding", None)
     return jsonify(result)
@@ -504,17 +540,24 @@ def predict_conversation(token_data):
         result = PredictionService.analyze_conversation(valid_messages)
         
         if persist and token_data:
-            masked_result = result.copy()
-            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-            masked_messages = []
-            for m in valid_messages:
-                masked_m = m.copy()
-                masked_m["text"] = mask_pii(m.get("text", ""))
-                masked_messages.append(masked_m)
-            masked_result["messages"] = masked_messages
-            masked_result["source"] = "self_serve"
-            masked_result["user_id"] = token_data.get("user") if token_data else None
-            AdminService.log_conversation(masked_result)
+            is_public_user = token_data.get("role", "").lower() == "user"
+            if is_public_user:
+                masked_result = result.copy()
+                masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+                masked_messages = []
+                for m in valid_messages:
+                    masked_m = m.copy()
+                    masked_m["text"] = mask_pii(m.get("text", ""))
+                    masked_messages.append(masked_m)
+                masked_result["messages"] = masked_messages
+                masked_result["source"] = "self_serve"
+                masked_result["user_id"] = token_data.get("user")
+                AdminService.log_conversation(masked_result)
+            else:
+                result_copy = result.copy()
+                result_copy["source"] = "self_serve"
+                result_copy["user_id"] = token_data.get("user")
+                AdminService.log_conversation(result_copy)
             
         return jsonify(result)
     except Exception as e:
@@ -561,17 +604,24 @@ def import_conversation(token_data):
         
         persist = request.form.get("persist", "false").lower() == "true"
         if persist and token_data:
-            masked_result = result.copy()
-            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-            masked_messages = []
-            for m in messages:
-                masked_m = m.copy()
-                masked_m["text"] = mask_pii(m.get("text", ""))
-                masked_messages.append(masked_m)
-            masked_result["messages"] = masked_messages
-            masked_result["source"] = "self_serve"
-            masked_result["user_id"] = token_data.get("user") if token_data else None
-            AdminService.log_conversation(masked_result)
+            is_public_user = token_data.get("role", "").lower() == "user"
+            if is_public_user:
+                masked_result = result.copy()
+                masked_result["evidence"] = mask_pii(result.get("evidence", ""))
+                masked_messages = []
+                for m in messages:
+                    masked_m = m.copy()
+                    masked_m["text"] = mask_pii(m.get("text", ""))
+                    masked_messages.append(masked_m)
+                masked_result["messages"] = masked_messages
+                masked_result["source"] = "self_serve"
+                masked_result["user_id"] = token_data.get("user")
+                AdminService.log_conversation(masked_result)
+            else:
+                result_copy = result.copy()
+                result_copy["source"] = "self_serve"
+                result_copy["user_id"] = token_data.get("user")
+                AdminService.log_conversation(result_copy)
             
         return jsonify(result)
     except ValueError as e:
@@ -589,6 +639,7 @@ def chat():
     session_id = data.get("session_id")
     message = data.get("message")
     persona = data.get("persona", "user")
+    evidence_plan = data.get("evidence_plan")
 
     if not session_id or not message:
         return jsonify({"error": "session_id and message are required."}), 400
@@ -601,7 +652,7 @@ def chat():
     history.append(user_msg)
     
     # Generate response
-    ai_response_text = generate_chat_response(history, persona)
+    ai_response_text = generate_chat_response(history, persona, evidence_plan)
     
     # Append ai response
     ai_msg = {"role": "assistant", "content": ai_response_text}

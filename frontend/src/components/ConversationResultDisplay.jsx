@@ -4,6 +4,7 @@ import Card from './common/Card';
 import RiskBadge from './prediction/RiskBadge';
 import RedactionBar from './common/RedactionBar';
 import GuidancePanel from './prediction/GuidancePanel';
+import PersonalizedSafetyPlan from './prediction/PersonalizedSafetyPlan';
 
 export default function ConversationResultDisplay({ result }) {
   if (!result || !result.messages) return null;
@@ -141,6 +142,11 @@ export default function ConversationResultDisplay({ result }) {
           </div>
         </Card>
       </div>
+      
+      {/* ── SECTION 2.5: PERSONALIZED SAFETY PLAN ── */}
+      {result.evidence_plan && (
+        <PersonalizedSafetyPlan result={result} />
+      )}
       
       {/* ── SECTION 2B: VICTIM GUIDANCE ── */}
       {result.guidance && (

@@ -2,7 +2,7 @@ import os
 import re
 from groq import Groq
 
-MODEL = "qwen/qwen3.6-27b"
+MODEL = "llama-3.1-8b-instant"
 MAX_FILE_TEXT_CHARS = 12000  # ~3k tokens — enough context without hitting limits
 
 
@@ -22,7 +22,7 @@ def _strip_think(text: str) -> str:
     return clean if clean else "I'm sorry, I was interrupted while processing your request. Please try again with a shorter query."
 
 
-def generate_chat_response(history: list, persona: str = "user") -> str:
+def generate_chat_response(history: list, persona: str = "user", evidence_plan: dict = None) -> str:
     """
     Generates a chatbot response using the Groq API.
     Only answers questions related to cyber crimes, digital safety,
@@ -31,6 +31,7 @@ def generate_chat_response(history: list, persona: str = "user") -> str:
     Args:
         history: list of {"role": "user"|"assistant", "content": str}
         persona: "user" (empathetic/safety) or "analyst" (investigative/tactical)
+        evidence_plan: optional dict containing the structured action plan
 
     Returns:
         Markdown-formatted response string.
@@ -55,10 +56,31 @@ def generate_chat_response(history: list, persona: str = "user") -> str:
             "related to cyber crimes, digital safety, incident file details, and cyber news. "
             "Provide empathetic, supportive, and actionable personal safety steps. "
             "If the user asks about anything else, politely decline and remind them that you are a specialized cyber security assistant. "
-            "CRITICAL INSTRUCTION: You must keep your responses EXTREMELY short and concise. "
-            "Answer in exactly one short paragraph (under 3 sentences). Do NOT use lists, bullet points, or long explanations. "
-            "Do NOT output a <think> block or any reasoning process under any circumstances. Answer directly."
         )
+        if evidence_plan:
+            system_content += f"""
+            
+You have analyzed an incident with the following Personalized Safety & Evidence Plan:
+Case Summary: {evidence_plan.get("case_summary", "")}
+Evidence to Preserve: {", ".join(evidence_plan.get("evidence_checklist", []))}
+Safety Actions: {", ".join(evidence_plan.get("safety_actions", []))}
+
+CRITICAL INSTRUCTION: You MUST structure your response into exactly these three sections, using Markdown headers:
+### Detected Evidence
+(Briefly summarize what was flagged based on the plan)
+### AI Interpretation
+(Assess the severity and context)
+### General Advice
+(Provide empathetic advice aligned with the safety actions)
+
+Do not output a <think> block or any reasoning process under any circumstances. Answer directly.
+"""
+        else:
+            system_content += (
+                "CRITICAL INSTRUCTION: You must keep your responses EXTREMELY short and concise. "
+                "Answer in exactly one short paragraph (under 3 sentences). Do NOT use lists, bullet points, or long explanations. "
+                "Do NOT output a <think> block or any reasoning process under any circumstances. Answer directly."
+            )
 
     system_prompt = {
         "role": "system",

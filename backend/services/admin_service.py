@@ -38,6 +38,7 @@ class AdminService:
             safe = db_instance.collection.count_documents({"label": "non_harassing"})
             high_risk = db_instance.collection.count_documents({"risk_score": {"$gte": 75}})
             medium_risk = db_instance.collection.count_documents({"risk_score": {"$gte": 40, "$lt": 75}})
+            evidence_plans = db_instance.collection.count_documents({"evidence_plan": {"$exists": True}})
             
             pipeline = [{"$group": {"_id": "$category", "count": {"$sum": 1}}}]
             breakdown = {doc["_id"]: doc["count"] for doc in db_instance.collection.aggregate(pipeline) if doc["_id"]}
@@ -70,6 +71,7 @@ class AdminService:
                 "safe_messages": safe,
                 "high_risk": high_risk,
                 "medium_risk": medium_risk,
+                "evidence_plans_generated": evidence_plans,
                 "avg_confidence": round(avg_conf, 3),
                 "avg_risk_score": round(avg_risk, 1),
                 "category_breakdown": breakdown,
@@ -84,6 +86,7 @@ class AdminService:
             safe = sum(1 for e in db_instance.fallback_store if e.get("label") == "non_harassing")
             high_risk = sum(1 for e in db_instance.fallback_store if e.get("risk_score", 0) >= 75)
             medium_risk = sum(1 for e in db_instance.fallback_store if 40 <= e.get("risk_score", 0) < 75)
+            evidence_plans = sum(1 for e in db_instance.fallback_store if "evidence_plan" in e)
             breakdown = Counter(e.get("category") for e in db_instance.fallback_store if e.get("category"))
             
             avg_conf = sum(e.get("confidence", 0) for e in db_instance.fallback_store) / total if total > 0 else 0
@@ -98,6 +101,7 @@ class AdminService:
                 "safe_messages": safe,
                 "high_risk": high_risk,
                 "medium_risk": medium_risk,
+                "evidence_plans_generated": evidence_plans,
                 "avg_confidence": round(avg_conf, 3),
                 "avg_risk_score": round(avg_risk, 1),
                 "category_breakdown": dict(breakdown),

@@ -2,6 +2,7 @@ import ml.predict_transformer as predict_transformer
 from services.admin_service import AdminService
 from ml.adapters import PrimaryModelAdapter, HeuristicMultiLabelAdapter, ConversationAdapter
 from services.guidance_service import GuidanceService
+from services.evidence_service import EvidenceService
 
 try:
     import ml.explain as explain_module
@@ -142,6 +143,8 @@ class PredictionService:
             result["malicious_urls"] = result["threat_intel"]["malicious_urls"]
         elif "malicious_urls" not in result:
             result["malicious_urls"] = []
+            
+        result["evidence_plan"] = EvidenceService.get_action_plan(result)
 
         return result
 
@@ -198,5 +201,7 @@ class PredictionService:
         result["threat_score"] = result["conversation_risk"]
         result["safety_status"] = "Safe" if result["severity_tier"] == "Safe" else "At Risk"
         result["evidence"] = highest_risk_msg.get("text", "No specific threat evidence detected.") if result["severity_tier"] != "Safe" else "No specific threat evidence detected."
+            
+        result["evidence_plan"] = EvidenceService.get_action_plan(result)
             
         return result
