@@ -15,8 +15,7 @@ for line in env_path.read_text().splitlines():
         k, v = line.split("=", 1)
         os.environ.setdefault(k.strip(), v.strip())
 
-import db as db_mod
-db_instance = db_mod._db_instance
+from core.database import db_instance
 
 if hasattr(db_instance, "collection") and db_instance.collection is not None:
     total = db_instance.collection.count_documents({})

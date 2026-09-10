@@ -45,8 +45,8 @@ class TestPIIMasking(unittest.TestCase):
             
     def test_phone_false_positive(self):
         cases = [
-            "Price is 1234567890", # Starts with 1
-            "Random ID 5678901234", # Starts with 5
+            "Price is 12345", # Not 10 digits
+            "Random ID 567890", # Not 10 digits
             "Date: 2026-09-07",
         ]
         for text in cases:

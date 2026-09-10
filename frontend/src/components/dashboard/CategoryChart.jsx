@@ -3,9 +3,9 @@ import { Bar } from 'react-chartjs-2';
 import Card from '../common/Card';
 
 const CATEGORY_COLORS = {
-  hate_speech: '#FF3333', // redaction-red
-  offensive_language: '#FFD700', // alert-amber
-  none: '#334155', // slate-700
+  hate_speech: '#F43F5E', // critical
+  offensive_language: '#F97316', // danger
+  none: '#10B981', // success
 };
 
 const CATEGORY_LABELS = {
@@ -49,10 +49,9 @@ export default function CategoryChart({ categories, stats }) {
   };
 
   return (
-  return (
-    <Card className="p-5 bg-panel border-slate-700">
-      <h3 className="text-xs font-bold text-slate-500 font-mono uppercase tracking-wider mb-6 flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 bg-alert-amber rounded-none" />
+    <Card className="p-5 bg-black/40 border border-border/50 rounded-xl shadow-[inset_0_0_15px_rgba(0,0,0,0.5)]">
+      <h3 className="text-xs font-bold text-text-muted font-mono uppercase tracking-wider mb-6 flex items-center gap-1.5 drop-shadow-[0_0_2px_rgba(255,255,255,0.1)]">
+        <span className="w-1.5 h-1.5 bg-blue rounded-full shadow-[0_0_5px_rgba(0,242,254,0.5)]" />
         Flagged Content by Category
       </h3>
       <div className="h-52">

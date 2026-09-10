@@ -53,8 +53,8 @@ export default function ChatbotPanel({ role }) {
           setMessages([{
             role: 'assistant',
             content: isOrg 
-              ? 'Hello! I am your **ShieldAI Investigative Analyst**.\n\nI can help you with:\n- 🛡️ Analyzing cyber threats\n- 📁 Evidence processing\n- 🔍 Recommending investigative tools (OSINT, IP tracking)\n- 🔐 Correlating threat actors'
-              : 'Hello! I am your **ShieldAI Cyber Assistant**.\n\nI can help you with:\n- 🛡️ Cyber crime information\n- 📁 File analysis & summaries\n- 📰 Cyber security news\n- 🔐 Digital safety guidance\n\nYou can also **upload a file** (PDF, DOCX, TXT, images…) and I will analyze it for you.'
+              ? 'Hello! I am your **Cyber Security AI Assistant** (SOC Analyst Mode).\n\nI can help you with:\n- 🛡️ Analyzing cyber threats\n- 📁 Evidence processing\n- 🔍 Recommending investigative tools (OSINT, IP tracking)\n- 🔐 Correlating threat actors'
+              : 'Hello! I am your **Cyber Security AI Assistant**.\n\nI can help you with:\n- 🛡️ Cyber crime information\n- 📁 File analysis & summaries\n- 📰 Cyber security news\n- 🔐 Digital safety guidance\n\nYou can also **upload a file** (PDF, DOCX, TXT, images…) and I will analyze it for you.'
           }]);
         }
       })
@@ -172,27 +172,27 @@ export default function ChatbotPanel({ role }) {
       {/* Floating Action Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 h-14 w-14 text-bg rounded-full flex items-center justify-center z-50 transition-all duration-300 shadow-lg ${isOpen ? 'scale-0' : 'scale-100 hover:scale-105'}`}
-        style={{ background: 'linear-gradient(135deg, #00F2FE, #00C4CE)' }}
+        className={`fixed bottom-6 right-6 h-14 w-14 text-bg rounded-full flex items-center justify-center z-50 transition-all duration-300 shadow-[0_0_20px_rgba(0,242,254,0.6)] ${isOpen ? 'scale-0' : 'scale-100 hover:scale-105 animate-pulse-slow'}`}
+        style={{ background: 'linear-gradient(135deg, #00F2FE, #A855F7)' }}
         aria-label="Open Cyber Assistant"
       >
-        <MessageSquare size={24} />
+        <MessageSquare size={24} className="text-white drop-shadow-md" />
       </button>
 
       {/* Chat Panel */}
       <div
-        className={`fixed bottom-6 right-6 w-[400px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[calc(100vh-2rem)] bg-surface-2 border border-border rounded-xl flex flex-col z-50 transition-all duration-300 origin-bottom-right overflow-hidden ${isOpen ? 'scale-100 opacity-100' : 'scale-90 opacity-0 pointer-events-none'}`}
-        style={{ boxShadow: '0 8px 48px rgba(0,242,254,0.08), 0 2px 16px rgba(0,0,0,0.6)' }}
+        className={`fixed bottom-6 right-6 w-[400px] max-w-[calc(100vw-2rem)] h-[580px] max-h-[calc(100vh-2rem)] bg-[#060913]/95 backdrop-blur-2xl border border-blue/30 rounded-xl flex flex-col z-50 transition-all duration-300 origin-bottom-right overflow-hidden ${isOpen ? 'scale-100 opacity-100' : 'scale-90 opacity-0 pointer-events-none'}`}
+        style={{ boxShadow: '0 8px 48px rgba(0,242,254,0.15), inset 0 0 20px rgba(0,242,254,0.05)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-black/40 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-full bg-blue-glow border border-blue/30 flex items-center justify-center text-blue">
+            <div className="h-8 w-8 rounded-full bg-blue/10 border border-blue/40 flex items-center justify-center text-blue shadow-[0_0_10px_rgba(0,242,254,0.3)]">
               <ShieldAlert size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-text-primary">
-                {role && role !== 'User' ? 'Investigative Analyst' : 'Cyber Assistant'}
+              <h3 className="text-sm font-bold text-text-primary tracking-wide">
+                Cyber Security AI Assistant
               </h3>
               <p className="text-xs text-blue flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue animate-pulse inline-block" />
@@ -212,10 +212,10 @@ export default function ChatbotPanel({ role }) {
               <div
                 className={`max-w-[90%] px-3 py-2.5 rounded-xl text-sm leading-relaxed ${
                   msg.role === 'user'
-                    ? 'rounded-br-sm text-bg'
-                    : 'rounded-bl-sm bg-surface border border-border text-text-primary'
+                    ? 'rounded-br-sm text-white shadow-[0_0_15px_rgba(0,242,254,0.3)]'
+                    : 'rounded-bl-sm bg-black/60 border border-border/50 text-text-primary shadow-inner'
                 }`}
-                style={msg.role === 'user' ? { background: 'linear-gradient(135deg, #00F2FE, #00C4CE)' } : {}}
+                style={msg.role === 'user' ? { background: 'linear-gradient(135deg, #00F2FE, #0284c7)' } : {}}
               >
                 {msg.role === 'user' ? (
                   <div className="prose prose-sm max-w-none">
@@ -257,7 +257,7 @@ export default function ChatbotPanel({ role }) {
         )}
 
         {/* Input Area */}
-        <form onSubmit={handleSend} className="p-3 border-t border-border bg-surface shrink-0">
+        <form onSubmit={handleSend} className="p-3 border-t border-border/50 bg-black/40 shrink-0">
           <div className="flex gap-2 items-end">
             {/* Hidden file input */}
             <input

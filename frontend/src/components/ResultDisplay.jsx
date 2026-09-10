@@ -10,6 +10,7 @@ import ConversationResultDisplay from './ConversationResultDisplay';
 import GuidancePanel from './prediction/GuidancePanel';
 import ExplainPanel from './prediction/ExplainPanel';
 import PersonalizedSafetyPlan from './prediction/PersonalizedSafetyPlan';
+import ThreatIntelligenceCard from './prediction/ThreatIntelligenceCard';
 
 function getSecondaryTier(label) {
   const l = label.toLowerCase();
@@ -104,6 +105,21 @@ export default function ResultDisplay({ result }) {
         </Card>
       </div>
 
+      {/* Deterministic Flagging Reasons */}
+      {result.flagging_reasons && result.flagging_reasons.length > 0 && (
+        <Card className="bg-surface border-border">
+          <div className="flex items-center gap-2 mb-3">
+            <Layers size={14} className="text-warning" />
+            <p className="section-title mb-0 text-warning">Why was this flagged?</p>
+          </div>
+          <ul className="list-disc pl-5 space-y-1 text-sm text-text-primary">
+            {result.flagging_reasons.map((reason, idx) => (
+              <li key={idx}>{reason}</li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {result.bot_summary_text && (
         <Card className="bg-blue-muted border-blue">
           <div className="flex items-center gap-2 mb-2">
@@ -156,6 +172,9 @@ export default function ResultDisplay({ result }) {
           </div>
         </Card>
       )}
+
+      {/* Advanced Threat Intelligence Signals */}
+      <ThreatIntelligenceCard result={result} />
 
       {/* Third row: Personalized Safety & Evidence Plan */}
       {result.evidence_plan ? (

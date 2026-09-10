@@ -18,19 +18,19 @@ export default function DashboardStats({ stats }) {
         label="Total Incidents"
         value={(stats.total_reports || 0).toLocaleString()}
         icon={<BarChart3 size={16} />}
-        accentColor="#3B82F6"
+        accentColor="#00F2FE"
       />
       <StatCard
         label="High Risk"
         value={stats.high_risk || 0}
         icon={<AlertCircle size={16} />}
-        accentColor="#EF4444"
+        accentColor="#F43F5E"
       />
       <StatCard
         label="Avg Risk Score"
         value={avgRisk}
         icon={<TrendingUp size={16} />}
-        accentColor={avgRisk >= 70 ? '#EF4444' : avgRisk >= 40 ? '#F59E0B' : '#10B981'}
+        accentColor={avgRisk >= 70 ? '#F43F5E' : avgRisk >= 40 ? '#F59E0B' : '#10B981'}
       />
       <StatCard
         label="Scams / Fraud"
@@ -42,7 +42,7 @@ export default function DashboardStats({ stats }) {
         label="Phishing"
         value={phishing}
         icon={<Bug size={16} />}
-        accentColor="#EF4444"
+        accentColor="#F43F5E"
       />
       <StatCard
         label="Behavioral Alerts"

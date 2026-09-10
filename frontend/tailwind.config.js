@@ -5,14 +5,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ── Core Surfaces (Lightened slightly per user request) ──
-        bg:          "#131522",      // base background
-        surface:     "rgba(25, 27, 46, 0.7)",  // card / panel (glassmorphism base)
-        "surface-solid": "#191B2E",  // solid fallback
-        "surface-2": "rgba(32, 35, 59, 0.75)", // elevated card
-        "surface-3": "rgba(42, 45, 75, 0.8)",  // hover / active
-        border:      "#2E3254",      // default border
-        "border-2":  "#464A73",      // accent border
+        // ── Core Surfaces ──
+        bg:          "#060913",      // deep navy / near-black
+        surface:     "rgba(14, 18, 30, 0.75)",  // glass card
+        "surface-solid": "#0E121E",  // solid fallback
+        "surface-2": "rgba(20, 26, 42, 0.8)", // elevated card
+        "surface-3": "rgba(28, 36, 56, 0.9)",  // hover / active
+        border:      "#1E293B",      // default border
+        "border-2":  "#334155",      // accent border
         
         // ── Brand Cyber Colors ──
         blue:        "#00F2FE",      // neon cyan
@@ -24,13 +24,13 @@ export default {
 
         // ── Semantic ──
         success:     "#10B981",
-        "success-bg":"rgba(16,185,129,0.1)",
+        "success-bg":"rgba(16,185,129,0.15)",
         warning:     "#F59E0B",
-        "warning-bg":"rgba(245,158,11,0.1)",
+        "warning-bg":"rgba(245,158,11,0.15)",
         danger:      "#EF4444",
-        "danger-bg": "rgba(239,68,68,0.1)",
-        critical:    "#F97316",
-        "critical-bg":"rgba(249,115,22,0.1)",
+        "danger-bg": "rgba(239,68,68,0.15)",
+        critical:    "#F43F5E",      // Pinkish red
+        "critical-bg":"rgba(244,63,94,0.15)",
 
         // ── Text ──
         "text-primary":  "#F1F5F9",
@@ -67,11 +67,12 @@ export default {
         header:  "56px",
       },
         boxShadow: {
-        card: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
-        panel: "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
-        blue: "0 0 0 1px rgba(59,130,246,0.4)",
-        "blue-lg": "0 0 24px rgba(59,130,246,0.15)",
-        "neon": "0 0 10px rgba(0, 242, 254, 0.4), 0 0 20px rgba(0, 242, 254, 0.2)",
+        card: "0 4px 12px -2px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)",
+        panel: "0 10px 25px -5px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)",
+        blue: "0 0 0 1px rgba(0,242,254,0.5)",
+        "blue-lg": "0 0 24px rgba(0,242,254,0.25)",
+        "neon": "0 0 12px rgba(0, 242, 254, 0.5), 0 0 24px rgba(0, 242, 254, 0.3)",
+        "neon-purple": "0 0 12px rgba(168, 85, 247, 0.5), 0 0 24px rgba(168, 85, 247, 0.3)",
       },
       animation: {
         "fade-in": "fadeIn 0.3s ease-out forwards",

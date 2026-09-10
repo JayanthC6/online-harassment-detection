@@ -34,16 +34,16 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
     <div className="space-y-4 relative">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-text-primary">Digital Safety Incidents</h2>
-        <div className="flex bg-surface-2 p-1 border border-border rounded-md gap-1">
+        <div className="flex bg-black/40 p-1 border border-border/50 rounded-md gap-1 shadow-inner">
           <button
             onClick={() => { setQueueType('messages'); filters.setPage(1); }}
-            className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${queueType === 'messages' ? 'bg-surface-3 text-text-primary' : 'text-text-muted hover:text-text-secondary'}`}
+            className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${queueType === 'messages' ? 'bg-blue/20 text-blue shadow-[0_0_10px_rgba(0,242,254,0.2)]' : 'text-text-muted hover:text-white'}`}
           >
             Messages
           </button>
           <button
             onClick={() => { setQueueType('conversations'); filters.setPage(1); }}
-            className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${queueType === 'conversations' ? 'bg-surface-3 text-text-primary' : 'text-text-muted hover:text-text-secondary'}`}
+            className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${queueType === 'conversations' ? 'bg-blue/20 text-blue shadow-[0_0_10px_rgba(0,242,254,0.2)]' : 'text-text-muted hover:text-white'}`}
           >
             Conversations
           </button>
@@ -52,10 +52,10 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
 
       <SearchFilters filters={filters} />
 
-      <div className="card overflow-hidden relative">
+      <div className="card overflow-hidden relative bg-black/40 backdrop-blur-xl border-border/50 shadow-none">
         {loading && (
-          <div className="absolute inset-0 bg-surface/50 backdrop-blur-[2px] flex items-center justify-center z-10 transition-all">
-            <Loader2 size={28} className="text-blue animate-spin" />
+          <div className="absolute inset-0 bg-[#060913]/50 backdrop-blur-[2px] flex items-center justify-center z-10 transition-all">
+            <Loader2 size={28} className="text-blue animate-spin drop-shadow-[0_0_5px_rgba(0,242,254,0.8)]" />
           </div>
         )}
 
@@ -64,15 +64,15 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
             <table className="data-table">
               <thead>
                 <tr>
-                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-surface-3 transition-colors" onClick={() => handleSort('logged_at')}>
+                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-white/5 transition-colors" onClick={() => handleSort('logged_at')}>
                     <div className="flex items-center">Timestamp {getSortIcon('logged_at')}</div>
                   </th>
                   <th className="px-5 py-3">Message Preview</th>
                   <th className="px-5 py-3">Category</th>
-                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-surface-3 transition-colors" onClick={() => handleSort('risk')}>
+                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-white/5 transition-colors" onClick={() => handleSort('risk')}>
                     <div className="flex items-center">Safety Score {getSortIcon('risk')}</div>
                   </th>
-                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-surface-3 transition-colors" onClick={() => handleSort('confidence')}>
+                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-white/5 transition-colors" onClick={() => handleSort('confidence')}>
                     <div className="flex items-center">Confidence {getSortIcon('confidence')}</div>
                   </th>
                   <th className="px-5 py-3 text-right">Actions</th>
@@ -83,7 +83,7 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                   <tr>
                     <td colSpan="6" className="px-5 py-20 text-center">
                       <div className="flex flex-col items-center justify-center space-y-3">
-                        <div className="p-4 bg-surface-2 rounded-lg border border-border text-text-muted">
+                        <div className="p-4 bg-black/20 rounded-lg border border-border/50 text-blue/50">
                           <Inbox size={40} strokeWidth={1} />
                         </div>
                         <div>
@@ -97,7 +97,7 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                   reports.map((r, idx) => (
                     <tr
                       key={idx}
-                      className="hover:bg-surface-2 transition-colors group cursor-pointer"
+                      className="transition-colors group cursor-pointer"
                       onClick={() => setSelectedReport(r)}
                     >
                       <td className="px-5 py-3 text-text-muted text-xs tabular-nums font-mono">
@@ -150,12 +150,12 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
             <table className="data-table">
               <thead>
                 <tr>
-                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-surface-3 transition-colors" onClick={() => handleSort('logged_at')}>
+                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-white/5 transition-colors" onClick={() => handleSort('logged_at')}>
                     <div className="flex items-center">Timestamp {getSortIcon('logged_at')}</div>
                   </th>
                   <th className="px-5 py-3">Messages</th>
                   <th className="px-5 py-3">Primary Category</th>
-                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-surface-3 transition-colors" onClick={() => handleSort('risk')}>
+                  <th className="px-5 py-3 cursor-pointer select-none hover:bg-white/5 transition-colors" onClick={() => handleSort('risk')}>
                     <div className="flex items-center">Safety Score {getSortIcon('risk')}</div>
                   </th>
                   <th className="px-5 py-3">Escalation</th>
@@ -167,7 +167,7 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                   <tr>
                     <td colSpan="6" className="px-5 py-20 text-center">
                       <div className="flex flex-col items-center justify-center space-y-3">
-                        <div className="p-4 bg-surface-2 rounded-lg border border-border text-text-muted">
+                        <div className="p-4 bg-black/20 rounded-lg border border-border/50 text-blue/50">
                           <Inbox size={40} strokeWidth={1} />
                         </div>
                         <div>
@@ -181,7 +181,7 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                   conversations.map((c, idx) => (
                     <tr
                       key={idx}
-                      className="hover:bg-surface-2 transition-colors group cursor-pointer"
+                      className="transition-colors group cursor-pointer"
                       onClick={() => setSelectedConversation(c)}
                     >
                       <td className="px-5 py-3 text-text-muted text-xs tabular-nums font-mono">

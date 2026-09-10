@@ -20,6 +20,53 @@ TARGET_BRANDS = [
     "facebook.com"
 ]
 
+URL_SHORTENERS = [
+    "bit.ly",
+    "tinyurl.com",
+    "t.co",
+    "goo.gl",
+    "ow.ly",
+    "buff.ly"
+]
+
+SE_INDICATORS = {
+    "credential_request": [r"\b(password|login|credentials).*(verify|confirm|reset)\b", r"\b(verify|confirm|reset).*(password|login|credentials)\b", r"\bwhat is your mother's maiden name\b"],
+    "otp_code_request": [r"\b(send|give|provide).*(code|otp|one time password)\b", r"\bverify your ssn\b"],
+    "account_verification_pressure": [r"\b(verify your account|login to confirm|update your payment)\b"],
+    "payment_request": [r"\b(wire me|bank transfer|send money|pay me)\b"],
+    "gift_card_request": [r"\b(gift card|apple card|google play card)\b"],
+    "crypto_payment_request": [r"\b(send|transfer).*(btc|bitcoin|eth|ethereum|crypto)\b"],
+    "ransom_demand": [r"\b(pay me|send bitcoin to|ransom|transfer funds immediately)\b", r"\b(if you don't pay)\b"],
+    "blackmail_indicator": [r"\b(i have your photos|pay me or i will leak|expose you|send me money or)\b", r"\b(release the video)\b", r"(leak|expose).*(photos|pictures|images|nudes)", r"(photos|pictures|images|nudes).*(will be|are going to be) (leaked|exposed|sent)"],
+    "investment_scam_indicator": [r"\b(crypto|bitcoin|investment opportunity|ponzi|pyramid scheme)\b", r"\b(guaranteed returns)\b"]
+}
+
+URGENCY_PATTERNS = [
+    r"\burgent\b",
+    r"\bimmediately\b",
+    r"\bact now\b",
+    r"\bexpires\b",
+    r"\blast chance\b",
+    r"\bwithin 24 hours\b",
+    r"\brespond immediately\b",
+    r"\bdon't delay\b"
+]
+
+IMPERSONATION_BRANDS = ["Microsoft", "Google", "Apple", "Amazon", "PayPal"]
+IMPERSONATION_KEYWORDS = ["Support", "Security", "Team", "Service", "Admin", "Administrator", "Customer Service"]
+
+DANGEROUS_SCHEME_PATTERN = re.compile(r'\b(javascript|data):[^\s]+', re.IGNORECASE)
+
+def is_ip_based(domain):
+    pattern = re.compile(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}(?::[0-9]+)?$')
+    return bool(pattern.match(domain))
+
+def is_url_shortener(domain):
+    for shortener in URL_SHORTENERS:
+        if domain == shortener or domain.endswith("." + shortener):
+            return True
+    return False
+
 def levenshtein_distance(s1, s2):
     if len(s1) < len(s2):
         return levenshtein_distance(s2, s1)
@@ -174,8 +221,68 @@ def analyze_text_for_threat_intel(text):
     intel = {
         "urls": [],
         "emails": [],
-        "malicious_urls": []
+        "malicious_urls": [],
+        "threat_signals": {
+            "url_shorteners": [],
+            "ip_based_urls": [],
+            "dangerous_schemes": [],
+            "social_engineering": {
+                "detected": False,
+                "indicators": []
+            },
+            "urgency": {
+                "detected": False,
+                "count": 0,
+                "indicators": []
+            },
+            "brand_impersonation": {
+                "detected": False,
+                "brands": []
+            }
+        }
     }
+    
+    text_lower = text.lower()
+    
+    # Check Social Engineering Indicators
+    for ind_name, patterns in SE_INDICATORS.items():
+        for pattern in patterns:
+            if re.search(pattern, text_lower):
+                if ind_name not in intel["threat_signals"]["social_engineering"]["indicators"]:
+                    intel["threat_signals"]["social_engineering"]["indicators"].append(ind_name)
+                    intel["threat_signals"]["social_engineering"]["detected"] = True
+                
+    # Check Urgency
+    urgency_matches = set()
+    for pattern in URGENCY_PATTERNS:
+        matches = re.finditer(pattern, text_lower)
+        for match in matches:
+            # We normalize the matched text as indicator name (e.g. "act now" -> "act_now")
+            indicator = match.group(0).replace(" ", "_").replace("'", "")
+            urgency_matches.add(indicator)
+            
+    if urgency_matches:
+        intel["threat_signals"]["urgency"]["detected"] = True
+        intel["threat_signals"]["urgency"]["indicators"] = list(urgency_matches)
+        intel["threat_signals"]["urgency"]["count"] = len(urgency_matches)
+        
+    # Check Brand Impersonation
+    for brand in IMPERSONATION_BRANDS:
+        for kw in IMPERSONATION_KEYWORDS:
+            if re.search(rf"\b{brand.lower()}\s+{kw.lower()}\b", text_lower):
+                if brand not in intel["threat_signals"]["brand_impersonation"]["brands"]:
+                    intel["threat_signals"]["brand_impersonation"]["brands"].append(brand)
+                    intel["threat_signals"]["brand_impersonation"]["detected"] = True
+                    
+    # Check Dangerous Schemes
+    for match in DANGEROUS_SCHEME_PATTERN.finditer(text):
+        scheme = match.group(1).lower()
+        # To avoid adding the same scheme multiple times
+        if not any(d["scheme"] == scheme for d in intel["threat_signals"]["dangerous_schemes"]):
+            intel["threat_signals"]["dangerous_schemes"].append({
+                "scheme": scheme,
+                "status": "suspicious"
+            })
     
     for url in urls:
         domain = get_domain(url)
@@ -194,6 +301,23 @@ def analyze_text_for_threat_intel(text):
             url_intel["domain_age_days"] = age
         if squat:
             url_intel["typosquat_match"] = squat
+            
+        is_ip = is_ip_based(domain)
+        is_shortener = is_url_shortener(domain)
+        
+        if is_ip:
+            url_intel["ip_based_url"] = True
+            intel["threat_signals"]["ip_based_urls"].append({
+                "url": url,
+                "reason": "An IP-based URL was detected instead of a conventional domain name."
+            })
+            
+        if is_shortener:
+            url_intel["url_shortener"] = True
+            intel["threat_signals"]["url_shorteners"].append({
+                "url": url,
+                "reason": "A URL shortener was detected; the final destination is not visible in the submitted URL."
+            })
             
         intel["urls"].append(url_intel)
         

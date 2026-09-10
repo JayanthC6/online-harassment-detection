@@ -45,6 +45,7 @@ def admin_login():
 
 @admin_bp.route("/admin/stats", methods=["GET"])
 @token_required
+@require_role("Admin", "Moderator", "Viewer")
 def admin_stats(token_data):
     from services.prediction_service import PredictionService
     stats = AdminService.get_stats()
@@ -54,6 +55,7 @@ def admin_stats(token_data):
 
 @admin_bp.route("/admin/reports", methods=["GET"])
 @token_required
+@require_role("Admin", "Moderator", "Viewer")
 def admin_reports(token_data):
     page        = int(request.args.get("page", 1))
     page_size   = int(request.args.get("page_size", 20))
@@ -75,12 +77,14 @@ def admin_reports(token_data):
 
 @admin_bp.route("/admin/analytics", methods=["GET"])
 @token_required
+@require_role("Admin", "Moderator", "Viewer")
 def admin_analytics(token_data):
     return jsonify(AdminService.get_analytics())
 
 
 @admin_bp.route("/admin/daily_counts", methods=["GET"])
 @token_required
+@require_role("Admin", "Moderator", "Viewer")
 def admin_daily_counts(token_data):
     days = int(request.args.get("days", 30))
     counts    = AdminService.get_daily_counts(days=days)
@@ -90,6 +94,7 @@ def admin_daily_counts(token_data):
 
 @admin_bp.route("/admin/conversations", methods=["GET"])
 @token_required
+@require_role("Admin", "Moderator", "Viewer")
 def admin_conversations(token_data):
     page       = int(request.args.get("page", 1))
     page_size  = int(request.args.get("page_size", 20))
@@ -102,6 +107,7 @@ def admin_conversations(token_data):
 
 @admin_bp.route("/admin/profiles", methods=["GET"])
 @token_required
+@require_role("Admin", "Moderator", "Viewer")
 def admin_profiles(token_data):
     profiles = BehaviorService.get_all_profiles()
     return jsonify({"profiles": profiles})

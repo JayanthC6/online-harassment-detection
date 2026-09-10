@@ -73,7 +73,7 @@ export default function AnalyzeForm({ onNewResult }) {
       {/* ── Mode toggle ── */}
       <Card className="">
         {/* ── Evidence type tabs ── */}
-        <div className="flex flex-wrap gap-0 mb-5 pb-4 border-b border-border">
+        <div className="flex flex-wrap gap-0 mb-5 pb-4 border-b border-border/50">
           <button
             onClick={() => setMode('text')}
             className={`tab-btn ${mode === 'text' ? 'active' : ''}`}
@@ -162,7 +162,7 @@ export default function AnalyzeForm({ onNewResult }) {
                       )}
                     </div>
                     <textarea
-                      className="input-dark w-full min-h-16 p-2 text-sm resize-y"
+                      className="input-dark w-full min-h-16 p-2 text-sm resize-y font-mono bg-black/40 focus:bg-black/60 transition-colors"
                       placeholder="Message content..."
                       value={msg.text}
                       onChange={(e) => {
@@ -208,7 +208,7 @@ export default function AnalyzeForm({ onNewResult }) {
             </div>
 
             <textarea
-              className="input min-h-32 p-3 resize-y"
+              className="input min-h-32 p-3 resize-y font-mono text-sm leading-relaxed bg-black/40 focus:bg-black/60 transition-colors"
               placeholder="Paste or type a message to analyze for digital safety threats..."
               value={text}
               onChange={(e) => setText(e.target.value)}

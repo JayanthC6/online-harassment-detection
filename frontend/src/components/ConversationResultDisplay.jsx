@@ -1,10 +1,11 @@
 import PropTypes from 'prop-types';
-import { Layers, Lightbulb, MessageSquare, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Layers, Lightbulb, MessageSquare, AlertTriangle, ChevronRight, Users, Activity, Link } from 'lucide-react';
 import Card from './common/Card';
 import RiskBadge from './prediction/RiskBadge';
 import RedactionBar from './common/RedactionBar';
 import GuidancePanel from './prediction/GuidancePanel';
 import PersonalizedSafetyPlan from './prediction/PersonalizedSafetyPlan';
+import ThreatIntelligenceCard from './prediction/ThreatIntelligenceCard';
 
 export default function ConversationResultDisplay({ result }) {
   if (!result || !result.messages) return null;
@@ -83,6 +84,152 @@ export default function ConversationResultDisplay({ result }) {
           </div>
         </Card>
       </div>
+
+      {/* Deterministic Flagging Reasons */}
+      {result.flagging_reasons && result.flagging_reasons.length > 0 && (
+        <Card className="bg-panel border-alert-amber/30">
+          <div className="flex items-center gap-2 mb-3">
+            <Layers size={14} className="text-alert-amber" />
+            <p className="text-xs font-bold text-alert-amber font-mono uppercase tracking-wider mb-0">Why was this flagged?</p>
+          </div>
+          <ul className="list-disc pl-5 space-y-1 text-sm text-off-white">
+            {result.flagging_reasons.map((reason, idx) => (
+              <li key={idx}>{reason}</li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {/* Threat Intel / Malicious URLs */}
+      {result.malicious_urls && result.malicious_urls.filter(u => u.status !== 'Safe').length > 0 && (
+        <Card className="bg-panel border-redaction-red/30 mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Link size={14} className="text-redaction-red" />
+            <p className="text-xs font-bold text-redaction-red font-mono uppercase tracking-wider mb-0">Threat Intel Warning</p>
+          </div>
+          <div className="space-y-3">
+            {result.malicious_urls.filter(u => u.status !== 'Safe').map((urlObj, idx) => {
+              let badgeColor = "bg-slate-800 text-slate-400 border-slate-700"; // Unknown
+              if (urlObj.status === "High Risk") {
+                badgeColor = "bg-redaction-red/20 text-redaction-red border-redaction-red/50"; 
+              } else if (urlObj.status === "Suspicious") {
+                badgeColor = "bg-alert-amber/20 text-alert-amber border-alert-amber/50";
+              }
+
+              return (
+                <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between p-3 rounded bg-slate-800/50 border border-slate-700/50 gap-3">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className={`text-xs px-2 py-0.5 rounded border font-semibold whitespace-nowrap ${badgeColor}`}>
+                      {urlObj.status}
+                    </span>
+                    <span className="text-sm font-mono text-off-white truncate" title={urlObj.url}>
+                      {urlObj.url}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs md:justify-end shrink-0">
+                    <span className="text-slate-400">
+                      Reason: <span className="font-semibold text-off-white">{urlObj.reason}</span>
+                    </span>
+                    <span className="px-2 py-1 bg-panel rounded border border-slate-700 font-mono text-off-white">
+                      Risk: {urlObj.risk_score}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Advanced Threat Intelligence Signals */}
+      <ThreatIntelligenceCard result={result} isConversation={true} />
+
+      {/* ── SECTION 1.2: CONVERSATION SIGNALS ── */}
+      {result.conversation_signals && result.conversation_signals.length > 0 && (
+        <Card className="bg-panel border-slate-700/50 mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity size={14} className="text-slate-400" />
+            <p className="text-xs font-bold text-slate-400 font-mono uppercase tracking-wider mb-0">Conversation Signals</p>
+          </div>
+          <ul className="list-disc pl-5 space-y-1 text-sm text-off-white">
+            {result.conversation_signals.map((signal, idx) => (
+              <li key={idx}>{signal}</li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {/* ── SECTION 1.3: ACTOR INTELLIGENCE ── */}
+      {result.actor_intelligence && Object.keys(result.actor_intelligence).length > 0 && (
+        <div className="space-y-3 pt-4">
+          <h2 className="text-sm font-bold text-off-white font-display flex items-center gap-2">
+            <Users size={18} className="text-slate-500" />
+            Actor Breakdown
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(result.actor_intelligence).map(([actor, stats]) => (
+              <Card key={actor} className="p-4 border-slate-700">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-bold text-off-white font-mono truncate">{actor}</h3>
+                  {stats.risk_concentration_percentage > 50 && (
+                    <span className="px-2 py-0.5 text-xs bg-redaction-red/20 text-redaction-red border border-redaction-red/50 rounded font-bold">
+                      {stats.risk_concentration_percentage}% of Flagged
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 font-mono uppercase tracking-wider mb-1">Total</p>
+                    <p className="text-off-white">{stats.total_messages}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 font-mono uppercase tracking-wider mb-1">Flagged</p>
+                    <p className={stats.flagged_messages > 0 ? "text-alert-amber" : "text-off-white"}>{stats.flagged_messages}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 font-mono uppercase tracking-wider mb-1">High Risk</p>
+                    <p className={stats.high_risk_messages > 0 ? "text-redaction-red" : "text-off-white"}>{stats.high_risk_messages}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 font-mono uppercase tracking-wider mb-1">Avg Risk</p>
+                    <p className="text-off-white">{stats.average_risk_score.toFixed(1)}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── SECTION 1.4: TEMPORAL INTELLIGENCE ── */}
+      {result.temporal_intelligence && result.temporal_intelligence.risk_timeline && result.temporal_intelligence.risk_timeline.length > 0 && (
+        <div className="space-y-3 pt-4">
+          <h2 className="text-sm font-bold text-off-white font-display flex items-center gap-2">
+            <Activity size={18} className="text-slate-500" />
+            Risk Timeline
+          </h2>
+          <Card className="p-4">
+            <div className="flex items-center gap-4 overflow-x-auto pb-2">
+              {result.temporal_intelligence.risk_timeline.map((point, idx) => (
+                <div key={idx} className="flex flex-col items-center gap-2 min-w-[24px]">
+                  <div className="text-[9px] text-slate-500 font-mono">#{point.sequence + 1}</div>
+                  <div 
+                    className={`w-4 rounded-t ${point.is_high_risk ? 'bg-redaction-red' : point.risk_score > 0 ? 'bg-alert-amber' : 'bg-slate-700'}`}
+                    style={{ height: `${Math.max(point.risk_score, 5)}px`, minHeight: '5px' }}
+                    title={`Risk: ${point.risk_score}`}
+                  ></div>
+                </div>
+              ))}
+            </div>
+            {result.temporal_intelligence.high_risk_clusters && result.temporal_intelligence.high_risk_clusters.length > 0 && (
+              <p className="text-xs text-slate-400 mt-4">
+                <span className="text-redaction-red font-bold">Detected: </span> 
+                {result.temporal_intelligence.high_risk_clusters.length} high-risk message cluster(s).
+              </p>
+            )}
+          </Card>
+        </div>
+      )}
 
       {/* ── SECTION 1.5: AGGREGATE STATS ── */}
       {(result.total_messages > 0) && (

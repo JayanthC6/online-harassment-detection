@@ -26,17 +26,17 @@ export default function TrendChart({ dailyCounts, anomalies }) {
       {
         label: 'Flagged Reports',
         data: dailyCounts.map((d) => d.count),
-        borderColor: '#00E5FF', // verified-teal
-        backgroundColor: 'rgba(0, 229, 255, 0.1)',
+        borderColor: '#00F2FE', // blue
+        backgroundColor: 'rgba(0, 242, 254, 0.1)',
         fill: true,
         tension: 0.4,
         pointBackgroundColor: dailyCounts.map((d) => {
           const isAnomaly = anomalies.some((a) => a.date === d.date);
-          return isAnomaly ? '#FF3333' : '#1C1E27'; // redaction-red or panel
+          return isAnomaly ? '#F43F5E' : '#060913'; // critical or bg
         }),
         pointBorderColor: dailyCounts.map((d) => {
           const isAnomaly = anomalies.some((a) => a.date === d.date);
-          return isAnomaly ? '#FF3333' : '#00E5FF';
+          return isAnomaly ? '#F43F5E' : '#00F2FE';
         }),
         pointBorderWidth: 2,
         pointRadius: dailyCounts.map((d) => {
@@ -54,10 +54,10 @@ export default function TrendChart({ dailyCounts, anomalies }) {
     plugins: { 
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#1C1E27',
-        titleColor: '#F8FAFC',
+        backgroundColor: '#0E121E',
+        titleColor: '#F1F5F9',
         bodyColor: '#94A3B8',
-        borderColor: '#334155',
+        borderColor: '#1E293B',
         borderWidth: 1,
         padding: 12,
         titleFont: { size: 13, family: 'monospace' },
@@ -86,9 +86,9 @@ export default function TrendChart({ dailyCounts, anomalies }) {
   };
 
   return (
-    <div className="bg-panel p-5 border border-slate-700 rounded-none shadow-sm">
-      <h3 className="text-xs font-bold text-slate-500 font-mono uppercase tracking-wider mb-6 flex items-center gap-1.5">
-        <Activity size={14} className="text-slate-500" />
+    <div className="bg-black/40 p-5 border border-border/50 rounded-xl shadow-[inset_0_0_15px_rgba(0,0,0,0.5)]">
+      <h3 className="text-xs font-bold text-text-muted font-mono uppercase tracking-wider mb-6 flex items-center gap-1.5 drop-shadow-[0_0_2px_rgba(255,255,255,0.1)]">
+        <Activity size={14} className="text-blue shadow-[0_0_5px_rgba(0,242,254,0.5)]" />
         Report Volume Trend (30 Days)
       </h3>
       <div className="h-[250px] w-full">

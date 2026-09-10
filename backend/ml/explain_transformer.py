@@ -151,7 +151,7 @@ def compute_ig_attributions(text: str, label: str, n_steps: int = 50) -> dict:
         raise RuntimeError("HF_TOKEN is not set — cannot load the neural model.")
 
     import torch
-    from captum.attr import LayerIntegratedGradients
+    from captum.attr import IntegratedGradients
 
     model, tokenizer, device, id2label = _load()
     label_idx = _label_to_index(label, id2label)
@@ -172,37 +172,34 @@ def compute_ig_attributions(text: str, label: str, n_steps: int = 50) -> dict:
     baseline_ids = torch.full_like(input_ids, pad_id)
 
     # ── Define forward function for IG ──
-    # Target: model.distilbert.embeddings (the FULL embedding block, not just word_embeddings).
-    # DistilBERT's embedding block does: word_embed + position_embed → layer_norm → dropout.
-    # Targeting only word_embeddings causes a shape mismatch because position_embeddings (dim=768)
-    # are then added to the intercepted tensor whose outer dim is seq_len (256), not embed_dim.
-    # By targeting the full block, Captum receives the final combined embedding output (seq, 768).
-    embed_layer = model.distilbert.embeddings  # full block
-
-    def forward_func(input_ids_):
-        # Captum may pass multiple interpolation steps at once (internal_batch_size).
-        # Expand attention_mask to match whatever batch size arrives.
-        batch = input_ids_.shape[0]
+    # Instead of using LayerIntegratedGradients which can cause shape mismatches due to hooks,
+    # we use standard IntegratedGradients and provide inputs_embeds directly.
+    def forward_func(inputs_embeds_):
+        batch = inputs_embeds_.shape[0]
         mask = attention_mask.expand(batch, -1)
-        outputs = model(input_ids=input_ids_, attention_mask=mask)
+        outputs = model(inputs_embeds=inputs_embeds_, attention_mask=mask)
         return torch.sigmoid(outputs.logits[:, label_idx])
 
-    # ── Run LIG ──
-    # Captum mutates the module by adding global forward hooks.
+    # Compute actual embeddings for inputs and baselines
+    inputs_embeds = model.distilbert.embeddings(input_ids)
+    baseline_embeds = model.distilbert.embeddings(baseline_ids)
+
     # We must lock this section so concurrent requests don't capture each other's activations.
     import threading
     if not hasattr(compute_ig_attributions, "_ig_lock"):
         compute_ig_attributions._ig_lock = threading.Lock()
-        
+
     with compute_ig_attributions._ig_lock:
-        lig = LayerIntegratedGradients(forward_func, embed_layer)
-    
-        attributions, delta = lig.attribute(
-            inputs=input_ids,
-            baselines=baseline_ids,
+        ig = IntegratedGradients(forward_func)
+        
+        # Attribute directly on the embeddings
+        attributions, delta = ig.attribute(
+            inputs=inputs_embeds,
+            baselines=baseline_embeds,
+            target=None,
             n_steps=n_steps,
-            return_convergence_delta=True,
             internal_batch_size=8,
+            return_convergence_delta=True
         )
     # attributions: (1, seq_len, embed_dim=768) — sum across embed dim → per-token scalar
     attr_scores = attributions.sum(dim=-1).squeeze(0)  # shape: (seq_len,)

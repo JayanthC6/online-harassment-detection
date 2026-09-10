@@ -12,6 +12,30 @@ import db
 from ml.chatbot import generate_chat_response, extract_text_from_file, analyze_file_content
 from ml.adapters.threat_intel import mask_pii, extract_pii
 
+def sanitize_result_for_public(result: dict) -> dict:
+    """Masks PII in a result dictionary before returning to frontend or passing to chatbot."""
+    if not isinstance(result, dict):
+        return result
+    res = result.copy()
+    if "text_preview" in res and res["text_preview"]:
+        res["text_preview"] = mask_pii(res["text_preview"])
+    if "text_full" in res and res["text_full"]:
+        res["text_full"] = mask_pii(res["text_full"])
+    if "evidence" in res and res["evidence"]:
+        res["evidence"] = mask_pii(res["evidence"])
+    if "content" in res and res["content"]:
+        res["content"] = mask_pii(res["content"])
+    if "extracted_text" in res and res["extracted_text"]:
+        res["extracted_text"] = mask_pii(res["extracted_text"])
+    if "transcript" in res and res["transcript"]:
+        res["transcript"] = mask_pii(res["transcript"])
+    if "messages" in res and isinstance(res["messages"], list):
+        res["messages"] = [m.copy() for m in res["messages"] if isinstance(m, dict)]
+        for m in res["messages"]:
+            if "text" in m and m["text"]:
+                m["text"] = mask_pii(m["text"])
+    return res
+
 # Import the shared limiter instance (defined in extensions.py to avoid circular imports)
 from extensions import limiter
 
@@ -71,6 +95,7 @@ def predict_instant(token_data):
 
     data = request.get_json(silent=True) or {}
     text = data.get("text", "")
+    persist = data.get("persist", False)
 
     if not text or not isinstance(text, str):
         return jsonify({"error": "Request body must include a non-empty 'text' string."}), 400
@@ -103,8 +128,8 @@ def predict_instant(token_data):
         result["guidance"] = None
         result["guidance_snippet"] = f"Error fetching guidance: {e}"
 
-    # If the user is logged in, log it to db for history tracking
-    if token_data:
+    # If the user is logged in and persist is true, log it to db for history tracking
+    if persist and token_data:
         history_entry = {
             "actor_id": actor_id,
             "user_id": token_data.get("user"),
@@ -126,6 +151,12 @@ def predict_instant(token_data):
 
     result.pop("embedding", None)
     result.pop("_id", None)
+    
+    # Mask API response for normal or anonymous users
+    is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]
+    if not is_admin:
+        result = sanitize_result_for_public(result)
+        
     return jsonify(result)
 
 @public_bp.route("/predict", methods=["POST"])
@@ -181,6 +212,12 @@ def predict(token_data):
 
     result.pop("embedding", None)
     result.pop("_id", None)  # MongoDB ObjectId is not JSON serializable
+    
+    # Mask API response for normal or anonymous users
+    is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]
+    if not is_admin:
+        result = sanitize_result_for_public(result)
+        
     return jsonify(result)
 
 DEMO_EXAMPLES = {
@@ -279,6 +316,12 @@ def predict_batch(token_data):
             
         r.pop("embedding", None)
         r.pop("_id", None)  # MongoDB ObjectId is not JSON serializable
+        
+        # Mask API response for normal or anonymous users
+        is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]
+        if not is_admin:
+            r = sanitize_result_for_public(r)
+            
         results.append(r)
 
     return jsonify({"results": results, "count": len(results)})
@@ -350,6 +393,12 @@ def predict_audio(token_data):
             AdminService.log_message(result_copy)
 
     result.pop("embedding", None)
+    
+    # Mask API response for normal or anonymous users
+    is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]
+    if not is_admin:
+        result = sanitize_result_for_public(result)
+        
     return jsonify(result)
 
 @public_bp.route("/predict/screenshot", methods=["POST"])
@@ -414,6 +463,12 @@ def predict_screenshot(token_data):
             AdminService.log_message(result_copy)
 
     result.pop("embedding", None)
+    
+    # Mask API response for normal or anonymous users
+    is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]
+    if not is_admin:
+        result = sanitize_result_for_public(result)
+        
     return jsonify(result)
 
 @public_bp.route("/predict/file", methods=["POST"])
@@ -466,7 +521,8 @@ def predict_file(token_data):
     # Generate bot summary for the file text
     try:
         from ml.chatbot import analyze_file_content
-        bot_summary = analyze_file_content(extracted_text, file.filename)
+        sanitized_for_bot = mask_pii(extracted_text)
+        bot_summary = analyze_file_content(sanitized_for_bot, file.filename)
         result["bot_summary_text"] = bot_summary
     except Exception as e:
         result["bot_summary_text"] = "Error: Could not generate bot summary."
@@ -493,6 +549,12 @@ def predict_file(token_data):
             AdminService.log_message(result_copy)
 
     result.pop("embedding", None)
+    
+    # Mask API response for normal or anonymous users
+    is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]
+    if not is_admin:
+        result = sanitize_result_for_public(result)
+        
     return jsonify(result)
 
 @public_bp.route("/summarize", methods=["POST"])
@@ -560,6 +622,11 @@ def predict_conversation(token_data):
                 result_copy["user_id"] = token_data.get("user")
                 AdminService.log_conversation(result_copy)
             
+        # Mask API response for normal or anonymous users
+        is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]
+        if not is_admin:
+            result = sanitize_result_for_public(result)
+            
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -624,6 +691,11 @@ def import_conversation(token_data):
                 result_copy["user_id"] = token_data.get("user")
                 AdminService.log_conversation(result_copy)
             
+        # Mask API response for normal or anonymous users
+        is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]
+        if not is_admin:
+            result = sanitize_result_for_public(result)
+            
         return jsonify(result)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -652,6 +724,10 @@ def chat():
     user_msg = {"role": "user", "content": message}
     history.append(user_msg)
     
+    # Sanitize context payload before sending to LLM
+    if prediction_context:
+        prediction_context = sanitize_result_for_public(prediction_context)
+
     # Generate response
     ai_response_text = generate_chat_response(history, persona, prediction_context)
     
@@ -713,8 +789,11 @@ def chat_file_upload():
     if not extracted_text or not extracted_text.strip():
         return jsonify({"error": "No readable text found in the file."}), 400
 
+    # Sanitize text before sending to LLM
+    sanitized_text = mask_pii(extracted_text)
+
     # Run AI analysis
-    analysis = analyze_file_content(extracted_text, file.filename, persona)
+    analysis = analyze_file_content(sanitized_text, file.filename, persona)
 
     # Persist as a chat turn so the conversation remembers the file
     history = db.get_chat_session(session_id)

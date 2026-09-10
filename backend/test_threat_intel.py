@@ -97,5 +97,118 @@ class TestThreatIntel(unittest.TestCase):
         self.assertEqual(urls[0]["risk_score"], 0)
         self.assertIn("Verified Clean", urls[0]["reason"])
 
+    def test_url_shortener_detected(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel('Check this: http://bit.ly/1234')
+        self.assertIn('threat_signals', result)
+        self.assertEqual(len(result['threat_signals']['url_shorteners']), 1)
+        self.assertEqual(result['threat_signals']['url_shorteners'][0]['url'], 'http://bit.ly/1234')
+        self.assertIn('A URL shortener was detected', result['threat_signals']['url_shorteners'][0]['reason'])
+
+    def test_ip_based_url_detected(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel('Login here: http://192.168.1.100/admin')
+        self.assertIn('threat_signals', result)
+        self.assertEqual(len(result['threat_signals']['ip_based_urls']), 1)
+        self.assertEqual(result['threat_signals']['ip_based_urls'][0]['url'], 'http://192.168.1.100/admin')
+        self.assertIn('IP-based URL was detected', result['threat_signals']['ip_based_urls'][0]['reason'])
+
+    def test_social_engineering_credential(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("Please verify your password")
+        self.assertTrue(result["threat_signals"]["social_engineering"]["detected"])
+        self.assertIn("credential_request", result["threat_signals"]["social_engineering"]["indicators"])
+
+    def test_social_engineering_otp(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("send me the code")
+        self.assertTrue(result["threat_signals"]["social_engineering"]["detected"])
+        self.assertIn("otp_code_request", result["threat_signals"]["social_engineering"]["indicators"])
+
+    def test_social_engineering_account_verification(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("login to confirm")
+        self.assertTrue(result["threat_signals"]["social_engineering"]["detected"])
+        self.assertIn("account_verification_pressure", result["threat_signals"]["social_engineering"]["indicators"])
+
+    def test_social_engineering_payment(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("wire me some money")
+        self.assertTrue(result["threat_signals"]["social_engineering"]["detected"])
+        self.assertIn("payment_request", result["threat_signals"]["social_engineering"]["indicators"])
+
+    def test_social_engineering_gift_card(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("buy an apple card")
+        self.assertTrue(result["threat_signals"]["social_engineering"]["detected"])
+        self.assertIn("gift_card_request", result["threat_signals"]["social_engineering"]["indicators"])
+        
+    def test_social_engineering_crypto(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("send bitcoin")
+        self.assertTrue(result["threat_signals"]["social_engineering"]["detected"])
+        self.assertIn("crypto_payment_request", result["threat_signals"]["social_engineering"]["indicators"])
+
+    def test_urgency_single(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("This is urgent")
+        self.assertTrue(result["threat_signals"]["urgency"]["detected"])
+        self.assertEqual(result["threat_signals"]["urgency"]["count"], 1)
+
+    def test_urgency_multiple(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("This is urgent! Act now!")
+        self.assertTrue(result["threat_signals"]["urgency"]["detected"])
+        self.assertEqual(result["threat_signals"]["urgency"]["count"], 2)
+
+    def test_brand_impersonation(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("I am from Microsoft Support")
+        self.assertTrue(result["threat_signals"]["brand_impersonation"]["detected"])
+        self.assertIn("Microsoft", result["threat_signals"]["brand_impersonation"]["brands"])
+
+    def test_brand_mention_no_impersonation(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("I bought a Microsoft Xbox")
+        self.assertFalse(result["threat_signals"]["brand_impersonation"]["detected"])
+
+    def test_dangerous_scheme_javascript(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("Click here: javascript:alert(1)")
+        schemes = result["threat_signals"]["dangerous_schemes"]
+        self.assertEqual(len(schemes), 1)
+        self.assertEqual(schemes[0]["scheme"], "javascript")
+        
+    def test_dangerous_scheme_data(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("data:text/html,<html>")
+        schemes = result["threat_signals"]["dangerous_schemes"]
+        self.assertEqual(len(schemes), 1)
+        self.assertEqual(schemes[0]["scheme"], "data")
+
+    def test_normal_https_unaffected(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel("https://google.com")
+        schemes = result["threat_signals"]["dangerous_schemes"]
+        self.assertEqual(len(schemes), 0)
+        urls = result["urls"]
+        self.assertEqual(len(urls), 1)
+        self.assertEqual(urls[0]["url"], "https://google.com")
+
 if __name__ == '__main__':
     unittest.main()
+    def test_url_shortener_detected(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel('Check this: http://bit.ly/1234')
+        self.assertIn('threat_signals', result)
+        self.assertEqual(len(result['threat_signals']['url_shorteners']), 1)
+        self.assertEqual(result['threat_signals']['url_shorteners'][0]['url'], 'http://bit.ly/1234')
+        self.assertIn('A URL shortener was detected', result['threat_signals']['url_shorteners'][0]['reason'])
+
+    def test_ip_based_url_detected(self):
+        from ml.adapters.threat_intel import analyze_text_for_threat_intel
+        result = analyze_text_for_threat_intel('Login here: http://192.168.1.100/admin')
+        self.assertIn('threat_signals', result)
+        self.assertEqual(len(result['threat_signals']['ip_based_urls']), 1)
+        self.assertEqual(result['threat_signals']['ip_based_urls'][0]['url'], 'http://192.168.1.100/admin')
+        self.assertIn('IP-based URL was detected', result['threat_signals']['ip_based_urls'][0]['reason'])

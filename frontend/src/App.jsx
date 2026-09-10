@@ -30,10 +30,10 @@ export default function App() {
   }, [token, role]);
 
   const PAGE_TITLES = {
-    login:            { title: 'Welcome to ShieldAI', sub: 'Cyber Threat Triage Platform' },
+    login:            { title: 'Welcome to ShieldAI', sub: 'Cyber Threat Intelligence Platform' },
     instant_analysis: { title: 'Instant Analysis', sub: 'Instantly check content for digital safety threats' },
-    my_history:       { title: 'My History', sub: 'Your past content analysis checks' },
-    dashboard:        { title: 'Organization Dashboard',  sub: 'Overview of all reported incidents' },
+    my_history:       { title: 'My History', sub: 'Personal Cyber Safety Workspace - Historical Logs' },
+    dashboard:        { title: 'Organization Dashboard',  sub: 'Cyber Security Operations Center - Central Command' },
     incidents:        { title: 'Complaint Queue',  sub: 'Review and triage user complaints' },
     behavioral:       { title: 'Behavioral Intelligence', sub: 'Actor profiling and risk trends' },
     how_it_works:     { title: 'How It Works', sub: 'Understanding the ShieldAI Platform' },
@@ -82,9 +82,12 @@ export default function App() {
         className="min-h-screen"
       >
         <div className="p-6 max-w-[1400px] mx-auto">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-text-primary">{page.title}</h1>
-            <p className="text-sm text-text-muted mt-0.5">{page.sub}</p>
+          <div className="mb-6 pb-4 border-b border-border/50">
+            <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+              <span className="w-2 h-6 bg-blue rounded-full shadow-[0_0_8px_rgba(0,242,254,0.6)]"></span>
+              {page.title}
+            </h1>
+            <p className="text-sm text-text-muted mt-1 font-mono tracking-wide">{page.sub}</p>
           </div>
 
           <>

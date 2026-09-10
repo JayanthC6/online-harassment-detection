@@ -103,6 +103,8 @@ Do not output a <think> block or any reasoning process under any circumstances. 
         "content": system_content,
     }
 
+
+
     formatted_messages = [system_prompt]
     for msg in history:
         role = msg.get("role")

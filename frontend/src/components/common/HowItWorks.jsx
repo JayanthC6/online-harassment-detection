@@ -105,9 +105,10 @@ export default function HowItWorks({ onBack, isLoggedIn }) {
         </button>
       )}
 
-      <div className="card p-8">
-        <h2 className="text-2xl font-bold text-text-primary mb-2 flex items-center gap-2">
-          <HelpCircle className="text-primary" />
+      <div className="card p-8 bg-black/40 backdrop-blur-xl border border-blue/30 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(0,242,254,0.15)] relative">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue to-purple"></div>
+        <h2 className="text-2xl font-bold text-white mb-2 flex items-center gap-2 drop-shadow-[0_0_8px_rgba(0,242,254,0.5)]">
+          <HelpCircle className="text-blue" />
           Understanding ShieldAI
         </h2>
         <p className="text-text-secondary mb-8 leading-relaxed">
@@ -117,8 +118,8 @@ export default function HowItWorks({ onBack, isLoggedIn }) {
         <div className="space-y-8">
           {/* SECTION 1: The Process */}
           <section>
-            <h3 className="text-lg font-bold text-text-primary border-b border-border pb-2 mb-4 flex items-center gap-2">
-              <span className="bg-surface-3 text-text-primary rounded-full w-6 h-6 flex items-center justify-center text-xs">1</span>
+            <h3 className="text-lg font-bold text-blue border-b border-border/50 pb-2 mb-4 flex items-center gap-2 drop-shadow-[0_0_5px_rgba(0,242,254,0.4)]">
+              <span className="bg-blue/20 text-blue rounded-full w-6 h-6 flex items-center justify-center text-xs border border-blue/50">1</span>
               The Triage Pipeline
             </h3>
             <ul className="space-y-3 text-sm text-text-secondary list-disc pl-5">
@@ -131,8 +132,8 @@ export default function HowItWorks({ onBack, isLoggedIn }) {
 
           {/* SECTION 2: Scope */}
           <section>
-            <h3 className="text-lg font-bold text-text-primary border-b border-border pb-2 mb-4 flex items-center gap-2">
-              <span className="bg-surface-3 text-text-primary rounded-full w-6 h-6 flex items-center justify-center text-xs">2</span>
+            <h3 className="text-lg font-bold text-blue border-b border-border/50 pb-2 mb-4 flex items-center gap-2 drop-shadow-[0_0_5px_rgba(0,242,254,0.4)]">
+              <span className="bg-blue/20 text-blue rounded-full w-6 h-6 flex items-center justify-center text-xs border border-blue/50">2</span>
               Supported Threat Categories
             </h3>
             <p className="text-sm text-text-secondary mb-3">ShieldAI's models are trained to detect and classify a wide range of digital threats, including:</p>
@@ -158,8 +159,8 @@ export default function HowItWorks({ onBack, isLoggedIn }) {
 
           {/* SECTION 3: Try It Live / Scanner */}
           <section>
-            <h3 className="text-lg font-bold text-text-primary border-b border-border pb-2 mb-4 flex items-center gap-2">
-              <span className="bg-surface-3 text-text-primary rounded-full w-6 h-6 flex items-center justify-center text-xs">3</span>
+            <h3 className="text-lg font-bold text-blue border-b border-border/50 pb-2 mb-4 flex items-center gap-2 drop-shadow-[0_0_5px_rgba(0,242,254,0.4)]">
+              <span className="bg-blue/20 text-blue rounded-full w-6 h-6 flex items-center justify-center text-xs border border-blue/50">3</span>
               {isLoggedIn ? 'Live Analysis Sandbox' : 'Try It Live'}
             </h3>
             <p className="text-sm text-text-secondary mb-4">

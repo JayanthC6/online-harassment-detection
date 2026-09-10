@@ -3,6 +3,7 @@ from services.admin_service import AdminService
 from ml.adapters import PrimaryModelAdapter, HeuristicMultiLabelAdapter, ConversationAdapter
 from services.guidance_service import GuidanceService
 from services.evidence_service import EvidenceService
+from ml.adapters.threat_intel import mask_pii
 
 try:
     import ml.explain as explain_module
@@ -97,8 +98,59 @@ class PredictionService:
         adapter = PredictionService.get_adapter()
         if hasattr(adapter, "explain_heuristics") and result.get("secondary_labels"):
             result["explanation"].extend(adapter.explain_heuristics(text, result["secondary_labels"]))
+            result["evidence_plan"] = EvidenceService.get_action_plan(result)
             
         return result
+
+    @staticmethod
+    def extract_threat_signal_summary(threat_signals: dict) -> dict:
+        categories = set()
+        if threat_signals.get("social_engineering", {}).get("detected"):
+            categories.add("social_engineering")
+        if threat_signals.get("urgency", {}).get("detected"):
+            categories.add("urgency")
+        if threat_signals.get("brand_impersonation", {}).get("detected"):
+            categories.add("brand_impersonation")
+            
+        return {
+            "detected": len(categories) > 0,
+            "categories": sorted(list(categories)),
+            "count": len(categories)
+        }
+
+    @staticmethod
+    def _add_threat_intel_reasons(reasons: list, threat_signals: dict, include_urgency: bool = True):
+        for ip_url in threat_signals.get("ip_based_urls", []):
+            if ip_url.get("reason") not in reasons:
+                reasons.append(ip_url.get("reason"))
+        for short_url in threat_signals.get("url_shorteners", []):
+            if short_url.get("reason") not in reasons:
+                reasons.append(short_url.get("reason"))
+                
+        if threat_signals.get("social_engineering", {}).get("detected"):
+            for ind in threat_signals["social_engineering"]["indicators"]:
+                ind_clean = ind.replace("_", "-")
+                msg = f"A potential {ind_clean} indicator was detected."
+                if msg not in reasons:
+                    reasons.append(msg)
+                    
+        if include_urgency and threat_signals.get("urgency", {}).get("detected"):
+            count = threat_signals["urgency"].get("count", 0)
+            if count > 1:
+                reasons.append("Multiple urgency indicators were detected.")
+            elif count == 1:
+                reasons.append("An urgency indicator was detected.")
+                
+        if threat_signals.get("brand_impersonation", {}).get("detected"):
+            for b in threat_signals["brand_impersonation"].get("brands", []):
+                msg = f"A potential brand impersonation indicator involving {b} was detected."
+                if msg not in reasons:
+                    reasons.append(msg)
+                    
+        if threat_signals.get("dangerous_schemes"):
+            msg = "A potentially dangerous URL scheme was detected."
+            if msg not in reasons:
+                reasons.append(msg)
 
     @staticmethod
     def attach_risk_and_similarity(result: dict, text_for_embedding: str) -> dict:
@@ -146,6 +198,64 @@ class PredictionService:
             
         result["evidence_plan"] = EvidenceService.get_action_plan(result)
 
+        # Deterministic Explainability (Why was this flagged?)
+        reasons = []
+        def add_reason(r):
+            if r not in reasons:
+                reasons.append(r)
+
+        if primary_label.lower() not in ["none", "clean", "safe"]:
+            add_reason(f"Content classified as {primary_label.title()}.")
+            
+        for sec_cat in secondary_labels.keys():
+            add_reason(f"Indicators of {sec_cat.title()} detected.")
+            
+        if "pii_categories" in result and result["pii_categories"]:
+            cats = sorted(list(set([c.replace("_", " ").title() for c in result["pii_categories"]])))
+            add_reason(f"Personally Identifiable Information (PII) detected: {', '.join(cats)}.")
+            
+        if result.get("malicious_urls"):
+            add_reason("Suspicious or malicious link(s) detected.")
+            
+        if "threat_intel" in result:
+            emails = result["threat_intel"].get("emails", [])
+            if any(e.get("breach_count", 0) > 0 for e in emails):
+                add_reason("An email address in the submitted content appears in known data-breach records.")
+                
+            threat_signals = result["threat_intel"].get("threat_signals", {})
+            for ip_url in threat_signals.get("ip_based_urls", []):
+                add_reason(ip_url.get("reason"))
+            for short_url in threat_signals.get("url_shorteners", []):
+                add_reason(short_url.get("reason"))
+                
+            if threat_signals.get("social_engineering", {}).get("detected"):
+                for ind in threat_signals["social_engineering"]["indicators"]:
+                    ind_clean = ind.replace("_", "-")
+                    add_reason(f"A potential {ind_clean} indicator was detected.")
+                    
+            if threat_signals.get("urgency", {}).get("detected"):
+                count = threat_signals["urgency"].get("count", 0)
+                if count > 1:
+                    add_reason("Multiple urgency indicators were detected.")
+                elif count == 1:
+                    add_reason("An urgency indicator was detected.")
+                    
+            if threat_signals.get("brand_impersonation", {}).get("detected"):
+                brands = threat_signals["brand_impersonation"].get("brands", [])
+                for b in brands:
+                    add_reason(f"A potential brand impersonation indicator involving {b} was detected.")
+                    
+            if threat_signals.get("dangerous_schemes"):
+                add_reason("A potentially dangerous URL scheme was detected.")
+                
+        if not reasons and result["risk_score"] > 0:
+            add_reason("Flagged by automated safety checks.")
+            
+        result["flagging_reasons"] = reasons
+        
+        threat_signals = result.get("threat_intel", {}).get("threat_signals", {})
+        result["threat_signal_summary"] = PredictionService.extract_threat_signal_summary(threat_signals)
+
         return result
 
     @staticmethod
@@ -164,8 +274,9 @@ class PredictionService:
         
         try:
             from ml.summarize import summarize_conversation
+            masked_texts = [mask_pii(m["text"]) for m in result["messages"]]
             ai_summary = summarize_conversation(
-                [m["text"] for m in result["messages"]], 
+                masked_texts, 
                 result["conversation_risk"]
             )
             # Remove the old recommended_action from AI summary
@@ -203,5 +314,95 @@ class PredictionService:
         result["evidence"] = highest_risk_msg.get("text", "No specific threat evidence detected.") if result["severity_tier"] != "Safe" else "No specific threat evidence detected."
             
         result["evidence_plan"] = EvidenceService.get_action_plan(result)
+
+        # Deterministic Explainability (Why was this flagged?) for Conversation
+        reasons = []
+        def add_reason(r):
+            if r not in reasons:
+                reasons.append(r)
+
+        if primary_label.lower() not in ["none", "clean", "safe"]:
+            add_reason(f"Conversation classified as {primary_label.title()}.")
+            
+        for msg in result.get("messages", []):
+            for sec_cat in msg.get("secondary_labels", {}).keys():
+                add_reason(f"Indicators of {sec_cat.title()} detected.")
+                
+        pii_cats = set()
+        for msg in result.get("messages", []):
+            if msg.get("pii_categories"):
+                for c in msg["pii_categories"]:
+                    pii_cats.add(c.replace("_", " ").title())
+        if pii_cats:
+            add_reason(f"Personally Identifiable Information (PII) detected: {', '.join(sorted(list(pii_cats)))}.")
+                
+        if result.get("malicious_urls"):
+            add_reason("Suspicious or malicious link(s) detected.")
+            
+        has_multiple_urgency = False
+        has_single_urgency = False
+        
+        total_urgency_count = 0
+        for msg in result.get("messages", []):
+            threat_signals = msg.get("threat_intel", {}).get("threat_signals", {})
+            if threat_signals.get("urgency", {}).get("detected"):
+                total_urgency_count += threat_signals["urgency"].get("count", 0)
+                
+        if total_urgency_count > 1:
+            has_multiple_urgency = True
+        elif total_urgency_count == 1:
+            has_single_urgency = True
+            
+        for msg in result.get("messages", []):
+            if "threat_intel" in msg:
+                emails = msg["threat_intel"].get("emails", [])
+                if any(e.get("breach_count", 0) > 0 for e in emails):
+                    add_reason("An email address in the submitted content appears in known data-breach records.")
+                    
+                threat_signals = msg["threat_intel"].get("threat_signals", {})
+                for ip_url in threat_signals.get("ip_based_urls", []):
+                    add_reason(ip_url.get("reason"))
+                for short_url in threat_signals.get("url_shorteners", []):
+                    add_reason(short_url.get("reason"))
+                    
+                if threat_signals.get("social_engineering", {}).get("detected"):
+                    for ind in threat_signals["social_engineering"]["indicators"]:
+                        ind_clean = ind.replace("_", "-")
+                        add_reason(f"A potential {ind_clean} indicator was detected.")
+                        
+                if threat_signals.get("brand_impersonation", {}).get("detected"):
+                    brands = threat_signals["brand_impersonation"].get("brands", [])
+                    for b in brands:
+                        add_reason(f"A potential brand impersonation indicator involving {b} was detected.")
+                        
+                if threat_signals.get("dangerous_schemes"):
+                    add_reason("A potentially dangerous URL scheme was detected.")
+            
+        if has_multiple_urgency:
+            add_reason("Multiple urgency indicators were detected.")
+        elif has_single_urgency:
+            add_reason("An urgency indicator was detected.")
+            
+        if not reasons and result["conversation_risk"] > 0:
+            add_reason("Flagged by automated safety checks.")
+            
+        result["flagging_reasons"] = reasons
+        
+        # Aggregate threat_signals for conversation summary
+        agg_threat_signals = {
+            "social_engineering": {"detected": False},
+            "urgency": {"detected": False},
+            "brand_impersonation": {"detected": False}
+        }
+        for msg in result.get("messages", []):
+            ts = msg.get("threat_intel", {}).get("threat_signals", {})
+            if ts.get("social_engineering", {}).get("detected"):
+                agg_threat_signals["social_engineering"]["detected"] = True
+            if ts.get("urgency", {}).get("detected"):
+                agg_threat_signals["urgency"]["detected"] = True
+            if ts.get("brand_impersonation", {}).get("detected"):
+                agg_threat_signals["brand_impersonation"]["detected"] = True
+
+        result["threat_signal_summary"] = PredictionService.extract_threat_signal_summary(agg_threat_signals)
             
         return result

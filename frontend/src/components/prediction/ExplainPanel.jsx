@@ -62,11 +62,11 @@ function LabelExplanation({ text, label, autoFetch = false }) {
   };
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div className="border border-border/50 rounded-lg overflow-hidden bg-black/30">
       {/* Header row */}
       <button
         onClick={handleToggle}
-        className="w-full flex items-center justify-between px-3 py-2.5 bg-surface hover:bg-surface-2 transition-colors text-left"
+        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/5 transition-colors text-left"
       >
         <div className="flex items-center gap-2">
           {neural ? <Cpu size={13} className="text-blue shrink-0" /> : <Zap size={13} className="text-warning shrink-0" />}
@@ -81,7 +81,7 @@ function LabelExplanation({ text, label, autoFetch = false }) {
 
       {/* Body */}
       {open && (
-        <div className="p-3 border-t border-border bg-surface-2 space-y-3">
+        <div className="p-3 border-t border-border/50 bg-black/60 shadow-inner space-y-3">
           {state.status === 'idle' && (
             <p className="text-sm text-text-muted italic">Loading…</p>
           )}
@@ -161,10 +161,10 @@ export default function ExplainPanel({ text, primaryLabel, secondaryLabels }) {
   const secondaryEntries = Object.entries(secondaryLabels || {});
 
   return (
-    <Card>
-      <div className="flex items-center gap-2 mb-4">
+    <Card className="border border-blue/30 bg-[#060913]/90 shadow-[0_0_15px_rgba(0,242,254,0.1)]">
+      <div className="flex items-center gap-2 mb-4 pb-2 border-b border-border/50">
         <Cpu size={14} className="text-blue" />
-        <p className="section-title mb-0">Incident Intelligence</p>
+        <p className="section-title mb-0 text-blue font-bold text-sm tracking-widest drop-shadow-[0_0_5px_rgba(0,242,254,0.4)]">Incident Intelligence</p>
         <span className="text-2xs text-text-muted font-mono ml-auto">
           {isNeural(primaryLabel) ? 'Captum Layer IG · DistilBERT' : 'Rule Engine'}
         </span>

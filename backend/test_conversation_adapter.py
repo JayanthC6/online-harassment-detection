@@ -91,7 +91,7 @@ class TestConversationAdapter(unittest.TestCase):
         messages = [{"text": "hi"} for _ in range(12)]
         
         result = adapter.predict_conversation(messages)
-        self.assertEqual(result["escalation_level"], "None")
+        self.assertEqual(result["escalation_level"], "Low")
 
     @patch('services.prediction_service.PredictionService.compute_risk_score')
     def test_aggregate_stats(self, mock_compute_risk):

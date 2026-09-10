@@ -54,18 +54,19 @@ export default function MyHistory({ refreshKey }) {
 
   if (tickets.length === 0) {
     return (
-      <div className="text-center p-12 card border-dashed">
-        <ShieldAlert size={48} className="mx-auto text-text-muted mb-4 opacity-50" />
-        <h3 className="text-lg font-bold text-text-primary">No Analysis History</h3>
-        <p className="text-text-muted mt-2">You haven't run any instant analysis checks yet.</p>
-      </div>
+    <div className="text-center p-12 card bg-black/40 border border-blue/30 border-dashed backdrop-blur-xl rounded-xl">
+      <ShieldAlert size={48} className="mx-auto text-blue mb-4 opacity-70 drop-shadow-[0_0_10px_rgba(0,242,254,0.5)]" />
+      <h3 className="text-lg font-bold text-white tracking-widest uppercase">No Analysis History</h3>
+      <p className="text-text-muted mt-2">You haven't run any instant analysis checks yet.</p>
+    </div>
     );
   }
 
   return (
     <div className="space-y-4">
       {tickets.map((ticket, idx) => (
-        <div key={ticket._id || idx} className="card p-5 animate-fade-in transition-all hover:border-primary/50 relative">
+        <div key={ticket._id || idx} className="card p-5 animate-fade-in bg-black/40 backdrop-blur-xl border border-blue/20 hover:border-blue/70 hover:shadow-[0_0_20px_rgba(0,242,254,0.2)] transition-all relative overflow-hidden rounded-xl">
+          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue to-purple shadow-[0_0_10px_rgba(0,242,254,0.5)]"></div>
           
           <button 
             onClick={() => handleDelete(ticket._id)}
@@ -98,9 +99,9 @@ export default function MyHistory({ refreshKey }) {
             </div>
           </div>
           
-          <div className="bg-surface-solid p-4 rounded text-sm text-text-secondary border border-border mt-3">
-            <p className="font-medium text-text-primary mb-1">Text Analyzed:</p>
-            <p className="whitespace-pre-wrap italic">"{ticket.text_preview}..."</p>
+          <div className="bg-black/60 p-4 rounded text-sm text-text-secondary border border-border/50 mt-3 shadow-inner">
+            <p className="font-bold text-blue tracking-wide uppercase mb-1 text-xs">Payload Analyzed:</p>
+            <p className="whitespace-pre-wrap italic font-mono text-xs opacity-80">"{ticket.text_preview}..."</p>
           </div>
           
         </div>

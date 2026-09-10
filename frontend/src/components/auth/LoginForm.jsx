@@ -29,10 +29,11 @@ export default function LoginForm({ onLogin }) {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-12 card overflow-hidden animate-fade-in shadow-neon">
-      <div className="bg-surface-solid border-b border-border p-4 text-center">
-        <h2 className="text-lg font-bold text-primary font-mono tracking-wider uppercase">
-          {isRegistering ? 'Create Account' : 'Sign In'}
+    <div className="max-w-md w-full mx-auto mt-12 bg-black/40 backdrop-blur-xl border border-blue/30 rounded-xl overflow-hidden animate-fade-in shadow-[0_0_30px_rgba(0,242,254,0.15)] relative">
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue to-purple"></div>
+      <div className="bg-black/60 border-b border-border/50 p-5 text-center">
+        <h2 className="text-lg font-bold text-white font-mono tracking-[0.2em] uppercase drop-shadow-[0_0_8px_rgba(0,242,254,0.5)]">
+          {isRegistering ? 'System Access : Register' : 'System Access : Login'}
         </h2>
       </div>
       
@@ -98,13 +99,13 @@ export default function LoginForm({ onLogin }) {
             {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register'}
           </button>
           
-          <div className="flex items-center justify-center gap-2 pt-2 border-t border-border">
+          <div className="flex items-center justify-center gap-2 pt-4 border-t border-border/50 mt-4">
             <button 
               type="button" 
               onClick={() => onLogin('GUEST')}
-              className="text-xs font-semibold text-text-secondary hover:text-primary transition-colors"
+              className="text-xs font-semibold text-blue hover:text-white transition-colors flex items-center gap-1 drop-shadow-[0_0_5px_rgba(0,242,254,0.4)]"
             >
-              Continue as Guest &rarr;
+              Initialize Guest Session &rarr;
             </button>
           </div>
         </div>

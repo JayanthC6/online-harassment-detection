@@ -17,7 +17,8 @@ class AdminService:
             del db_instance.fallback_conversations[MAX_LOG_ENTRIES:]
             
         messages = entry.get("messages", [])
-        BehaviorService.log_conversation_incidents(messages)
+        if entry.get("source") != "self_serve":
+            BehaviorService.log_conversation_incidents(messages)
 
     @staticmethod
     def log_message(entry: dict) -> None:
@@ -29,21 +30,23 @@ class AdminService:
             del db_instance.fallback_store[MAX_LOG_ENTRIES:]
             
         actor_id = entry.get("actor_id")
-        BehaviorService.log_incident(actor_id, entry)
+        if entry.get("source") != "self_serve":
+            BehaviorService.log_incident(actor_id, entry)
 
     @staticmethod
     def get_stats() -> dict:
         if db_instance.is_persistent:
-            total = db_instance.collection.count_documents({})
-            safe = db_instance.collection.count_documents({"label": "non_harassing"})
-            high_risk = db_instance.collection.count_documents({"risk_score": {"$gte": 75}})
-            medium_risk = db_instance.collection.count_documents({"risk_score": {"$gte": 40, "$lt": 75}})
-            evidence_plans = db_instance.collection.count_documents({"evidence_plan": {"$exists": True}})
+            total = db_instance.collection.count_documents({"source": {"$ne": "self_serve"}})
+            safe = db_instance.collection.count_documents({"label": "non_harassing", "source": {"$ne": "self_serve"}})
+            high_risk = db_instance.collection.count_documents({"risk_score": {"$gte": 75}, "source": {"$ne": "self_serve"}})
+            medium_risk = db_instance.collection.count_documents({"risk_score": {"$gte": 40, "$lt": 75}, "source": {"$ne": "self_serve"}})
+            evidence_plans = db_instance.collection.count_documents({"evidence_plan": {"$exists": True}, "source": {"$ne": "self_serve"}})
             
-            pipeline = [{"$group": {"_id": "$category", "count": {"$sum": 1}}}]
+            pipeline = [{"$match": {"source": {"$ne": "self_serve"}}}, {"$group": {"_id": "$category", "count": {"$sum": 1}}}]
             breakdown = {doc["_id"]: doc["count"] for doc in db_instance.collection.aggregate(pipeline) if doc["_id"]}
 
             avg_pipeline = [
+                {"$match": {"source": {"$ne": "self_serve"}}},
                 {"$group": {
                     "_id": None,
                     "avg_confidence": {"$avg": "$confidence"},
@@ -54,10 +57,11 @@ class AdminService:
             avg_conf = avgs[0]["avg_confidence"] if avgs and avgs[0]["avg_confidence"] is not None else 0
             avg_risk = avgs[0]["avg_risk"] if avgs and avgs[0]["avg_risk"] is not None else 0
 
-            conv_total = db_instance.conversations.count_documents({})
-            conv_escalated = db_instance.conversations.count_documents({"escalation_score": {"$gt": 0}})
+            conv_total = db_instance.conversations.count_documents({"source": {"$ne": "self_serve"}})
+            conv_escalated = db_instance.conversations.count_documents({"escalation_score": {"$gt": 0}, "source": {"$ne": "self_serve"}})
             
             conv_avg_pipeline = [
+                {"$match": {"source": {"$ne": "self_serve"}}},
                 {"$group": {
                     "_id": None,
                     "avg_risk": {"$avg": "$conversation_risk"}
@@ -82,19 +86,21 @@ class AdminService:
                 }
             }
         else:
-            total = len(db_instance.fallback_store)
-            safe = sum(1 for e in db_instance.fallback_store if e.get("label") == "non_harassing")
-            high_risk = sum(1 for e in db_instance.fallback_store if e.get("risk_score", 0) >= 75)
-            medium_risk = sum(1 for e in db_instance.fallback_store if 40 <= e.get("risk_score", 0) < 75)
-            evidence_plans = sum(1 for e in db_instance.fallback_store if "evidence_plan" in e)
-            breakdown = Counter(e.get("category") for e in db_instance.fallback_store if e.get("category"))
+            fallback_filtered = [e for e in db_instance.fallback_store if e.get("source") != "self_serve"]
+            total = len(fallback_filtered)
+            safe = sum(1 for e in fallback_filtered if e.get("label") == "non_harassing")
+            high_risk = sum(1 for e in fallback_filtered if e.get("risk_score", 0) >= 75)
+            medium_risk = sum(1 for e in fallback_filtered if 40 <= e.get("risk_score", 0) < 75)
+            evidence_plans = sum(1 for e in fallback_filtered if "evidence_plan" in e)
+            breakdown = Counter(e.get("category") for e in fallback_filtered if e.get("category"))
             
-            avg_conf = sum(e.get("confidence", 0) for e in db_instance.fallback_store) / total if total > 0 else 0
-            avg_risk = sum(e.get("risk_score", 0) for e in db_instance.fallback_store) / total if total > 0 else 0
+            avg_conf = sum(e.get("confidence", 0) for e in fallback_filtered) / total if total > 0 else 0
+            avg_risk = sum(e.get("risk_score", 0) for e in fallback_filtered) / total if total > 0 else 0
             
-            conv_total = len(db_instance.fallback_conversations)
-            conv_escalated = sum(1 for e in db_instance.fallback_conversations if e.get("escalation_score", 0) > 0)
-            conv_avg_risk = sum(e.get("conversation_risk", 0) for e in db_instance.fallback_conversations) / conv_total if conv_total > 0 else 0
+            conv_fallback_filtered = [e for e in db_instance.fallback_conversations if e.get("source") != "self_serve"]
+            conv_total = len(conv_fallback_filtered)
+            conv_escalated = sum(1 for e in conv_fallback_filtered if e.get("escalation_score", 0) > 0)
+            conv_avg_risk = sum(e.get("conversation_risk", 0) for e in conv_fallback_filtered) / conv_total if conv_total > 0 else 0
             
             return {
                 "total_reports": total,
@@ -125,7 +131,7 @@ class AdminService:
         date_to: str = "",
         cluster_id: str = ""
     ) -> dict:
-        query = {}
+        query = {"source": {"$ne": "self_serve"}}
         if search:
             query["text_preview"] = {"$regex": search, "$options": "i"}
         if category:
@@ -171,7 +177,7 @@ class AdminService:
                 "total_pages": math.ceil(total / page_size) if total > 0 else 0
             }
         else:
-            filtered = db_instance.fallback_store
+            filtered = [e for e in db_instance.fallback_store if e.get("source") != "self_serve"]
             
             if search:
                 filtered = [e for e in filtered if search.lower() in e.get("text_preview", "").lower()]
@@ -218,11 +224,11 @@ class AdminService:
         sort_order: str = "desc",
     ) -> dict:
         if db_instance.is_persistent:
-            total = db_instance.conversations.count_documents({})
+            total = db_instance.conversations.count_documents({"source": {"$ne": "self_serve"}})
             sort_direction = -1 if sort_order == "desc" else 1
             sort_field = "conversation_risk" if sort_by == "risk" else "logged_at"
             
-            docs = list(db_instance.conversations.find({}, {"_id": 0})
+            docs = list(db_instance.conversations.find({"source": {"$ne": "self_serve"}}, {"_id": 0})
                         .sort(sort_field, sort_direction)
                         .skip((page - 1) * page_size)
                         .limit(page_size))
@@ -234,7 +240,7 @@ class AdminService:
                 "total_pages": math.ceil(total / page_size) if total > 0 else 0
             }
         else:
-            filtered = db_instance.fallback_conversations
+            filtered = [e for e in db_instance.fallback_conversations if e.get("source") != "self_serve"]
             sort_field = "conversation_risk" if sort_by == "risk" else "logged_at"
             filtered = sorted(filtered, key=lambda x: x.get(sort_field, 0), reverse=(sort_order == "desc"))
             
@@ -253,14 +259,15 @@ class AdminService:
     @staticmethod
     def get_analytics() -> dict:
         if not db_instance.is_persistent:
-            high = sum(1 for e in db_instance.fallback_store if e.get("risk_score", 0) >= 75)
-            medium = sum(1 for e in db_instance.fallback_store if 40 <= e.get("risk_score", 0) < 75)
-            low = sum(1 for e in db_instance.fallback_store if e.get("risk_score", 0) < 40)
+            fallback_filtered = [e for e in db_instance.fallback_store if e.get("source") != "self_serve"]
+            high = sum(1 for e in fallback_filtered if e.get("risk_score", 0) >= 75)
+            medium = sum(1 for e in fallback_filtered if 40 <= e.get("risk_score", 0) < 75)
+            low = sum(1 for e in fallback_filtered if e.get("risk_score", 0) < 40)
             
-            model_usage = Counter(e.get("model", "unknown") for e in db_instance.fallback_store)
+            model_usage = Counter(e.get("model", "unknown") for e in fallback_filtered)
             
             conf_dist = {}
-            for e in db_instance.fallback_store:
+            for e in fallback_filtered:
                 c = e.get("confidence", 0)
                 bucket = min(math.floor(c / 0.2) * 0.2, 0.8) if c < 1 else 0.8
                 key = f"{bucket:.1f}"
@@ -268,7 +275,7 @@ class AdminService:
                 
             label_freq = Counter()
             combinations = Counter()
-            for e in db_instance.fallback_store:
+            for e in fallback_filtered:
                 primary = e.get("primary_label", e.get("category", "none"))
                 secondary = e.get("secondary_labels", {})
                 
@@ -290,14 +297,15 @@ class AdminService:
                 "top_combinations": top_combinations
             }
             
-        high = db_instance.collection.count_documents({"risk_score": {"$gte": 75}})
-        medium = db_instance.collection.count_documents({"risk_score": {"$gte": 40, "$lt": 75}})
-        low = db_instance.collection.count_documents({"risk_score": {"$lt": 40}})
+        high = db_instance.collection.count_documents({"risk_score": {"$gte": 75}, "source": {"$ne": "self_serve"}})
+        medium = db_instance.collection.count_documents({"risk_score": {"$gte": 40, "$lt": 75}, "source": {"$ne": "self_serve"}})
+        low = db_instance.collection.count_documents({"risk_score": {"$lt": 40}, "source": {"$ne": "self_serve"}})
         
-        model_pipeline = [{"$group": {"_id": "$model", "count": {"$sum": 1}}}]
+        model_pipeline = [{"$match": {"source": {"$ne": "self_serve"}}}, {"$group": {"_id": "$model", "count": {"$sum": 1}}}]
         model_usage = {doc["_id"] or "unknown": doc["count"] for doc in db_instance.collection.aggregate(model_pipeline)}
         
         conf_pipeline = [
+            {"$match": {"source": {"$ne": "self_serve"}}},
             {"$bucket": {
                 "groupBy": "$confidence",
                 "boundaries": [0, 0.2, 0.4, 0.6, 0.8, 1.0],
@@ -309,7 +317,7 @@ class AdminService:
         
         # We also compute the label_frequency and top_combinations purely in python for simplicity since datasets are small for demo
         # Alternatively, we could do a complex mongo pipeline. We'll do a simple find({}) to calculate combos.
-        docs = db_instance.collection.find({}, {"primary_label": 1, "category": 1, "secondary_labels": 1})
+        docs = db_instance.collection.find({"source": {"$ne": "self_serve"}}, {"primary_label": 1, "category": 1, "secondary_labels": 1})
         label_freq = Counter()
         combinations = Counter()
         

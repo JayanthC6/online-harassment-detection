@@ -9,18 +9,18 @@ export default function BehavioralIntelligence({ profilesData }) {
 
   const getLevelColor = (level) => {
     switch (level) {
-      case 'Critical': return 'text-redaction-red bg-slate-900 border-redaction-red rounded-none';
-      case 'High': return 'text-alert-amber bg-panel border-alert-amber rounded-none';
-      case 'Watch': return 'text-slate-300 bg-panel border-slate-500 rounded-none';
-      default: return 'text-verified-teal bg-panel border-verified-teal rounded-none';
+      case 'Critical': return 'text-critical bg-black/60 border-critical shadow-[inset_0_0_15px_rgba(244,63,94,0.3)] rounded-none';
+      case 'High': return 'text-danger bg-black/60 border-danger shadow-[inset_0_0_15px_rgba(249,115,22,0.3)] rounded-none';
+      case 'Watch': return 'text-blue bg-black/60 border-blue shadow-[inset_0_0_15px_rgba(0,242,254,0.3)] rounded-none';
+      default: return 'text-success bg-black/60 border-success shadow-[inset_0_0_15px_rgba(16,185,129,0.3)] rounded-none';
     }
   };
 
   const getScoreColor = (score) => {
-    if (score >= 85) return 'text-redaction-red';
-    if (score >= 60) return 'text-alert-amber';
-    if (score >= 30) return 'text-slate-300';
-    return 'text-verified-teal';
+    if (score >= 85) return 'text-critical drop-shadow-[0_0_5px_rgba(244,63,94,0.6)]';
+    if (score >= 60) return 'text-danger drop-shadow-[0_0_5px_rgba(249,115,22,0.6)]';
+    if (score >= 30) return 'text-blue drop-shadow-[0_0_5px_rgba(0,242,254,0.6)]';
+    return 'text-success drop-shadow-[0_0_5px_rgba(16,185,129,0.6)]';
   };
 
   // Stats
@@ -32,29 +32,29 @@ export default function BehavioralIntelligence({ profilesData }) {
     <div className="space-y-6">
       {/* ── Behavior Stats ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4 flex flex-col justify-between bg-panel border-slate-700 rounded-none">
-          <div className="text-slate-400 text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2">
+        <Card className="p-4 flex flex-col justify-between bg-black/40 backdrop-blur-md border border-blue/40 shadow-[0_0_15px_rgba(0,242,254,0.1)] rounded-none">
+          <div className="text-blue text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2 drop-shadow-[0_0_5px_rgba(0,242,254,0.4)]">
             <User size={16} /> Total Tracked Actors
           </div>
-          <div className="text-3xl font-bold text-off-white mt-2 font-mono">{profiles.length}</div>
+          <div className="text-3xl font-extrabold text-white mt-2 font-mono drop-shadow-md">{profiles.length}</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-between bg-slate-900 border-redaction-red rounded-none">
-          <div className="text-redaction-red text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2">
+        <Card className="p-4 flex flex-col justify-between bg-black/40 backdrop-blur-md border border-critical shadow-[0_0_15px_rgba(244,63,94,0.2)] rounded-none">
+          <div className="text-critical text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2 drop-shadow-[0_0_5px_rgba(244,63,94,0.4)]">
             <ShieldAlert size={16} /> Critical Risk
           </div>
-          <div className="text-3xl font-bold text-redaction-red mt-2 font-mono">{criticalActors}</div>
+          <div className="text-3xl font-extrabold text-critical mt-2 font-mono drop-shadow-md">{criticalActors}</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-between bg-panel border-alert-amber rounded-none">
-          <div className="text-alert-amber text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2">
+        <Card className="p-4 flex flex-col justify-between bg-black/40 backdrop-blur-md border border-danger shadow-[0_0_15px_rgba(249,115,22,0.2)] rounded-none">
+          <div className="text-danger text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2 drop-shadow-[0_0_5px_rgba(249,115,22,0.4)]">
             <AlertTriangle size={16} /> High Risk
           </div>
-          <div className="text-3xl font-bold text-alert-amber mt-2 font-mono">{highActors}</div>
+          <div className="text-3xl font-extrabold text-danger mt-2 font-mono drop-shadow-md">{highActors}</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-between bg-panel border-slate-500 rounded-none">
-          <div className="text-slate-300 text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2">
+        <Card className="p-4 flex flex-col justify-between bg-black/40 backdrop-blur-md border border-warning shadow-[0_0_15px_rgba(245,158,11,0.1)] rounded-none">
+          <div className="text-warning text-sm font-bold font-mono uppercase tracking-wider flex items-center gap-2 drop-shadow-[0_0_5px_rgba(245,158,11,0.4)]">
             <Activity size={16} /> On Watchlist
           </div>
-          <div className="text-3xl font-bold text-slate-300 mt-2 font-mono">{watchActors}</div>
+          <div className="text-3xl font-extrabold text-warning mt-2 font-mono drop-shadow-md">{watchActors}</div>
         </Card>
       </div>
 
