@@ -41,6 +41,26 @@ SE_INDICATORS = {
     "investment_scam_indicator": [r"\b(crypto|bitcoin|investment opportunity|ponzi|pyramid scheme)\b", r"\b(guaranteed returns)\b"]
 }
 
+RECRUITMENT_CONTEXT_PATTERNS = [
+    r"\b(?:job offer|new job|employment|recruitment|vacancy|interview|selected for the position|appointment|joining|onboarding|salary|compensation|candidates?)\b"
+]
+
+JOB_SCAM_INDICATORS = {
+    "payment_before_joining": [
+        r"\b(?:pay|deposit|transfer|send|payment).{0,30}(?:processing|registration|training|security|refundable).{0,10}fee\b",
+        r"\b(?:processing|registration|training|security|refundable).{0,10}fee.{0,30}(?:is required|must be paid|to be paid|before joining)\b",
+        r"\bpayment.{0,20}before joining\b"
+    ],
+    "unusual_payment_method": [
+        r"\b(?:pay|send|transfer).{0,30}(?:cryptocurrency|bitcoin|usdt|gift card|apple voucher)\b"
+    ],
+    "suspicious_communication": [
+        r"\b(?:contact|message|reach|communication).{0,30}(?:whatsapp|telegram)\b",
+        r"\b(?:whatsapp|telegram).{0,30}(?:contact|message|reach|communication|only)\b",
+        r"\btelegram recruitment\b"
+    ]
+}
+
 URGENCY_PATTERNS = [
     r"\burgent\b",
     r"\bimmediately\b",
@@ -239,6 +259,14 @@ def analyze_text_for_threat_intel(text):
                 "detected": False,
                 "brands": []
             }
+        },
+        "job_scam_signals": {
+            "detected": False,
+            "recruitment_context": False,
+            "detected_suspicious": False,
+            "indicators": [],
+            "assessment": "None",
+            "confidence": 0.0
         }
     }
     
@@ -283,7 +311,33 @@ def analyze_text_for_threat_intel(text):
                 "scheme": scheme,
                 "status": "suspicious"
             })
-    
+            
+    # Check Job Scam & Recruitment Intelligence
+    recruitment_context = False
+    for pattern in RECRUITMENT_CONTEXT_PATTERNS:
+        if re.search(pattern, text_lower):
+            recruitment_context = True
+            break
+            
+    if recruitment_context:
+        intel["job_scam_signals"]["recruitment_context"] = True
+        
+        for ind_name, patterns in JOB_SCAM_INDICATORS.items():
+            for pattern in patterns:
+                if re.search(pattern, text_lower):
+                    if ind_name not in intel["job_scam_signals"]["indicators"]:
+                        intel["job_scam_signals"]["indicators"].append(ind_name)
+                        
+        if len(intel["job_scam_signals"]["indicators"]) > 0:
+            intel["job_scam_signals"]["detected"] = True
+            intel["job_scam_signals"]["detected_suspicious"] = True
+            intel["job_scam_signals"]["assessment"] = "Potentially Suspicious Recruitment Document"
+            intel["job_scam_signals"]["confidence"] = 85.0
+        else:
+            intel["job_scam_signals"]["detected"] = True
+            intel["job_scam_signals"]["assessment"] = "Recruitment Document"
+            intel["job_scam_signals"]["confidence"] = 50.0
+            
     for url in urls:
         domain = get_domain(url)
         url_intel = {
@@ -369,6 +423,14 @@ def analyze_text_for_threat_intel(text):
                 m_url["reason"] = "Verification Failed / Timed Out"
 
         intel["malicious_urls"].append(m_url)
+        
+        # Add suspicious URLs to job_scam_signals if recruitment context is detected
+        if intel["job_scam_signals"]["recruitment_context"] and is_high_risk:
+            intel["job_scam_signals"]["detected"] = True
+            intel["job_scam_signals"]["detected_suspicious"] = True
+            intel["job_scam_signals"]["assessment"] = "Potentially Suspicious Recruitment Document"
+            if "suspicious_url" not in intel["job_scam_signals"]["indicators"]:
+                intel["job_scam_signals"]["indicators"].append("suspicious_url")
         
     for email in emails:
         email_intel = {

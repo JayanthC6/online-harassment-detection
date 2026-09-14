@@ -248,6 +248,23 @@ class PredictionService:
             if threat_signals.get("dangerous_schemes"):
                 add_reason("A potentially dangerous URL scheme was detected.")
                 
+            job_scam = result["threat_intel"].get("job_scam_signals", {})
+            if job_scam.get("detected"):
+                if job_scam.get("detected_suspicious"):
+                    add_reason("Suspicious recruitment or job offer indicators detected.")
+                elif job_scam.get("recruitment_context"):
+                    add_reason("A recruitment-related document was detected.")
+                
+                for ind in job_scam.get("indicators", []):
+                    if ind == "payment_before_joining":
+                        add_reason("A payment-related recruitment indicator was detected.")
+                    elif ind == "suspicious_communication":
+                        add_reason("A suspicious recruitment contact indicator was detected.")
+                    elif ind == "suspicious_url":
+                        add_reason("A suspicious recruitment URL was detected.")
+                    elif ind == "unusual_payment_method":
+                        add_reason("An unusual payment method request was detected.")
+                
         if not reasons and result["risk_score"] > 0:
             add_reason("Flagged by automated safety checks.")
             
@@ -377,6 +394,23 @@ class PredictionService:
                         
                 if threat_signals.get("dangerous_schemes"):
                     add_reason("A potentially dangerous URL scheme was detected.")
+                    
+                job_scam = msg["threat_intel"].get("job_scam_signals", {})
+                if job_scam.get("detected"):
+                    if job_scam.get("detected_suspicious"):
+                        add_reason("Suspicious recruitment or job offer indicators detected.")
+                    elif job_scam.get("recruitment_context"):
+                        add_reason("A recruitment-related document was detected.")
+                    
+                    for ind in job_scam.get("indicators", []):
+                        if ind == "payment_before_joining":
+                            add_reason("A payment-related recruitment indicator was detected.")
+                        elif ind == "suspicious_communication":
+                            add_reason("A suspicious recruitment contact indicator was detected.")
+                        elif ind == "suspicious_url":
+                            add_reason("A suspicious recruitment URL was detected.")
+                        elif ind == "unusual_payment_method":
+                            add_reason("An unusual payment method request was detected.")
             
         if has_multiple_urgency:
             add_reason("Multiple urgency indicators were detected.")

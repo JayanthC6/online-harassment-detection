@@ -17,15 +17,17 @@ const SE_LABELS = {
 export default function ThreatIntelligenceCard({ result, isConversation = false }) {
   if (!result) return null;
 
-  const threatSignals = result.threat_signals || {};
-  const threatSummary = result.threat_signal_summary || {};
   const threatIntel = result.threat_intel || {};
+  const threatSignals = threatIntel.threat_signals || {};
+  const threatSummary = result.threat_signal_summary || {};
   const emails = threatIntel.emails || [];
+  const jobScam = threatIntel.job_scam_signals || {};
   
   const hasBreachedEmail = emails.some(e => e.breach_count > 0);
   const detectedSignals = threatSummary.detected === true;
+  const hasJobScamSignals = jobScam.detected === true && jobScam.recruitment_context === true;
 
-  if (!detectedSignals && !hasBreachedEmail) {
+  if (!detectedSignals && !hasBreachedEmail && !hasJobScamSignals) {
     return null;
   }
 
@@ -136,6 +138,53 @@ export default function ThreatIntelligenceCard({ result, isConversation = false 
                   </p>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Job Scam Intelligence */}
+        {hasJobScamSignals && (
+          <div className="flex items-start gap-3 p-3 bg-black/40 rounded border border-border/30 border-l-[3px] border-l-purple shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
+            <Briefcase size={16} className="text-warning mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-text-primary">Job / Recruitment Intelligence</p>
+                <span className="text-xs px-2 py-0.5 rounded border border-border/50 bg-surface text-text-secondary font-mono">
+                  Context: DETECTED
+                </span>
+              </div>
+              
+              {jobScam.indicators && jobScam.indicators.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-text-muted mb-1 uppercase tracking-wider font-semibold">Indicators:</p>
+                  <ul className="space-y-1">
+                    {jobScam.indicators.map((indicator, idx) => {
+                      let text = indicator.replace(/_/g, ' ');
+                      text = text.charAt(0).toUpperCase() + text.slice(1);
+                      return (
+                        <li key={idx} className="flex items-center gap-2 text-sm text-text-secondary">
+                          <span className="w-1.5 h-1.5 rounded-full bg-danger/70"></span>
+                          {text}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              <div className="mt-3 p-2 bg-surface/50 border border-border/30 rounded">
+                <p className="text-xs text-text-muted mb-1 uppercase tracking-wider font-semibold">Assessment:</p>
+                <p className="text-sm text-text-primary">{jobScam.assessment}</p>
+              </div>
+
+              {jobScam.detected_suspicious && (
+                <div className="mt-2 p-2 bg-warning/10 border border-warning/20 rounded">
+                  <p className="text-xs text-warning/80 mb-1 uppercase tracking-wider font-semibold">Recommendation:</p>
+                  <p className="text-sm text-text-secondary">
+                    Verify the employer through an independently obtained official contact channel before sharing personal information or making payments.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
