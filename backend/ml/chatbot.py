@@ -2,7 +2,7 @@ import os
 import re
 from groq import Groq
 
-MODEL = "llama3-8b-8192"
+MODEL = "groq/compound-mini"
 MAX_FILE_TEXT_CHARS = 12000  # ~3k tokens — enough context without hitting limits
 
 
