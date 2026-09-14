@@ -130,17 +130,17 @@ def predict_instant(token_data):
 
     # If the user is logged in and persist is true, log it to db for history tracking
     if persist and token_data:
+        is_public_user = token_data.get("role", "").lower() == "user"
         history_entry = {
             "actor_id": actor_id,
             "user_id": token_data.get("user"),
-            "source": "self_serve",
+            "source": "self_serve" if is_public_user else "platform",
             "type": "text",
             "content": text,
             "ai_analysis": result,
             **result
         }
         
-        is_public_user = token_data.get("role", "").lower() == "user"
         if is_public_user:
             history_entry["text_preview"] = mask_pii(history_entry.get("text_preview", ""))
             history_entry["text_full"] = mask_pii(history_entry.get("text_full", ""))
@@ -206,7 +206,7 @@ def predict(token_data):
             AdminService.log_message(masked_result)
         else:
             result_copy = result.copy()
-            result_copy["source"] = "self_serve"
+            result_copy["source"] = "platform"
             result_copy["user_id"] = token_data.get("user")
             AdminService.log_message(result_copy)
 
@@ -310,7 +310,7 @@ def predict_batch(token_data):
                 AdminService.log_message(masked_r)
             else:
                 r_copy = r.copy()
-                r_copy["source"] = "self_serve"
+                r_copy["source"] = "platform"
                 r_copy["user_id"] = token_data.get("user")
                 AdminService.log_message(r_copy)
             
@@ -388,7 +388,7 @@ def predict_audio(token_data):
             AdminService.log_message(masked_result)
         else:
             result_copy = result.copy()
-            result_copy["source"] = "self_serve"
+            result_copy["source"] = "platform"
             result_copy["user_id"] = token_data.get("user")
             AdminService.log_message(result_copy)
 
@@ -458,7 +458,7 @@ def predict_screenshot(token_data):
             AdminService.log_message(masked_result)
         else:
             result_copy = result.copy()
-            result_copy["source"] = "self_serve"
+            result_copy["source"] = "platform"
             result_copy["user_id"] = token_data.get("user")
             AdminService.log_message(result_copy)
 
@@ -544,7 +544,7 @@ def predict_file(token_data):
             AdminService.log_message(masked_result)
         else:
             result_copy = result.copy()
-            result_copy["source"] = "self_serve"
+            result_copy["source"] = "platform"
             result_copy["user_id"] = token_data.get("user")
             AdminService.log_message(result_copy)
 
@@ -618,7 +618,7 @@ def predict_conversation(token_data):
                 AdminService.log_conversation(masked_result)
             else:
                 result_copy = result.copy()
-                result_copy["source"] = "self_serve"
+                result_copy["source"] = "platform"
                 result_copy["user_id"] = token_data.get("user")
                 AdminService.log_conversation(result_copy)
             
@@ -687,7 +687,7 @@ def import_conversation(token_data):
                 AdminService.log_conversation(masked_result)
             else:
                 result_copy = result.copy()
-                result_copy["source"] = "self_serve"
+                result_copy["source"] = "platform"
                 result_copy["user_id"] = token_data.get("user")
                 AdminService.log_conversation(result_copy)
             
