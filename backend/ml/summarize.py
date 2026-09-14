@@ -2,7 +2,7 @@
 Groq-powered complaint summarization.
 
 Generates a structured summary of a flagged harassment report using Groq's
-LLM API (llama-3.1-8b-instant). The Groq call is ONLY for summarizing and
+LLM API (qwen/qwen3.6-27b). The Groq call is ONLY for summarizing and
 structuring the user's own text — it does NOT generate legal citations,
 case law references, or legal advice.
 
