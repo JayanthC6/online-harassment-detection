@@ -49,7 +49,17 @@ class PredictionService:
     def get_adapter(cls):
         if cls._adapter is None:
             primary = PrimaryModelAdapter()
-            cls._adapter = HeuristicMultiLabelAdapter(primary)
+            heuristic = HeuristicMultiLabelAdapter(primary)
+            
+            # Wrap with MultilingualAdapter (Phase 7A)
+            try:
+                from ml.adapters.multilingual import MultilingualAdapter
+                cls._adapter = MultilingualAdapter(heuristic)
+            except ImportError as e:
+                # Fallback if dependencies not installed
+                print(f"Warning: Multilingual support not available: {e}")
+                cls._adapter = heuristic
+                
         return cls._adapter
 
     @classmethod
@@ -154,6 +164,10 @@ class PredictionService:
 
     @staticmethod
     def attach_risk_and_similarity(result: dict, text_for_embedding: str) -> dict:
+        # Use translated text for similarity matching if translation occurred
+        if result.get("multilingual_analysis", {}).get("translation_status") == "success" and "_translated_text" in result:
+            text_for_embedding = result["_translated_text"]
+
         result["risk_score"] = PredictionService.compute_risk_score(
             result.get("primary_label", result.get("category", "none")),
             result.get("confidence", 0),

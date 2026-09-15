@@ -107,5 +107,30 @@
       "Set up identity theft monitoring if SSN or sensitive IDs were exposed.",
       "Lock your credit file if necessary."
     ]
+  },
+  "job_scam_suspicious": {
+    "evidence_checklist": [
+      "Original job-offer message or document",
+      "Sender contact information (phone, email, Telegram handle)",
+      "Any payment receipt or demand details",
+      "Screenshots with timestamps visible"
+    ],
+    "preservation_guidance": [
+      "Do not delete the original message or document.",
+      "Take screenshots immediately with timestamps visible.",
+      "Save any links or attachments without clicking them.",
+      "Do not alter or delete any communication history."
+    ],
+    "safety_actions": [
+      "Do not make any payment to secure or process the job offer.",
+      "Verify the employer using contact information obtained independently from the message.",
+      "Avoid sharing financial credentials, identity documents, OTPs, or other sensitive information until verified.",
+      "Do not communicate exclusively through personal messaging apps (e.g. Telegram, WhatsApp) if asked to do so."
+    ],
+    "recommended_steps": [
+      "Search for the company independently through official channels (website, LinkedIn, government registries).",
+      "Report the message to your local cybercrime authority or consumer protection body.",
+      "If money was already sent, contact your bank immediately to attempt a chargeback."
+    ]
   }
 }
