@@ -491,7 +491,10 @@ def predict_file(token_data):
         return jsonify({"error": f"Unsupported file type. Allowed: {ALLOWED_CHAT_FILE_EXTS}"}), 400
 
     import tempfile
-    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as tmp:
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
+    tmp.close() # Close immediately to release Windows file lock
+    
+    try:
         file.save(tmp.name)
         file_size_mb = os.path.getsize(tmp.name) / (1024 * 1024)
         if file_size_mb > 50:
@@ -503,8 +506,12 @@ def predict_file(token_data):
         except Exception as e:
             os.remove(tmp.name)
             return jsonify({"error": f"Extraction failed: {str(e)}"}), 500
-
-    os.remove(tmp.name)
+    finally:
+        if os.path.exists(tmp.name):
+            try:
+                os.remove(tmp.name)
+            except Exception:
+                pass
     if not extracted_text or not extracted_text.strip():
         return jsonify({"error": "No text detected in file."}), 400
         
