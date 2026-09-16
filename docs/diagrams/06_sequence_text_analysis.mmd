@@ -1,0 +1,45 @@
+sequenceDiagram
+    actor User
+    participant Frontend as React Frontend
+    participant API as Flask API
+    participant PredService as PredictionService
+    participant Multi as MultilingualAdapter
+    participant Model as Neural/Heuristic
+    participant Intel as ThreatIntelAdapter
+    participant Evid as EvidenceService
+    participant DB as MongoDB
+
+    User->>Frontend: Submits text for analysis
+    Frontend->>API: POST /predict/text {text}
+    API->>PredService: predict_text(text)
+    
+    PredService->>Multi: predict(text)
+    Multi->>Multi: mask_pii(text)
+    Multi->>Multi: detect_language(text)
+    
+    alt is Non-English
+        Multi->>Multi: NLLB Translate to English
+    end
+    
+    Multi->>Model: predict(processed_text)
+    Model-->>Multi: Neural & Heuristic Scores
+    
+    Multi->>Intel: predict(processed_text)
+    Intel-->>Multi: Threat Intel Context (URLs/Emails)
+    
+    Multi-->>PredService: Raw Combined Results
+    
+    PredService->>PredService: apply Noisy-OR Fusion
+    PredService->>PredService: compute Risk Score (0-100)
+    
+    PredService->>Evid: generate_evidence_plan(result)
+    Evid->>Evid: evaluate Job Scam indicators
+    Evid-->>PredService: Tailored Safety Plan
+    
+    alt if Save History == True
+        PredService->>DB: Save Incident Report
+    end
+    
+    PredService-->>API: Final JSON Response
+    API-->>Frontend: 200 OK (JSON)
+    Frontend-->>User: Display Threat Hunt Results

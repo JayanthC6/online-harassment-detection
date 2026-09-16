@@ -1,0 +1,36 @@
+sequenceDiagram
+    actor User
+    participant Frontend
+    participant API as Flask API
+    participant Extractor as Modality Extractor
+    participant PredService as PredictionService
+    participant Intel as Intelligence Pipeline
+    participant Evid as EvidenceService
+    
+    User->>Frontend: Uploads File (PDF, Image, Audio)
+    Frontend->>API: POST /predict/file (multipart/form-data)
+    
+    API->>Extractor: extract_text_from_file(tmp_path)
+    
+    alt is PDF / TXT
+        Extractor->>Extractor: Parse with pdfplumber / native
+    else is Image (PNG/JPG)
+        Extractor->>Extractor: OCR with EasyOCR + OpenCV
+    else is Audio/Video (MP3/MP4)
+        Extractor->>Extractor: Transcribe with OpenAI Whisper
+    end
+    
+    Extractor-->>API: Extracted String
+    
+    API->>PredService: predict_text(extracted_string)
+    
+    PredService->>Intel: Run ML Models & Threat Intel
+    Intel-->>PredService: Raw Results
+    
+    PredService->>Evid: generate_evidence_plan(result)
+    Evid->>Evid: Evaluate Job/Recruitment Scam Patterns
+    Evid-->>PredService: Forensic Evidence Plan
+    
+    PredService-->>API: Analysis JSON
+    API-->>Frontend: 200 OK (JSON)
+    Frontend-->>User: Display Threat Hunt Results

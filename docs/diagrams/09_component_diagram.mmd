@@ -1,0 +1,56 @@
+flowchart TD
+    subgraph "Client Layer"
+        WebUI[React / Vite SPA]
+        Extension[Chrome Extension MV3]
+    end
+
+    subgraph "Flask Backend Layer"
+        API[API Routes REST]
+        Auth[Authentication / RBAC]
+        
+        subgraph "Core Services"
+            Pred[PredictionService]
+            Evid[EvidenceService]
+            Behavior[BehaviorService]
+            Chatbot[ChatbotService]
+        end
+        
+        subgraph "ML & Intelligence Adapters"
+            Multi[Multilingual NLLB]
+            Neural[DistilBERT Neural]
+            Heuristic[Heuristic Engine]
+            Intel[Threat Intel Adapter]
+        end
+    end
+
+    subgraph "External APIs"
+        GroqLLM[Groq LLM]
+        GoogleSafeBrowsing[Google Safe Browsing]
+        HIBP[Have I Been Pwned]
+    end
+
+    subgraph "Persistence"
+        MongoDB[(MongoDB)]
+    end
+
+    WebUI --> API
+    Extension --> API
+    
+    API --> Auth
+    API --> Pred
+    API --> Chatbot
+    
+    Pred --> Multi
+    Multi --> Neural
+    Multi --> Heuristic
+    Multi --> Intel
+    
+    Pred --> Evid
+    Pred --> Behavior
+    
+    Intel --> GoogleSafeBrowsing
+    Intel --> HIBP
+    Chatbot --> GroqLLM
+    
+    Pred --> MongoDB
+    Behavior --> MongoDB

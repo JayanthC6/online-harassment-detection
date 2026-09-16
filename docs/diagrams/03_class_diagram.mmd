@@ -1,0 +1,73 @@
+classDiagram
+    %% Core Services
+    class PredictionService {
+        +predict_text(text, user_id) dict
+        +predict_file(filepath, ext) dict
+        -_fuse_scores() dict
+    }
+    
+    class EvidenceService {
+        +generate_evidence_plan(prediction_result) dict
+        +detect_job_scam_indicators(text) dict
+        +get_severity_tier(score) string
+    }
+    
+    class AdminService {
+        +get_dashboard_stats() dict
+        +get_reports(filters) list
+    }
+    
+    class BehaviorService {
+        +update_actor_profile(actor_id, incident)
+        +get_actor_profile(actor_id) dict
+    }
+    
+    class ChatbotService {
+        +generate_response(query, context, persona) string
+        -extract_text_from_file(filepath) string
+    }
+
+    %% ML Adapters
+    class ModelAdapter {
+        <<interface>>
+        +predict(text) dict
+    }
+    
+    class MultilingualAdapter {
+        -_translator: NLLB
+        -_language_detector: LangDetect
+        +predict(text) dict
+        -_detect_and_translate(text) tuple
+    }
+    
+    class DistilBertAdapter {
+        -_model: DistilBertForSequenceClassification
+        +predict(text) dict
+    }
+    
+    class HeuristicMultiLabelAdapter {
+        -_rules: dict
+        +predict(text) dict
+    }
+    
+    class ThreatIntelAdapter {
+        +predict(text) dict
+        -_check_safe_browsing(urls) list
+        -_check_hibp(emails) list
+        -_check_whois(domains) list
+    }
+
+    %% Relationships
+    PredictionService --> MultilingualAdapter : Uses
+    MultilingualAdapter ..|> ModelAdapter : Wraps
+    DistilBertAdapter ..|> ModelAdapter : Implements
+    HeuristicMultiLabelAdapter ..|> ModelAdapter : Implements
+    ThreatIntelAdapter ..|> ModelAdapter : Implements
+    
+    PredictionService --> DistilBertAdapter : Core Pipeline
+    PredictionService --> HeuristicMultiLabelAdapter : Core Pipeline
+    PredictionService --> ThreatIntelAdapter : Core Pipeline
+    
+    PredictionService --> EvidenceService : Calls for Safety Plan
+    ChatbotService --> PredictionService : Injects Prediction Context
+    AdminService --> BehaviorService : Manages Profiles

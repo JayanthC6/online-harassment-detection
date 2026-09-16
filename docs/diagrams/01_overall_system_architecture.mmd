@@ -1,0 +1,83 @@
+graph TD
+    %% Define Styling
+    classDef user fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef frontend fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
+    classDef backend fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
+    classDef ml fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+    classDef intel fill:#ffebee,stroke:#d32f2f,stroke-width:2px;
+    classDef db fill:#eceff1,stroke:#455a64,stroke-width:2px;
+    
+    subgraph "Clients (Actors)"
+        User[End User / Victim]:::user
+        Admin[Admin / SOC Analyst]:::user
+    end
+
+    subgraph "Frontend Layer (React / Vite)"
+        WebUI[React SPA Dashboard & Portal]:::frontend
+        ChromeExt[Chrome Extension MV3]:::frontend
+    end
+
+    subgraph "Backend Layer (Flask / Python)"
+        API[Flask REST API]:::backend
+        Auth[JWT Authentication & RBAC]:::backend
+        
+        subgraph "Services Core"
+            PredService[Prediction Service]:::backend
+            EvidService[Evidence & Job Safety Service]:::backend
+            Chatbot[Groq Chatbot Service]:::backend
+        end
+        
+        subgraph "Neurosymbolic Prediction Pipeline"
+            PIIMask[PII Masking]:::ml
+            MultiLing[Multilingual Adapter <br/>NLLB-200]:::ml
+            Neural[Primary Neural Engine <br/>DistilBERT]:::ml
+            Heuristic[Heuristic Engine <br/>Regex / Rules]:::ml
+            Fusion[Noisy-OR Fusion Engine]:::ml
+        end
+        
+        subgraph "External Threat Intelligence"
+            SafeBrowse[Google Safe Browsing]:::intel
+            HIBP[Have I Been Pwned]:::intel
+            WHOIS[Domain Age / WHOIS]:::intel
+        end
+    end
+
+    subgraph "Persistence Layer"
+        MongoDB[(MongoDB Database)]:::db
+        LocalFS[(Local File Storage)]:::db
+    end
+
+    %% Flow
+    User -->|Submit Text/Files| WebUI
+    Admin -->|Review Incidents| WebUI
+    User -->|Real-time scan| ChromeExt
+    
+    WebUI -->|HTTP Requests| API
+    ChromeExt -->|HTTP Requests| API
+    
+    API --> Auth
+    Auth --> PredService
+    Auth --> EvidService
+    Auth --> Chatbot
+    
+    PredService --> PIIMask
+    PIIMask --> MultiLing
+    MultiLing --> Neural
+    MultiLing --> Heuristic
+    MultiLing --> SafeBrowse
+    MultiLing --> HIBP
+    MultiLing --> WHOIS
+    
+    Neural --> Fusion
+    Heuristic --> Fusion
+    SafeBrowse --> Fusion
+    HIBP --> Fusion
+    WHOIS --> Fusion
+    
+    Fusion --> EvidService
+    
+    PredService --> MongoDB
+    Chatbot -.->|Context| PredService
+    
+    EvidService --> MongoDB
+    API --> LocalFS

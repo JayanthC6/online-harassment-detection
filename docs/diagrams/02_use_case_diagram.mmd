@@ -1,0 +1,41 @@
+flowchart LR
+    %% Actors
+    User((End User / Victim))
+    Admin((SOC Analyst / Admin))
+
+    %% System Boundary
+    subgraph ShieldAI Platform
+        Login[Login / Authentication]
+        
+        %% User Actions
+        Hunt[Public Threat Hunt]
+        Conv[Upload Conversation Export]
+        Comp[File Formal Complaint]
+        Bot[Interact with Safety Chatbot]
+        Evid[Receive Safety & Evidence Plan]
+        Ext[Real-time Threat Scanning]
+        
+        %% Admin Actions
+        Dash[View SOC Dashboard Analytics]
+        Queue[Review Incident Queue]
+        Behav[Manage Behavioral Profiles]
+        Replay[View Conversation Replays]
+    end
+
+    User --> Login
+    User --> Hunt
+    User --> Conv
+    User --> Comp
+    User --> Bot
+    User --> Ext
+    
+    Hunt -.->|includes| Evid
+    Conv -.->|includes| Evid
+    
+    Admin --> Login
+    Admin --> Dash
+    Admin --> Queue
+    Admin --> Behav
+    Admin --> Replay
+    
+    Dash -.->|extends| Queue

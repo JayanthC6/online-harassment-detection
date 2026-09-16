@@ -1,0 +1,39 @@
+graph TD
+    subgraph "Client Environment (User Device)"
+        Browser[Web Browser]
+        React[React SPA UI]
+        Ext[Chrome Extension MV3]
+        Browser --- React
+        Browser --- Ext
+    end
+
+    subgraph "Application Server (Local / Cloud Host)"
+        subgraph "Python Virtual Environment"
+            Flask[Flask Backend API]
+            ML[DistilBERT & NLLB Models]
+            Whisper[Whisper & OCR Binaries]
+        end
+    end
+
+    subgraph "Data Tier"
+        Mongo[(MongoDB Database)]
+    end
+
+    subgraph "External Web Services"
+        Groq[Groq API]
+        GSB[Google Safe Browsing API]
+        HIBP[Have I Been Pwned API]
+    end
+
+    %% Connections
+    React -->|HTTP/REST| Flask
+    Ext -->|HTTP/REST| Flask
+    
+    Flask --- ML
+    Flask --- Whisper
+    
+    Flask <-->|PyMongo| Mongo
+    
+    Flask <-->|HTTPS| Groq
+    Flask <-->|HTTPS| GSB
+    Flask <-->|HTTPS| HIBP

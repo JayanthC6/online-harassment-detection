@@ -1,0 +1,35 @@
+graph LR
+    %% Entities
+    User((End User / Victim))
+    Admin((SOC Analyst / Admin))
+    
+    %% System
+    System[ShieldAI Platform]
+    
+    %% External Services
+    ExtGroq[[Groq LLM]]
+    ExtGoogle[[Google Safe Browsing]]
+    ExtHIBP[[Have I Been Pwned]]
+    ExtWHOIS[[WHOIS / Domain APIs]]
+    
+    %% Flows
+    User -->|Text, Files, Audio, Images| System
+    User -->|Complaint Submission| System
+    System -->|Threat Report & Evidence Plan| User
+    System -->|Chatbot Responses| User
+    
+    Admin -->|Login Credentials| System
+    System -->|SOC Dashboard Analytics| Admin
+    System -->|Incident Queues & Profiles| Admin
+    
+    System -->|Summarization Prompts| ExtGroq
+    ExtGroq -->|Generated Summaries| System
+    
+    System -->|Extracted URLs| ExtGoogle
+    ExtGoogle -->|Malicious Status| System
+    
+    System -->|Extracted Emails| ExtHIBP
+    ExtHIBP -->|Breach History| System
+    
+    System -->|Extracted Domains| ExtWHOIS
+    ExtWHOIS -->|Domain Age & Registration| System

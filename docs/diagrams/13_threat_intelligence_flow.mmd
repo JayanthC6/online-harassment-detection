@@ -1,0 +1,28 @@
+flowchart TD
+    Input([Text Input]) --> ExtractURL[Extract URLs]
+    Input --> ExtractEmail[Extract Emails]
+    Input --> ExtractDomain[Extract Domains]
+    Input --> SE[Social Engineering Regex]
+
+    %% URL Processing
+    ExtractURL --> CheckIP[Detect IP-Based URLs]
+    ExtractURL --> CheckScheme[Detect Dangerous Schemes <br/> javascript: data:]
+    ExtractURL --> CheckShort[Detect URL Shorteners]
+    ExtractURL --> CheckTypo[Levenshtein Typosquatting]
+    
+    %% API Services
+    ExtractURL --> GSB[Google Safe Browsing API]
+    ExtractEmail --> HIBP[Have I Been Pwned API]
+    ExtractDomain --> WHOIS[WHOIS Domain Age < 30 Days]
+
+    %% Result aggregation
+    CheckIP --> IntelResults{Threat Intel Results}
+    CheckScheme --> IntelResults
+    CheckShort --> IntelResults
+    CheckTypo --> IntelResults
+    SE --> IntelResults
+    GSB --> IntelResults
+    HIBP --> IntelResults
+    WHOIS --> IntelResults
+
+    IntelResults --> AttachToPrediction([Appended to Final Prediction JSON])

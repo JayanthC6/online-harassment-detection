@@ -1,0 +1,27 @@
+flowchart TD
+    Start([Extracted Text / Document]) --> JobContext{Contains Job Context?}
+    
+    JobContext -->|No| NormalFlow[Standard Evidence Playbook]
+    JobContext -->|Yes| AnalyzeIndicators[Scan for Suspicious Indicators]
+    
+    AnalyzeIndicators --> Indicator1(Payment Before Joining<br/>'registration fee', 'security deposit')
+    AnalyzeIndicators --> Indicator2(Suspicious Communication<br/>'telegram', 'whatsapp only')
+    AnalyzeIndicators --> Indicator3(Too Good To Be True<br/>'guaranteed hiring', 'no experience required')
+    AnalyzeIndicators --> Indicator4(Vague Job Descriptions)
+    
+    Indicator1 --> Score{Calculate Job Risk Score}
+    Indicator2 --> Score
+    Indicator3 --> Score
+    Indicator4 --> Score
+    
+    Score -->|Low Risk| NormalFlow
+    Score -->|High Risk| TagScam[Tag Incident as 'Job Scam']
+    
+    TagScam --> Playbook[Generate Recruitment Safety Recommendations]
+    Playbook --> Advice1(Do not send ID documents)
+    Playbook --> Advice2(Verify company registry)
+    Playbook --> Advice3(Block unverified recruiters)
+    
+    Advice1 --> Output([Appended Evidence Plan])
+    Advice2 --> Output
+    Advice3 --> Output

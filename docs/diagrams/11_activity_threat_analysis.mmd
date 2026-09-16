@@ -1,0 +1,39 @@
+stateDiagram-v2
+    [*] --> ValidateInput
+    
+    ValidateInput --> ExtractText : Text/File Provided
+    ExtractText --> PIIMasking
+    
+    PIIMasking --> DetectLanguage
+    
+    state DetectLanguage_Choice <<choice>>
+    DetectLanguage --> DetectLanguage_Choice
+    
+    DetectLanguage_Choice --> TranslateText : Non-English
+    DetectLanguage_Choice --> PredictModels : English
+    
+    TranslateText --> PredictModels
+    
+    state PredictModels {
+        [*] --> NeuralEngine
+        [*] --> HeuristicEngine
+        [*] --> ThreatIntel
+    }
+    
+    PredictModels --> NoisyORFusion
+    
+    NoisyORFusion --> RiskScoring
+    RiskScoring --> JobIntel
+    
+    JobIntel --> EvidencePlan
+    
+    EvidencePlan --> SaveHistory
+    
+    state SaveHistory_Choice <<choice>>
+    SaveHistory --> SaveHistory_Choice
+    
+    SaveHistory_Choice --> PersistToDB : Save = True
+    SaveHistory_Choice --> ReturnJSON : Save = False
+    
+    PersistToDB --> ReturnJSON
+    ReturnJSON --> [*]

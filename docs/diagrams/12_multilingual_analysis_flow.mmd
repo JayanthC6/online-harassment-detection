@@ -1,0 +1,21 @@
+flowchart TD
+    Start([Raw Input Text]) --> Mask[Mask PII <br/>Emails, Phones]
+    
+    Mask --> Detect{Detect Language <br/>via langdetect}
+    
+    Detect -->|lang == 'en'| Passthrough[Bypass Translation]
+    Detect -->|lang != 'en'| CheckCode{Is Supported <br/>by NLLB?}
+    Detect -->|Exception/Too Short| Fail[Original Text Fallback]
+    
+    CheckCode -->|No| Passthrough
+    CheckCode -->|Yes| Translate[Translate via NLLB-200]
+    
+    Translate --> |Success| Translated[Translated English Text]
+    Translate --> |Fail| Fail
+    
+    Passthrough --> Analysis[Primary Prediction Pipeline]
+    Translated --> Analysis
+    Fail --> Analysis
+    
+    Analysis --> AttachMeta[Attach Translation Metadata & Original Text]
+    AttachMeta --> End([JSON Output])

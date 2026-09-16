@@ -1,0 +1,41 @@
+graph TD
+    %% Entities
+    User((User))
+    Admin((Admin))
+    
+    %% Data Stores
+    DB[(MongoDB<br/>Incidents & Profiles)]
+    
+    %% Processes
+    P1(1.0<br/>Authentication & RBAC)
+    P2(2.0<br/>Input Processing & Modality Extraction)
+    P3(3.0<br/>Multilingual & PII Masking)
+    P4(4.0<br/>Prediction & Noisy-OR Fusion)
+    P5(5.0<br/>Threat & Job Intelligence)
+    P6(6.0<br/>Evidence & Safety Planning)
+    P7(7.0<br/>Behavioral Intelligence)
+    P8(8.0<br/>Chatbot & Summarization)
+    
+    %% Flows
+    User -->|Raw Content / Files| P2
+    Admin -->|Credentials| P1
+    
+    P2 -->|Extracted Text| P3
+    P3 -->|Translated & Masked Text| P4
+    P3 -->|Extracted IOCs URLs Emails| P5
+    
+    P4 -->|Raw Risk Scores| P6
+    P5 -->|Threat Context| P6
+    P5 -->|Threat Context| P4
+    
+    P6 -->|Final Incident Report| DB
+    P6 -->|Safety Plan| User
+    
+    P6 -->|Incident Context| P7
+    P7 -->|Updated Actor Profile| DB
+    
+    P8 <-->|Read Context| DB
+    User <-->|Conversational Query| P8
+    
+    Admin -->|Dashboard Request| DB
+    DB -->|Analytics & Queues| Admin
