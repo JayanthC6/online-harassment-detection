@@ -208,3 +208,62 @@ online-harassment-detection/
 │   └── vite.config.js
 └── extension/                 # Chrome Manifest V3 extension
 ```
+
+---
+
+## Docker Deployment
+
+ShieldAI supports a fully portable, single-command containerized deployment via Docker. This ensures the environment behaves consistently across Windows, Linux, and macOS.
+
+### Important Note on Demonstration Data
+> The Docker deployment utilizes a **local MongoDB container** ensuring strict privacy and data sovereignty. It **does not** connect to or expose the developer's private historical MongoDB Atlas database (which contains 150+ real-world cases).
+> 
+> To ensure your dashboard is fully functional upon launch, the container will automatically run a seed script (`seed_incidents.py`) to inject **15 representative demo cases** into your local database.
+
+### 1. Prerequisites
+- **Docker Desktop** installed and running.
+- **Git** (to clone the repository).
+
+### 2. Environment Configuration
+Create your environment variables file using the provided template:
+```bash
+# Copy the example file to a true .env file
+cp .env.example .env
+```
+Open `.env` and fill in the placeholders. You **must** provide your own:
+- `GROQ_API_KEY`
+- `JWT_SECRET_KEY` (Generate a secure random string)
+- `ADMIN_USERNAME` (defaults to admin)
+- `ADMIN_PASSWORD` (defaults to a secure string, change it!)
+
+*Do not modify the `MONGODB_URI` in the Docker setup, as it is preconfigured to talk to the local MongoDB container.*
+
+### 3. One-Command Deployment
+From the root of the project, run:
+```bash
+docker compose up --build
+```
+*Note: The first launch will take several minutes as it downloads the Python and Node.js images, installs dependencies, and downloads the ML models.*
+
+### 4. Application URLs
+- **Frontend / Threat Hunt:** [http://localhost](http://localhost)
+- **Backend API:** [http://localhost:5000](http://localhost:5000)
+
+### 5. Admin Login Procedure
+1. Navigate to the frontend URL.
+2. Click the "Admin Login" portal.
+3. Enter the `ADMIN_USERNAME` and `ADMIN_PASSWORD` you configured in your `.env` file.
+4. You will see the 15 representative demo cases populated in the dashboard.
+
+### 6. Stopping the Application
+To stop the application while preserving your database data (it will still be there next time you start):
+```bash
+docker compose down
+```
+
+### 7. Resetting the Application
+To completely stop the application and **wipe the local MongoDB database** (destroying all history and behavioral profiles):
+```bash
+docker compose down -v
+```
+When you run `up` again, the 15 demo cases will be freshly re-seeded.

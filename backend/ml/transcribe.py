@@ -26,7 +26,8 @@ _whisper_model = None
 
 # Model size tradeoff: 'base' is a reasonable default (fast, decent accuracy).
 # 'small' or 'medium' are more accurate but slower -- fine on a GPU, painful on CPU.
-WHISPER_MODEL_SIZE = "base"
+# 'tiny' is extremely fast and best suited for CPU-only environments.
+WHISPER_MODEL_SIZE = "tiny"
 
 
 def _load_whisper():
@@ -49,7 +50,7 @@ def transcribe(file_path: str) -> dict:
         raise FileNotFoundError(file_path)
 
     model = _load_whisper()
-    result = model.transcribe(file_path)
+    result = model.transcribe(file_path, fp16=False)
 
     return {
         "text": result["text"].strip(),

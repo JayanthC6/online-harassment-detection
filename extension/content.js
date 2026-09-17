@@ -69,10 +69,7 @@ function processMessageElement(el) {
       
       const result = response.data;
     
-    const isThreat = result.confidence >= CONFIDENCE_THRESHOLD && 
-        (result.primary_label === 'Phishing' || result.primary_label === 'Scam' || 
-         result.primary_label === 'Toxicity' || result.primary_label === 'Threat' ||
-         result.primary_label === 'Cyberbullying / Harassment' || result.primary_label === 'Profanity');
+    const isThreat = result.confidence >= CONFIDENCE_THRESHOLD && result.label === 'harassing';
          
     // Inject badge for ALL scanned messages
     injectBadge(el, result, isThreat);

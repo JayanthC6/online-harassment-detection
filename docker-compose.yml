@@ -1,29 +1,56 @@
+version: '3.8'
+
 services:
+  mongodb:
+    image: mongo:6.0
+    container_name: shieldai-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - shieldai_net
+
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shieldai-backend
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_started
     ports:
       - "5000:5000"
-    env_file:
-      - ./backend/.env
-    volumes:
-      - ./backend/models:/app/models
-    restart: unless-stopped
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/shieldai_db
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - HF_TOKEN=${HF_TOKEN}
+      - GOOGLE_SAFE_BROWSING_API_KEY=${GOOGLE_SAFE_BROWSING_API_KEY}
+      - EXTENSION_API_KEY=${EXTENSION_API_KEY}
+      - KAGGLE_API_TOKEN=${KAGGLE_API_TOKEN}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+    networks:
+      - shieldai_net
+    entrypoint: ["/bin/bash", "/app/entrypoint.sh"]
 
   frontend:
-    build: ./frontend
-    ports:
-      - "3000:80"
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: shieldai-frontend
+    restart: unless-stopped
     depends_on:
       - backend
-    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - shieldai_net
 
-# Add when you reach Sprint 3 (persistent storage instead of in-memory logs):
-#   mongo:
-#     image: mongo:7.0
-#     ports:
-#       - "27017:27017"
-#     volumes:
-#       - mongo_data:/data/db
-#
-# volumes:
-#   mongo_data:
+networks:
+  shieldai_net:
+    driver: bridge
+
+volumes:
+  mongodb_data:
