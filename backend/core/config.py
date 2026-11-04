@@ -7,28 +7,42 @@ load_dotenv()
 
 
 class Config:
-    MONGODB_URI = os.environ.get("MONGODB_URI")
-    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "fallback-secret")
+    APP_ENV = os.environ.get("APP_ENV", "development").lower()
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+    SQLITE_DB_PATH = os.environ.get("SQLITE_DB_PATH", "data/shieldai.db")
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "shieldai-secret-key-development-placeholder")
     ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 
-    # ADMIN_PASSWORD is used ONLY at startup to derive a hash.
-    # It is never compared as plaintext anywhere in the application.
+    # In production, ADMIN_PASSWORD_HASH should be provided directly in .env.
+    # Otherwise, derive from ADMIN_PASSWORD at startup if provided.
+    _env_hash = os.environ.get("ADMIN_PASSWORD_HASH")
     _raw_admin_password = os.environ.get("ADMIN_PASSWORD", "")
-    ADMIN_PASSWORD_HASH = generate_password_hash(_raw_admin_password) if _raw_admin_password else None
 
-    ALLOWED_ORIGINS = os.environ.get(
-        "ALLOWED_ORIGINS",
-        "http://localhost:5173,http://localhost:5174,http://localhost:3000"
-    ).split(",")
+    if _env_hash:
+        ADMIN_PASSWORD_HASH = _env_hash
+    elif _raw_admin_password:
+        ADMIN_PASSWORD_HASH = generate_password_hash(_raw_admin_password)
+    elif APP_ENV == "development":
+        # Default development password hash for password123
+        ADMIN_PASSWORD_HASH = generate_password_hash("password123")
+    else:
+        ADMIN_PASSWORD_HASH = None
 
-    # SECURITY: defaults to False. Must be explicitly set to "true" in .env
-    # for local development. NEVER enable on a deployed or client-facing instance.
-    ENABLE_DEMO_ACCOUNTS = os.environ.get("ENABLE_DEMO_ACCOUNTS", "false").lower() == "true"
+    ALLOWED_ORIGINS = [
+        o.strip() for o in os.environ.get(
+            "ALLOWED_ORIGINS",
+            "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://127.0.0.1:5173"
+        ).split(",") if o.strip()
+    ]
 
-    # Demo account credentials — non-dictionary passwords for local dev only.
-    # These are only active when ENABLE_DEMO_ACCOUNTS=true.
+    # SECURITY: Demo accounts only active in development mode
+    ENABLE_DEMO_ACCOUNTS = (
+        APP_ENV == "development"
+        and os.environ.get("ENABLE_DEMO_ACCOUNTS", "false").lower() == "true"
+    )
+
     DEMO_ACCOUNTS = {
-        "admin":     {"password": "Sh13ldAI!Dev#2026", "role": "Admin"},
-        "moderator": {"password": "Mod3r@t0r!Shld",   "role": "Moderator"},
-        "viewer":    {"password": "V13w0nly!Shld",     "role": "Viewer"},
-    }
+        "admin":     {"password": "password123", "role": "Admin"},
+        "moderator": {"password": "password123", "role": "Moderator"},
+        "viewer":    {"password": "password123", "role": "Viewer"},
+    } if ENABLE_DEMO_ACCOUNTS else {}

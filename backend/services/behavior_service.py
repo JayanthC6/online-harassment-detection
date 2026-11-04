@@ -9,22 +9,11 @@ class BehaviorService:
     def _get_profile(actor_id):
         if not actor_id:
             return None
-            
-        if db_instance.is_persistent:
-            return db_instance.profiles.find_one({"actor_id": actor_id})
-        else:
-            return db_instance.fallback_profiles.get(actor_id)
+        return db_instance.get_profile(actor_id)
 
     @staticmethod
     def _save_profile(profile):
-        if db_instance.is_persistent:
-            db_instance.profiles.update_one(
-                {"actor_id": profile["actor_id"]},
-                {"$set": profile},
-                upsert=True
-            )
-        else:
-            db_instance.fallback_profiles[profile["actor_id"]] = profile
+        db_instance.save_profile(profile)
 
     @staticmethod
     def _create_initial_profile(actor_id):
@@ -123,10 +112,4 @@ class BehaviorService:
 
     @staticmethod
     def get_all_profiles():
-        if db_instance.is_persistent:
-            profiles = list(db_instance.profiles.find({}, {"_id": 0}))
-        else:
-            profiles = list(db_instance.fallback_profiles.values())
-            
-        # Sort by behavior score descending
-        return sorted(profiles, key=lambda x: x.get("behavior_score", 0), reverse=True)
+        return db_instance.get_all_profiles()

@@ -1,0 +1,45 @@
+id,case_type,text,expected_level,expected_category,notes
+1,genuine_bank_otp,"Your OTP for transaction of INR 4,500.00 at Amazon with SBI Card ending 4012 is 829104. Never share OTP with anyone, including bank staff.",low,clean,Legitimate SBI transaction OTP with warning
+2,genuine_bank_otp,123456 is your HDFC Bank NetBanking OTP. Valid for 10 mins. Do not disclose to anyone. Bank never calls asking for OTP.,low,clean,Legitimate HDFC Bank OTP
+3,genuine_bank_otp,492011 is your ICICI Bank verification code to authorize login. Please do not share this code with anyone.,low,clean,ICICI login verification code
+4,genuine_bank_otp,739201 is your Amazon OTP. Do not share it with anyone. Amazon representatives will never ask for your password or OTP.,low,clean,Amazon 2FA OTP
+5,genuine_bank_otp,G-492019 is your Google verification code.,low,clean,Standard Google 2FA message
+6,friendly_banter,"Dude you are literally slaying this presentation, keep killing it!",low,clean,Slang compliment using slaying/killing
+7,friendly_banter,"I am going to murder you in FIFA tonight bro, prepare yourself haha",low,clean,Gaming banter with violent words
+8,friendly_banter,OMG she is drop dead gorgeous in that red dress!,low,clean,Idiom drop dead gorgeous
+9,friendly_banter,"This spicy chicken curry is killer, my tongue is burning!",low,clean,Food compliment using killer
+10,friendly_banter,We totally destroyed that pizza last night haha lol,low,clean,Casual dining statement using destroyed
+11,friendly_banter,I am gonna slaughter your team in Valorant this weekend,low,clean,Gaming rivalry banter
+12,educational_news,RBI Advisory: Beware of fraudulent SMS claiming your account is blocked. Scammers send fake APK links to steal money.,low,clean,RBI official advisory bulletin
+13,educational_news,Cybercrime awareness bulletin: Do not click on links claiming lottery winnings or prize money via WhatsApp.,low,clean,Awareness bulletin advising citizens
+14,educational_news,Police have arrested three individuals running a fake courier customs scam demanding digital arrest payments.,low,clean,News report about police crackdown on digital arrest scam
+15,educational_news,"In today's tech news, phishing campaigns impersonating Netflix and PayPal have increased by 40 percent.",low,clean,Tech news article discussing phishing trends
+16,educational_news,"Tips to stay safe online: Never share your OTP, UPI PIN, or passwords with anyone claiming to be customer care.",low,clean,Cyber safety tips
+17,quoted_victim_report,"I am submitting a complaint because a user sent me: ""you are an ugly worthless loser and should die"". Please help me block them.",low,clean,Victim reporting received insult - contains quoted abuse
+18,quoted_victim_report,"The stalker posted a comment saying ""I know where you live and I will break your legs"". I feel unsafe and want to file an FIR.",low,clean,Victim reporting threat - contains quoted threat
+19,quoted_victim_report,"Attached is screenshot where the scammer says: ""Pay 50000 INR immediately or your photos will be posted on Instagram"".",low,clean,Victim reporting sextortion quote
+20,hinglish_threat,Kal college ke bahar mil tereko jaan se maar dunga samjha.,critical,threat,Direct physical death threat in Hinglish
+21,hinglish_threat,"Tere ghar aake marunga tujhe, dekh lunga.",critical,threat,Hinglish threat to come home and beat/kill
+22,hinglish_insult,Tu ekdum pagal aur kutta hai chup kar behenchod.,high,abusive_language,Hinglish abusive slur and insult
+23,hinglish_insult,Abe chutiye apna ganda muh band rakh harami kahin ka.,high,abusive_language,Vulgar Hinglish abuse
+24,hinglish_scam,"Aapka SBI account suspend hone wala hai, turant KYC update karein warna fine lagega.",high,scam,Hinglish banking KYC suspension scam
+25,hinglish_benign,Bhai kya haal hai kal movie dekhne chale kya?,low,clean,Casual Hinglish greeting inviting to a movie
+26,hinglish_benign,Bhai tu toh macha diya ekdum aag laga di stage pe!,low,clean,Hinglish compliment praising performance
+27,hinglish_benign,Arre yaar train late ho gayi main 15 minute mein pahunchta hoon.,low,clean,Everyday travel update in Hinglish
+28,obfuscated_threat,I will f*cking k!ll you if you show your face here again,critical,threat,Obfuscated threat with symbols
+29,obfuscated_scam,Click here for fr33 crypto and b!tcoin rewards http://claim-btc.xyz,high,scam,Obfuscated scam with l33tspeak and .xyz domain
+30,obfuscated_insult,Shut up you ugly b!tch nobody likes you,high,abusive_language,Obfuscated slur b!tch in harassment context
+31,obfuscated_insult,Go d!e alone in a ditch loser,high,abusive_language,Obfuscated suicide incitement / insult
+32,obfuscated_scam,Download this free g!ft c@rd now http://win-card.top,high,scam,Obfuscated gift card scam with suspicious TLD
+33,long_benign,Hey Sarah! Hope you are doing well. Just wanted to follow up on our discussion yesterday regarding the MCA final project presentation. I put together the slides and added the architecture diagrams for ShieldAI. Let me know if you want to make changes before we send it to our professor tomorrow morning. Cheers!,low,clean,Long benign academic team coordination message
+34,long_harassment,You think you are so smart walking around like you own the place. Everyone talks behind your back and laughs at you. Nobody in our team wanted to work with you because you are useless and incompetent. You ruin every single project you touch and you should just drop out before you embarrass yourself further.,high,harassment,Long continuous harassment and workplace/academic bullying
+35,long_phishing,"Dear Valued Customer, We have detected suspicious unauthorized transactions on your debit card. In accordance with security protocol SEC-889, your account has been temporarily restricted. To verify your identity and restore access without penalty, please confirm your card details and billing address immediately by clicking the secure verification portal: https://secure-account-verification-portal.xyz/login?id=88231. Failure to do so within 24 hours will lead to permanent account deactivation.",high,phishing,Long banking security phishing email with urgent ultimatum
+36,long_sextortion,"Greetings. I have installed malware on your system via a compromised website and captured your screen and webcam footage while you were visiting adult content. I have compiled a video of you along with your contact list from Facebook and email. If you do not send $1500 USD in Bitcoin to wallet bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh within 48 hours, I will distribute this video to all your relatives, friends, and colleagues. Do not contact police or try to reply.",critical,sextortion,Long classic webcam sextortion email
+37,empty_input,,low,clean,Empty string
+38,whitespace_input,   ,low,clean,Whitespace only
+39,short_benign,ok,low,clean,Common single-word acknowledgement
+40,short_benign,k,low,clean,Single letter reply
+41,short_benign,hey,low,clean,Short greeting
+42,short_benign,hello there,low,clean,Two-word greeting
+43,short_benign,yes,low,clean,Single word affirmative
+44,short_benign,?,low,clean,Single punctuation mark

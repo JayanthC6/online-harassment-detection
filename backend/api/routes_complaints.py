@@ -1,68 +1,88 @@
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import tempfile
+import uuid
 from bson.objectid import ObjectId
 
-from api.dependencies import token_required, require_role
+from api.dependencies import token_required, token_optional, require_role
 from services.prediction_service import PredictionService
 from services.admin_service import AdminService
 from core.database import db_instance
 
 complaints_bp = Blueprint("complaints", __name__)
 
+@complaints_bp.route("/complaints", methods=["POST"])
+@complaints_bp.route("/api/complaints", methods=["POST"])
+@token_optional
+def submit_complaint(token_data=None):
+    """Users submit a complaint with text or file evidence."""
+    user_id = token_data.get("user") if token_data else "anonymous"
+    text = ""
+    
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        text = data.get("text", "")
+    else:
+        text = request.form.get("text", "")
+
+    file = request.files.get("file")
+    if file and not text:
+        try:
+            content = file.read().decode("utf-8", errors="ignore")
+            text = content[:2000]
+        except Exception:
+            text = f"Attached evidence file: {file.filename}"
+
+    if not text.strip():
+        return jsonify({"error": "Please provide text or upload a file as evidence."}), 400
+
+    result = PredictionService.classify_text(text)
+    result = PredictionService.attach_risk_and_similarity(result, text)
+    result["user_id"] = user_id
+    result["source"] = "complaint"
+    result["status"] = "open"
+    result["incident_id"] = str(uuid.uuid4())
+    result["logged_at"] = datetime.now(timezone.utc).isoformat()
+    
+    AdminService.log_message(result)
+
+    return jsonify({
+        "success": True,
+        "message": "Your complaint has been securely submitted for review.",
+        "incident_id": result["incident_id"],
+        "result": result
+    }), 201
+
 @complaints_bp.route("/history/my", methods=["GET"])
+@complaints_bp.route("/api/history/my", methods=["GET"])
 @token_required
 def get_my_history(token_data):
     """Users view their own analysis history"""
     user_id = token_data.get("user")
-    if db_instance.is_persistent:
-        complaints = list(db_instance.collection.find({"user_id": user_id, "source": "self_serve"}, {"_id": 1, "logged_at": 1, "text_preview": 1, "primary_label": 1, "confidence": 1, "risk_score": 1, "severity_tier": 1, "category": 1, "actor_id": 1, "source": 1}).sort("logged_at", -1))
-        # Convert ObjectId to string for JSON serialization
-        for c in complaints:
-            if "_id" in c:
-                c["_id"] = str(c["_id"])
-    else:
-        complaints = [c for c in db_instance.fallback_store if c.get("user_id") == user_id and c.get("source") == "self_serve"]
+    res = db_instance.get_reports(page=1, page_size=100, user_id=user_id, source="self_serve")
+    complaints = res.get("reports", [])
     return jsonify({"complaints": complaints})
 
 @complaints_bp.route("/history/<entry_id>", methods=["DELETE"])
+@complaints_bp.route("/api/history/<entry_id>", methods=["DELETE"])
 @token_required
 def delete_history_entry(entry_id, token_data):
     """Users delete their own history entry"""
     user_id = token_data.get("user")
-    
-    if db_instance.is_persistent:
-        try:
-            doc = db_instance.collection.find_one({"_id": ObjectId(entry_id)})
-        except Exception:
-            return jsonify({"error": "Invalid ID format"}), 400
-            
-        if not doc:
-            return jsonify({"error": "Not found"}), 404
-            
-        if doc.get("user_id") != user_id:
-            return jsonify({"error": "Forbidden: Cannot delete another user's history"}), 403
-            
-        db_instance.collection.delete_one({"_id": ObjectId(entry_id)})
-        return jsonify({"message": "Deleted successfully"})
-    else:
-        # Fallback store
-        for i, doc in enumerate(db_instance.fallback_store):
-            if str(doc.get("_id", i)) == entry_id:
-                if doc.get("user_id") != user_id:
-                    return jsonify({"error": "Forbidden: Cannot delete another user's history"}), 403
-                del db_instance.fallback_store[i]
-                return jsonify({"message": "Deleted successfully"})
+    inc = db_instance.get_incident(entry_id)
+    if not inc:
         return jsonify({"error": "Not found"}), 404
+    if inc.get("user_id") != user_id and token_data.get("role", "").lower() not in ["admin", "moderator"]:
+        return jsonify({"error": "Forbidden: Cannot delete another user's history"}), 403
+    db_instance.delete_incident(entry_id)
+    return jsonify({"message": "Deleted successfully"})
 
 @complaints_bp.route("/admin/complaints", methods=["GET"])
+@complaints_bp.route("/api/admin/complaints", methods=["GET"])
 @token_required
 @require_role("Admin", "Moderator")
 def get_all_complaints(token_data):
-    """Analysts view all complaints (left intact as per requirements, but hidden in UI)"""
-    if db_instance.is_persistent:
-        complaints = list(db_instance.collection.find({"source": {"$ne": "self_serve"}}, {"_id": 0}).sort("logged_at", -1))
-    else:
-        complaints = [c for c in db_instance.fallback_store if c.get("source") != "self_serve"]
+    """Analysts view all complaints"""
+    complaints = db_instance.get_complaints()
     return jsonify({"complaints": complaints})

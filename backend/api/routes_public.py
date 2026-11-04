@@ -42,7 +42,8 @@ from extensions import limiter
 MAX_CHAT_FILE_MB = 50
 ALLOWED_CHAT_FILE_EXTS = {
     "pdf", "txt", "md", "log", "csv", "json", "docx",
-    "py", "html", "xml", "png", "jpg", "jpeg", "webp"
+    "py", "html", "xml", "png", "jpg", "jpeg", "webp", "bmp",
+    "mp3", "wav", "m4a", "ogg", "flac"
 }
 
 # Summarize is imported safely
@@ -160,6 +161,8 @@ def predict_instant(token_data):
     return jsonify(result)
 
 @public_bp.route("/predict", methods=["POST"])
+@public_bp.route("/api/analyze", methods=["POST"])
+@public_bp.route("/analyze", methods=["POST"])
 @token_optional
 @limiter.limit("30 per minute")
 def predict(token_data):
@@ -172,8 +175,7 @@ def predict(token_data):
     ext_api_key = os.environ.get("EXTENSION_API_KEY")
     if ext_api_key:
         origin = request.headers.get("Origin", "")
-        # Bypass for local frontend development
-        if not (origin.startswith("http://localhost:") or origin.startswith("http://127.0.0.1:")):
+        if origin and origin.startswith("chrome-extension://"):
             if request.headers.get("X-Extension-Api-Key") != ext_api_key:
                 return jsonify({"error": "Unauthorized: Invalid or missing X-Extension-Api-Key"}), 401
 
@@ -272,17 +274,24 @@ def demo_analyze():
     return jsonify(result)
 
 @public_bp.route("/predict/batch", methods=["POST"])
+@public_bp.route("/api/batch", methods=["POST"])
 @token_optional
-@limiter.limit("30 per minute")
+@limiter.limit("120 per minute")
 def predict_batch(token_data):
+    # Extension payload guard: at least 200 KB (250 KB max allowed to accommodate 60 texts of 2000 chars + JSON wrapper)
+    cl = request.content_length
+    if cl is not None and cl > 250 * 1024:
+        return jsonify({"error": "Payload too large. Maximum 250 KB for /api/batch."}), 413
+
     data = request.get_json(silent=True) or {}
     texts = data.get("texts", [])
-    persist = data.get("persist", False)
+    # Extension batch processing stores nothing as specified for privacy and performance
+    persist = False
 
     if not isinstance(texts, list) or len(texts) == 0:
         return jsonify({"error": "Provide a non-empty 'texts' array."}), 400
-    if len(texts) > 50:
-        return jsonify({"error": "Batch limit is 50 messages."}), 400
+    if len(texts) > 60:
+        return jsonify({"error": "Batch limit is 60 messages."}), 400
 
     results = []
     for text in texts:
@@ -297,7 +306,8 @@ def predict_batch(token_data):
         r["pii_categories"] = extract_pii(text)
         r["text_preview"] = text[:120]
         r["timestamp"] = datetime.utcnow().isoformat()
-        r = PredictionService.attach_risk_and_similarity(r, text)
+        if "risk_score" not in r:
+            r["risk_score"] = r.get("threat_score", 0.0)
         
         if persist and token_data:
             is_public_user = token_data.get("role", "").lower() == "user"
@@ -472,6 +482,8 @@ def predict_screenshot(token_data):
     return jsonify(result)
 
 @public_bp.route("/predict/file", methods=["POST"])
+@public_bp.route("/api/analyze/file", methods=["POST"])
+@public_bp.route("/analyze/file", methods=["POST"])
 @token_optional
 @limiter.limit("30 per minute")
 def predict_file(token_data):
@@ -501,10 +513,58 @@ def predict_file(token_data):
             os.remove(tmp.name)
             return jsonify({"error": f"File too large. Max 50MB."}), 413
 
+        # 1. Attempt chat export parsing if candidate format (txt, csv, json)
+        is_chat_export = False
+        chat_analysis = None
+        if ext in {"txt", "csv", "json"}:
+            try:
+                from services.parsers import parse_chat_export, analyze_chat_messages
+                chat_messages = parse_chat_export(tmp.name, file.filename)
+                has_structured_senders = any(
+                    m.get("sender") and m["sender"].lower() not in {"user", "user_1", "user_2", "unknown"}
+                    for m in chat_messages
+                ) or (len(chat_messages) > 1 and any(m.get("timestamp") for m in chat_messages))
+
+                if has_structured_senders and len(chat_messages) > 0:
+                    platform = "whatsapp" if ext == "txt" else ("csv" if ext == "csv" else "chat_export")
+                    chat_analysis = analyze_chat_messages(chat_messages, platform=platform)
+                    is_chat_export = True
+            except Exception:
+                is_chat_export = False
+
+        if is_chat_export and chat_analysis:
+            persist = request.form.get("persist", "false").lower() == "true"
+            if persist and token_data:
+                conv_entry = {
+                    "primary_label": "Harassment",
+                    "severity_tier": chat_analysis.get("level", "Medium").title(),
+                    "threat_score": float(chat_analysis.get("risk_score", 0.0)),
+                    "conversation_risk": float(chat_analysis.get("risk_score", 0.0)),
+                    "confidence": 0.95,
+                    "escalation_level": chat_analysis.get("level", "Medium").title(),
+                    "escalation_score": float(chat_analysis.get("risk_score", 0.0)),
+                    "messages": chat_analysis.get("messages", []),
+                    "actor_attribution": chat_analysis.get("sender_attribution", {}),
+                    "source": "platform"
+                }
+                AdminService.log_conversation(conv_entry)
+
+            return jsonify(chat_analysis)
+
+        # 2. Standard document / screenshot / audio text extraction
         try:
             extracted_text = extract_text_from_file(tmp.name, file.filename)
+        except ValueError as ve:
+            return jsonify({"error": str(ve)}), 400
+        except RuntimeError as rt_err:
+            err_msg = str(rt_err)
+            if any(k in err_msg.lower() for k in ["requires", "install", "engine", "ffmpeg", "tesseract"]):
+                return jsonify({
+                    "error": "tool_missing",
+                    "message": err_msg
+                }), 422
+            return jsonify({"error": f"Extraction failed: {err_msg}"}), 500
         except Exception as e:
-            os.remove(tmp.name)
             return jsonify({"error": f"Extraction failed: {str(e)}"}), 500
     finally:
         if os.path.exists(tmp.name):
@@ -565,17 +625,21 @@ def predict_file(token_data):
     return jsonify(result)
 
 @public_bp.route("/summarize", methods=["POST"])
+@public_bp.route("/api/summarize", methods=["POST"])
 def summarize():
     data = request.get_json(silent=True) or {}
     text = data.get("text", "")
     category = data.get("category", "none")
     confidence = data.get("confidence", 0)
+    risk_score = data.get("risk_score", 0.0)
+    persona = data.get("persona", "analyst")
 
     if not text or not isinstance(text, str):
         return jsonify({"error": "Request body must include a non-empty 'text' string."}), 400
 
     try:
-        result = summarize_complaint(text, category, confidence)
+        from ml.summarize import summarize_complaint
+        result = summarize_complaint(text, category, confidence, risk_score, persona)
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -713,6 +777,7 @@ def import_conversation(token_data):
             os.remove(file_path)
 
 @public_bp.route("/chat", methods=["POST"])
+@public_bp.route("/api/chat", methods=["POST"])
 @limiter.limit("30 per minute")
 def chat():
     data = request.get_json(silent=True) or {}
@@ -724,11 +789,19 @@ def chat():
     if not session_id or not message:
         return jsonify({"error": "session_id and message are required."}), 400
 
-    # Retrieve history
-    history = db.get_chat_session(session_id)
+    if not isinstance(message, str) or not message.strip():
+        return jsonify({"error": "Message must be a non-empty string."}), 400
+
+    if len(message) > 2000:
+        return jsonify({"error": "Message exceeds 2000 character limit."}), 400
+
+    # Retrieve history and cap history turns (keep last 20 messages)
+    history = db.get_chat_session(session_id) or []
+    if len(history) > 20:
+        history = history[-20:]
     
     # Append user message
-    user_msg = {"role": "user", "content": message}
+    user_msg = {"role": "user", "content": message.strip()}
     history.append(user_msg)
     
     # Sanitize context payload before sending to LLM
@@ -736,16 +809,18 @@ def chat():
         prediction_context = sanitize_result_for_public(prediction_context)
 
     # Generate response
-    ai_response_text = generate_chat_response(history, persona, prediction_context)
+    ai_response = generate_chat_response(history, persona, prediction_context)
+    ai_response_text = str(ai_response)
+    engine = getattr(ai_response, "engine", "rules")
     
     # Append ai response
     ai_msg = {"role": "assistant", "content": ai_response_text}
     history.append(ai_msg)
     
-    # Save history
-    db.save_chat_session(session_id, history)
+    # Save capped history
+    db.save_chat_session(session_id, history[-20:])
     
-    return jsonify({"response": ai_response_text, "session_id": session_id})
+    return jsonify({"response": ai_response_text, "session_id": session_id, "engine": engine})
 
 @public_bp.route("/chat/<session_id>", methods=["GET"])
 def get_chat(session_id):

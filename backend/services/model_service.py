@@ -1,0 +1,981 @@
+"""
+ShieldAI Detection Engine Service (Phase 2).
+Integrates DistilBERT multi-label classifier with calibrated thresholds,
+comprehensive rules layer (phishing, scams, sextortion, link analysis),
+and hybrid risk scoring with configurable severity caps.
+"""
+import os
+import re
+import json
+import logging
+from urllib.parse import urlparse
+from collections import OrderedDict
+from typing import Dict, List, Any, Optional, Tuple
+
+logger = logging.getLogger("ShieldAI.ModelService")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
+
+# Enforce offline operation for HuggingFace transformers in sandbox
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
+LABEL_ORDER = [
+    "Hate Speech",
+    "Cyberbullying / Harassment",
+    "Threat",
+    "Toxicity / Offensive Language",
+    "Profanity",
+    "Clean"
+]
+
+DEFAULT_THRESHOLDS = {
+    "Hate Speech": 0.6567294597625732,
+    "Cyberbullying / Harassment": 0.8896879553794861,
+    "Threat": 0.9866632223129272,
+    "Toxicity / Offensive Language": 0.6840231418609619,
+    "Profanity": 0.9842190146446228,
+    "Clean": 0.5179439783096313
+}
+
+# Configurable severity caps: Plain insults/abuse are capped at High (<85.0)
+DEFAULT_SEVERITY_CAPS = {
+    "plain_abuse_cap": float(os.environ.get("SHIELDAI_PLAIN_ABUSE_CAP", 80.0)),
+    "unverified_scam_cap": float(os.environ.get("SHIELDAI_UNVERIFIED_SCAM_CAP", 70.0)),
+    "educational_cap": float(os.environ.get("SHIELDAI_EDUCATIONAL_CAP", 40.0)),
+}
+
+# ── Link and Threat Indicators ───────────────────────────────────────────────
+
+URL_SHORTENERS = {
+    "bit.ly", "tinyurl.com", "t.co", "is.gd", "cutt.ly", "rb.gy",
+    "shorturl.at", "goo.gl", "ow.ly", "tiny.cc", "buff.ly", "v.gd"
+}
+
+RISKY_TLDS = {
+    ".xyz", ".top", ".click", ".buzz", ".fit", ".work", ".gq", ".tk",
+    ".ml", ".cf", ".ga", ".rest", ".icu", ".cam", ".live", ".link",
+    ".space", ".online", ".site", ".cc"
+}
+
+TARGET_BRANDS = [
+    "paypal.com", "apple.com", "google.com", "microsoft.com",
+    "amazon.com", "netflix.com", "facebook.com", "instagram.com",
+    "sbi.co.in", "hdfcbank.com", "icicibank.com", "axisbank.com",
+    "paytm.com", "phonepe.com"
+]
+
+SE_URGENCY_PATTERNS = [
+    r"\b(?:urgent|immediately|action required|act now|within 24 hours|account suspended|account blocked|temporary suspension|permanent block|last chance|final notice|expires today)\b",
+    r"\b(?:unauthorized transaction|suspicious login|security alert|fraud alert)\b"
+]
+
+SE_OTP_KYC_REQUEST_PATTERNS = [
+    r"\b(?:share your otp|enter otp|send the code|provide your code|verify your ssn|verify aadhaar|send aadhaar|pan card|kyc verification|update kyc|kyc expired|link your pan)\b",
+    r"\b(?:share bank details|send account details|credit card pin|cvv number)\b"
+]
+
+# Legitimate automated OTP dispatch indicators (telling the user NOT to share)
+GENUINE_OTP_INDICATORS = [
+    r"\b(?:do not share|never share|not share it with anyone|not share this code|valid for \d+ min|is your secret otp|is your one time password)\b",
+    r"\b(?:use code \d{4,8}|your otp is \d{4,8}|\b\d{4,8} is your otp)\b"
+]
+
+SCAM_LOTTERY_PRIZE_PATTERNS = [
+    r"\b(?:congratulations|congrats|you have won|winner|lucky draw|lottery|cash prize|claim your prize|selected for reward|won \$?[\d,]+|jackpot)\b",
+    r"\b(?:claim reward|prize notification|international lottery)\b"
+]
+
+SCAM_PAYMENT_PATTERNS = [
+    r"\b(?:gift card|apple gift card|steam card|google play voucher|amazon gift card|pay via gift card)\b",
+    r"\b(?:bitcoin|btc|usdt|crypto wallet|wallet address|eth|ethereum|transfer crypto)\b"
+]
+
+SCAM_COURIER_DIGITAL_ARREST_PATTERNS = [
+    r"\b(?:digital arrest|customs department|narcotics bureau|parcel detained|courier customs|illegal parcel|cbi investigation|police warrant|cyber crime branch|arrest warrant)\b",
+    r"\b(?:customs fee|clearance charge|parcel seized)\b"
+]
+
+SEXTORTION_PATTERNS = [
+    r"\b(?:webcam|intimate|compromising|private)\b.{0,60}\b(?:video|photo|picture|photos|pictures|nudes?|recording)\b",
+    r"\b(?:leak|expose|release|publish|share)\b.{0,60}\b(?:video|photo|picture|photos|pictures|nudes?|webcam)\b",
+    r"\b(?:video|photo|picture|photos|pictures|nudes?|webcam)\b.{0,60}\b(?:leak|expose|release|share|send to)\b",
+    r"\b(?:pay me|send)\b.{0,60}\b(?:btc|bitcoin|crypto|wallet|money|cash|\$|₹)\b.{0,60}\b(?:or i will|or else)\b",
+    r"\b(?:or i will|or else)\b.{0,60}\b(?:leak|expose|release|send to|ruin you)\b",
+    r"\b(?:recorded|captured|filmed)\b.{0,60}\b(?:webcam|camera|intimate|naked|private)\b",
+    r"\b(?:send to (?:all your|your) (?:friends|family|contacts|employer)|leak these photos)\b"
+]
+
+THREAT_PATTERNS = [
+    r"\b(?:i will kill you|i am going to kill you|i will hunt you down|i know where you live|watch your back|i will murder you|gonna beat you up|put a bullet in you|slit your throat|end your life)\b",
+    r"\b(?:swat your house|find and kill you|destroy your family)\b",
+    # Hinglish threats
+    r"\b(?:mar dalunga|jaan se mar|teri jaan le|dekh lunga tujhe|tere ghar aake marunga)\b"
+]
+
+# Benign context keywords that neutralize violent words used as idioms, sports, or gaming banter
+BENIGN_VIOLENT_IDIOM_PATTERNS = [
+    r"\b(?:in fifa|in cod|in valorant|in pubg|in fortnite|in chess|in the game|gaming|game tonight)\b",
+    r"\b(?:killed that presentation|slaying it|drop dead gorgeous|killing this workout|kill time|killed the exam|haha|lol|lmao)\b"
+]
+
+# Educational or news advisory indicators
+EDUCATIONAL_SCAM_PATTERNS = [
+    r"\b(?:rbi warns|police advisory|cyber crime alert|issued an alert|advising citizens|beware of|how to spot|educational notice|safety advisory)\b"
+]
+
+HARASSMENT_INSULT_PATTERNS = [
+    r"\b(?:worthless|stupid idiot|disgusting pig|piece of trash|nobody likes you|kill yourself|kys|drop dead|ugly freak|scumbag)\b",
+    # Hinglish insults
+    r"\b(?:kutte|kameene|bewakoof|gadhe|chutiye|bhosadike|harami)\b"
+]
+
+# Explicit profane words lexicon to verify Profanity predictions
+PROFANITY_WORD_PATTERNS = [
+    r"\b(?:f+u+c+k+(?:ing|er|ed|s)?|f\*+ck|fuk|fck)\b",
+    r"\b(?:s+h+i+t+(?:ty|s)?|sh\*+t|bullshit)\b",
+    r"\b(?:b+i+t+c+h+(?:es|ing)?|b\*+tch|b!tch)\b",
+    r"\b(?:c+u+n+t+(?:s)?|c\*+nt)\b",
+    r"\b(?:a+s+s+h+o+l+e+(?:s)?|a\*\*hole|a\$\$hole|arsehole)\b",
+    r"\b(?:bastard|dick|cock|pussy|whore|slut)\b",
+    r"\b(?:chutiya|bhenchod|madarchod|gaand|bhosad[a-z]*|harami)\b"
+]
+
+
+def normalize_text(text: str) -> str:
+    """
+    General text normalization applied before the neural model and rules engine:
+    1. Zero-width characters & invisible unicode formatting removal.
+    2. Mixed spacing collapse (e.g. 'k i l l' -> 'kill', 'd i e' -> 'die').
+    3. Asterisk/symbol obscenity de-masking (e.g. 'f*ck' -> 'fuck', 'b*tch' -> 'bitch').
+    4. Leetspeak & symbol substitutions (k!ll/k1ll -> kill, fr33 -> free, c@rd -> card, a$$hole -> asshole).
+    5. Consecutive repeated characters collapse (3+ -> 1, e.g. 'fuuuuck' -> 'fuck', 'sooooo' -> 'so').
+    """
+    if not text or not isinstance(text, str):
+        return ""
+
+    # 1. Zero-width characters & invisible unicode formatting
+    norm = re.sub(r'[\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E\u00AD\u2060]', '', text)
+
+    # 2. Mixed spacing: collapse sequences of single letters separated by spaces (e.g. 'k i l l', 'd i e')
+    def collapse_spaced(m):
+        return re.sub(r'\s+', '', m.group(0))
+    norm = re.sub(r'(?:\b[a-zA-Z]\s+){2,}[a-zA-Z]\b', collapse_spaced, norm)
+
+    # 3. Asterisk obscenity masking (f*ck -> fuck, b*tch -> bitch, sh*t -> shit, c*nt -> cunt, d*ck -> dick)
+    norm = re.sub(r'\b([fF])\*+([cC][kK])\b', r'\g<1>u\g<2>', norm)
+    norm = re.sub(r'\b([bB])\*+([tT][cC][hH])\b', r'\g<1>i\g<2>', norm)
+    norm = re.sub(r'\b([sS][hH])\*+([tT])\b', r'\g<1>i\g<2>', norm)
+    norm = re.sub(r'\b([cC])\*+([nN][tT])\b', r'\g<1>u\g<2>', norm)
+    norm = re.sub(r'\b([dD])\*+([cC][kK])\b', r'\g<1>i\g<2>', norm)
+    norm = re.sub(r'(?<=[a-zA-Z])\*(?=[a-zA-Z])', 'i', norm)
+
+    # 4. Leetspeak & symbol substitutions
+    # ! or 1 inside word -> i
+    norm = re.sub(r'(?<=[a-zA-Z])[!1]+(?=[a-zA-Z]|\b)', lambda m: 'i' * len(m.group(0)), norm)
+    norm = re.sub(r'\b[!1]+(?=[a-zA-Z]{2,})', lambda m: 'i' * len(m.group(0)), norm)
+    # 3 inside word -> e (e.g. fr33 -> free, h3ll -> hell)
+    norm = re.sub(r'(?<=[a-zA-Z])3+', lambda m: 'e' * len(m.group(0)), norm)
+    norm = re.sub(r'\b3+(?=[a-zA-Z]{2,})', lambda m: 'e' * len(m.group(0)), norm)
+    # 0 -> o
+    norm = re.sub(r'(?<=[a-zA-Z])0+(?=[a-zA-Z]|\b)', lambda m: 'o' * len(m.group(0)), norm)
+    # @ or 4 -> a
+    norm = re.sub(r'(?<=[a-zA-Z])[@4]+(?=[a-zA-Z]|\b)', lambda m: 'a' * len(m.group(0)), norm)
+    norm = re.sub(r'\b[@4]+(?=[a-zA-Z]{2,})', lambda m: 'a' * len(m.group(0)), norm)
+    # $ or 5 -> s
+    norm = re.sub(r'(?<=[a-zA-Z])[$5]+(?=[a-zA-Z]|\b)', lambda m: 's' * len(m.group(0)), norm)
+    norm = re.sub(r'(?<=[a-zA-Z])[$5]+\b', lambda m: 's' * len(m.group(0)), norm)
+
+    # 5. Repeated characters collapse (3+ -> 1, e.g. 'fuuuuck' -> 'fuck', 'kiiiill' -> 'kill', 'faaaake' -> 'fake')
+    norm = re.sub(r'([a-zA-Z])\1{2,}', r'\1', norm)
+
+    return norm
+
+# Backward compatibility alias
+deobfuscate_text = normalize_text
+
+
+class ModelService:
+    _instance: Optional["ModelService"] = None
+
+    def __init__(self):
+        self.model = None
+        self.tokenizer = None
+        self.thresholds: Dict[str, float] = dict(DEFAULT_THRESHOLDS)
+        self.severity_caps: Dict[str, float] = dict(DEFAULT_SEVERITY_CAPS)
+        self.device = None
+        self.is_loaded = False
+        self.cache: "OrderedDict[str, Dict[str, Any]]" = OrderedDict()
+        self.max_cache_size = 10000
+
+        self._initialize()
+
+    @classmethod
+    def get_instance(cls) -> "ModelService":
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def _initialize(self):
+        """Loads model and tokenizer once at startup from backend/models/shieldai."""
+        model_dir = os.environ.get("SHIELDAI_MODEL_DIR")
+        if not model_dir:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            model_dir = os.path.join(base_dir, "models", "shieldai")
+
+        logger.info(f"Checking for ShieldAI DistilBERT model in: {model_dir}")
+
+        if not os.path.isdir(model_dir):
+            logger.warning(
+                f"Model directory '{model_dir}' not found. "
+                "Running in rules-only fallback mode. App continues normally."
+            )
+            return
+
+        try:
+            import torch
+            from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+            # Device selection: strictly CPU as specified
+            self.device = torch.device("cpu")
+
+            # Load thresholds if present
+            thresh_path = os.path.join(model_dir, "thresholds.json")
+            if os.path.exists(thresh_path):
+                try:
+                    with open(thresh_path, "r", encoding="utf-8") as f:
+                        loaded_thresh = json.load(f)
+                    self.thresholds.update(loaded_thresh)
+                    logger.info(f"Loaded calibrated thresholds: {self.thresholds}")
+                except Exception as e:
+                    logger.warning(f"Error reading thresholds.json ({e}). Using calibrated defaults.")
+
+            # Load tokenizer and model offline
+            self.tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
+            self.model = AutoModelForSequenceClassification.from_pretrained(model_dir, local_files_only=True)
+            self.model.to(self.device)
+            self.model.eval()
+
+            # Verify label order against config.json id2label
+            id2label = getattr(self.model.config, "id2label", {})
+            mismatch = False
+            for idx, expected_name in enumerate(LABEL_ORDER):
+                actual_name = id2label.get(str(idx), id2label.get(idx))
+                if actual_name != expected_name:
+                    mismatch = True
+                    break
+
+            if mismatch:
+                logger.warning(
+                    f"Model config id2label {id2label} does not explicitly match standard names. "
+                    f"Adopting calibrated ShieldAI taxonomy order (0..5): {LABEL_ORDER}"
+                )
+            else:
+                logger.info(f"Label order verified: {LABEL_ORDER}")
+
+            self.is_loaded = True
+            logger.info("ShieldAI DistilBERT Multi-Label Model successfully loaded.")
+
+        except Exception as e:
+            logger.warning(
+                f"ShieldAI DistilBERT model failed to load from '{model_dir}': {e}. "
+                "Continuing in rules-only fallback mode. The app remains fully operational."
+            )
+            self.model = None
+            self.tokenizer = None
+            self.is_loaded = False
+
+    # ── Probability to Relative Score Conversion ───────────────────────────────
+
+    def probability_to_relative_score(self, prob: float, threshold: float) -> float:
+        """
+        Converts probability into a 0-100 score relative to calibrated threshold:
+        - At threshold -> 50.0
+        - At 1.0 -> 100.0
+        - At 0.0 -> 0.0
+        """
+        prob = max(0.0, min(1.0, float(prob)))
+        threshold = max(0.01, min(0.99, float(threshold)))
+
+        if prob <= threshold:
+            score = (prob / threshold) * 50.0
+        else:
+            score = 50.0 + ((prob - threshold) / (1.0 - threshold)) * 50.0
+
+        return max(0.0, min(100.0, round(score, 1)))
+
+    # ── Neural Inference ───────────────────────────────────────────────────────
+
+    def _predict_model_batch(self, texts: List[str]) -> List[Dict[str, Any]]:
+        """Batched neural forward pass."""
+        if not self.is_loaded or self.model is None or self.tokenizer is None:
+            return [{"probs": {}, "scores": {}, "active": False} for _ in texts]
+
+        import torch
+
+        results = []
+        try:
+            inputs = self.tokenizer(
+                texts,
+                truncation=True,
+                padding=True,
+                max_length=256,
+                return_tensors="pt"
+            )
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+            with torch.no_grad():
+                logits = self.model(**inputs).logits
+                probs_tensor = torch.sigmoid(logits).cpu().numpy()
+
+            for i in range(len(texts)):
+                row_probs = probs_tensor[i]
+                probs_map = {}
+                scores_map = {}
+
+                for idx, label_name in enumerate(LABEL_ORDER):
+                    p = float(row_probs[idx])
+                    thresh = self.thresholds.get(label_name, 0.5)
+                    rel_score = self.probability_to_relative_score(p, thresh)
+                    probs_map[label_name] = round(p, 4)
+                    scores_map[label_name] = rel_score
+
+                results.append({
+                    "probs": probs_map,
+                    "scores": scores_map,
+                    "active": True
+                })
+
+        except Exception as e:
+            logger.error(f"Neural inference error: {e}")
+            results = [{"probs": {}, "scores": {}, "active": False} for _ in texts]
+
+        return results
+
+    # ── Link & Threat Rules Layer ──────────────────────────────────────────────
+
+    def _extract_urls(self, text: str) -> List[str]:
+        url_pattern = re.compile(
+            r'https?://(?:[a-zA-Z0-9$-_@.&+!*(),]|(?:%[0-9a-fA-F]{2}))+|'
+            r'(?:www\.[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)|'
+            r'\b[a-zA-Z0-9-]+\.(?:xyz|top|click|buzz|gq|tk|ml|cf|ga|icu|cam|cc|link|work)(?:/[^\s]*)?',
+            re.IGNORECASE
+        )
+        return list(set(url_pattern.findall(text)))
+
+    def _analyze_links(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Analyzes links and returns specific signals.
+        AGGREGATION RULE: Every link signal MUST be tagged with its true destination category:
+        - URL shorteners, direct IP, punycode, brand impersonation -> category: 'phishing'
+        - Risky TLDs (.xyz, .top, etc.) -> category: 'scam'
+        Each signal contributes ONLY to its filed category.
+        """
+        urls = self._extract_urls(text)
+        signals: List[Dict[str, Any]] = []
+
+        for url in urls:
+            full_url = url if url.startswith("http") else "http://" + url
+            parsed = urlparse(full_url)
+            netloc = (parsed.netloc or parsed.path).lower()
+            if ":" in netloc:
+                netloc = netloc.split(":")[0]
+
+            # 1. URL Shorteners -> Phishing
+            for shortener in URL_SHORTENERS:
+                if netloc == shortener or netloc.endswith("." + shortener):
+                    signals.append({
+                        "layer": "rules",
+                        "category": "phishing",
+                        "signal": f"Suspicious URL shortener detected ({shortener}) hiding actual destination",
+                        "score": 82.0
+                    })
+                    break
+
+            # 2. Raw IP address links -> Phishing
+            if re.match(r'^(?:\d{1,3}\.){3}\d{1,3}$', netloc):
+                signals.append({
+                    "layer": "rules",
+                    "category": "phishing",
+                    "signal": f"Direct IP address link detected ({netloc}) commonly used in phishing/malware",
+                    "score": 90.0
+                })
+
+            # 3. Risky TLDs -> Scam (Filed strictly as scam, contributing ONLY to scam)
+            for tld in RISKY_TLDS:
+                if netloc.endswith(tld):
+                    signals.append({
+                        "layer": "rules",
+                        "category": "scam",
+                        "signal": f"High-risk domain ending ({tld}) frequently used in fraudulent campaigns",
+                        "score": 75.0
+                    })
+                    break
+
+            # 4. Punycode / Look-alike domains -> Phishing
+            if "xn--" in netloc:
+                signals.append({
+                    "layer": "rules",
+                    "category": "phishing",
+                    "signal": f"Punycode homograph domain detected ({netloc})",
+                    "score": 88.0
+                })
+
+            # 5. Look-alike brand impersonation in domain -> Phishing
+            for brand in TARGET_BRANDS:
+                brand_base = brand.split(".")[0]
+                if brand_base in netloc and netloc != brand and not netloc.endswith("." + brand):
+                    signals.append({
+                        "layer": "rules",
+                        "category": "phishing",
+                        "signal": f"Look-alike brand impersonation in domain: '{netloc}' mimicking '{brand}'",
+                        "score": 88.0
+                    })
+
+        return signals
+
+    def evaluate_rules(self, text: str) -> Dict[str, Any]:
+        """
+        Evaluates rules for phishing, scams, sextortion, threats, insults, and links.
+        
+        AGGREGATION RULE:
+        1. Every signal emitted MUST have a designated 'category' and a 'score'.
+        2. category_scores[cat] is updated ONLY by signals filed under that exact category.
+        3. No cross-category leakage: a signal labeled 'scam' will NEVER modify 'phishing'.
+        """
+        text_lower = text.lower()
+        text_deobf = deobfuscate_text(text_lower)
+        signals: List[Dict[str, Any]] = []
+
+        category_scores = {
+            "threat": 0.0,
+            "sextortion": 0.0,
+            "phishing": 0.0,
+            "scam": 0.0,
+            "harassment": 0.0,
+            "abusive_language": 0.0
+        }
+
+        # 1. Link checks (strictly filed under their respective signal categories)
+        link_signals = self._analyze_links(text)
+        for s in link_signals:
+            signals.append(s)
+            cat = s["category"]
+            category_scores[cat] = max(category_scores[cat], s["score"])
+
+        has_link = len(link_signals) > 0
+        has_phish_link = any(s["category"] == "phishing" for s in link_signals)
+
+        # 2. Phishing & Urgency / OTP / KYC
+        urgency_hit = any(re.search(pat, text_deobf) for pat in SE_URGENCY_PATTERNS)
+        otp_request_hit = any(re.search(pat, text_deobf) for pat in SE_OTP_KYC_REQUEST_PATTERNS)
+        genuine_otp_hit = any(re.search(pat, text_lower) for pat in GENUINE_OTP_INDICATORS)
+        educational_hit = any(re.search(pat, text_lower) for pat in EDUCATIONAL_SCAM_PATTERNS)
+
+        if educational_hit and not has_link:
+            # Educational text discussing scams or warnings is safe/informational
+            category_scores["phishing"] = min(category_scores["phishing"], 20.0)
+            category_scores["scam"] = min(category_scores["scam"], 20.0)
+        elif genuine_otp_hit and not has_link and not urgency_hit:
+            # Legitimate automated OTP dispatch (telling user NOT to share)
+            pass
+        elif otp_request_hit and (urgency_hit or has_phish_link):
+            score = 92.0
+            category_scores["phishing"] = max(category_scores["phishing"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "phishing",
+                "signal": "High-urgency credential, OTP, or KYC verification trap detected",
+                "score": score
+            })
+        elif otp_request_hit:
+            score = 80.0
+            category_scores["phishing"] = max(category_scores["phishing"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "phishing",
+                "signal": "Unsolicited request demanding sensitive OTP or KYC identity credentials",
+                "score": score
+            })
+        elif urgency_hit and has_phish_link:
+            score = 85.0
+            category_scores["phishing"] = max(category_scores["phishing"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "phishing",
+                "signal": "Urgent account suspension warning paired with link",
+                "score": score
+            })
+
+        # 3. Scams (Lottery, Gift Card, Crypto, Courier/Digital Arrest)
+        lottery_hit = any(re.search(pat, text_deobf) for pat in SCAM_LOTTERY_PRIZE_PATTERNS)
+        payment_scam_hit = any(re.search(pat, text_deobf) for pat in SCAM_PAYMENT_PATTERNS)
+        digital_arrest_hit = any(re.search(pat, text_deobf) for pat in SCAM_COURIER_DIGITAL_ARREST_PATTERNS)
+
+        if not educational_hit:
+            if lottery_hit and payment_scam_hit:
+                score = 95.0
+                category_scores["scam"] = max(category_scores["scam"], score)
+                signals.append({
+                    "layer": "rules",
+                    "category": "scam",
+                    "signal": "Lottery/prize award requiring upfront fee via gift card or cryptocurrency",
+                    "score": score
+                })
+            elif lottery_hit:
+                score = 82.0
+                category_scores["scam"] = max(category_scores["scam"], score)
+                signals.append({
+                    "layer": "rules",
+                    "category": "scam",
+                    "signal": "Unsolicited prize or lottery winning notification",
+                    "score": score
+                })
+            elif digital_arrest_hit:
+                score = 94.0
+                category_scores["scam"] = max(category_scores["scam"], score)
+                signals.append({
+                    "layer": "rules",
+                    "category": "scam",
+                    "signal": "Courier/Customs or 'Digital Arrest' extortion scheme impersonating law enforcement",
+                    "score": score
+                })
+
+        # 4. Sextortion / Photo Blackmail
+        sextortion_hit = any(re.search(pat, text_deobf) for pat in SEXTORTION_PATTERNS)
+        if sextortion_hit:
+            score = 96.0
+            category_scores["sextortion"] = max(category_scores["sextortion"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "sextortion",
+                "signal": "Sextortion blackmail detected: threat to leak private photos/webcam video",
+                "score": score
+            })
+
+        # 5. Direct Violence Threats
+        threat_hit = any(re.search(pat, text_deobf) for pat in THREAT_PATTERNS)
+        is_gaming_banter = any(re.search(pat, text_lower) for pat in BENIGN_VIOLENT_IDIOM_PATTERNS)
+
+        if threat_hit and not is_gaming_banter:
+            score = 98.0
+            category_scores["threat"] = max(category_scores["threat"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "threat",
+                "signal": "Explicit physical harm or death threat detected",
+                "score": score
+            })
+
+        # 6. Abusive language / Harassment keywords
+        insult_hit = any(re.search(pat, text_deobf) for pat in HARASSMENT_INSULT_PATTERNS)
+        if insult_hit:
+            score = 65.0
+            category_scores["harassment"] = max(category_scores["harassment"], score)
+            category_scores["abusive_language"] = max(category_scores["abusive_language"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "abusive_language",
+                "signal": "Hostile, degrading, or abusive personal insult detected",
+                "score": score
+            })
+
+        return {
+            "category_scores": category_scores,
+            "signals": signals
+        }
+
+    # ── Explanation & Advice Generators ────────────────────────────────────────
+
+    def _generate_explanation(self, category_scores: Dict[str, float], signals: List[Dict[str, Any]]) -> str:
+        """Generates clear, human-readable explanation of findings."""
+        sorted_cats = sorted(category_scores.items(), key=lambda x: x[1], reverse=True)
+        top_cat, top_score = sorted_cats[0] if sorted_cats else ("none", 0.0)
+
+        if top_score < 25.0 and not signals:
+            return "No malicious indicators detected. The analyzed content appears safe and harmless."
+
+        reasons = [s["signal"] for s in signals]
+        unique_reasons = list(dict.fromkeys(reasons))
+        top_reasons = unique_reasons[:3]
+
+        if top_cat == "threat" and top_score >= 50.0:
+            prefix = "Critical danger: Explicit threats of physical violence were detected."
+        elif top_cat == "sextortion" and top_score >= 50.0:
+            prefix = "Critical alert: Blackmail or sextortion attempt detected threatening private image leakage."
+        elif top_cat == "scam" and top_score >= 50.0:
+            prefix = "Fraudulent scam: Fraudulent prize, lottery, courier, or cryptocurrency/gift-card payment pattern detected."
+        elif top_cat == "phishing" and top_score >= 50.0:
+            prefix = "High risk phishing: Deceptive urgency or fake verification detected trying to steal credentials or financial data."
+        elif top_cat == "harassment" and top_score >= 50.0:
+            prefix = "Harassment detected: Content contains targeted attacks, hate speech, or severe cyberbullying."
+        elif top_cat == "abusive_language" and top_score >= 50.0:
+            prefix = "Offensive content: Profane or abusive language was identified."
+        else:
+            prefix = "Potentially suspicious content detected."
+
+        detail_text = " ".join(f"• {r}" for r in top_reasons)
+        return f"{prefix} {detail_text}".strip()
+
+    def _generate_advice(self, category_scores: Dict[str, float]) -> List[str]:
+        """Provides actionable safety advice tailored to the incident, including national helplines."""
+        advice = []
+        sorted_cats = sorted(category_scores.items(), key=lambda x: x[1], reverse=True)
+        top_cat, top_score = sorted_cats[0] if sorted_cats else ("none", 0.0)
+
+        if top_cat == "threat" and top_score >= 25.0:
+            advice.append("IMMEDIATE ACTION: Dial Emergency Helpline 112 if you are in immediate physical danger.")
+            advice.append("Preserve all unedited screenshots, headers, timestamps, and message links as legal evidence.")
+            advice.append("Do not engage, negotiate, or retaliate against the sender.")
+            advice.append("File a complaint immediately with your local cyber police station or at https://cybercrime.gov.in.")
+
+        elif top_cat == "sextortion" and top_score >= 25.0:
+            advice.append("DO NOT PAY OR SEND MONEY: Paying extortion demands will not stop the attacker and leads to repeated demands.")
+            advice.append("Dial National Cyber Crime Helpline 1930 immediately to report the extortion incident.")
+            advice.append("Report the incident and request image removal assistance at https://cybercrime.gov.in and StopNCII.org.")
+            advice.append("Immediately block the sender on all communication channels and restrict your social media privacy settings.")
+            advice.append("Take full screenshots showing the sender's account handle/ID, message text, and timestamp before blocking.")
+
+        elif top_cat == "scam" and top_score >= 25.0:
+            advice.append("Legitimate lotteries or official agencies never ask for payment via gift cards or crypto.")
+            advice.append("If contacted by callers claiming to be police or customs ('digital arrest'), hang up immediately. Law enforcement does not conduct arrests over video calls.")
+            advice.append("Report financial and cyber frauds at https://cybercrime.gov.in or call 1930.")
+
+        elif top_cat == "phishing" and top_score >= 25.0:
+            advice.append("DO NOT click any link, scan QR codes, or open attachments received in this message.")
+            advice.append("NEVER share OTPs, PINs, passwords, Aadhaar, PAN, or bank credentials over message or phone.")
+            advice.append("Report financial fraud attempts immediately to National Cyber Crime Helpline 1930.")
+            advice.append("Verify directly by visiting the official banking website or calling the toll-free number printed on the back of your card.")
+
+        elif top_cat == "harassment" and top_score >= 25.0:
+            advice.append("Block the abusive profile and report the message to the platform's safety team.")
+            advice.append("Document all harassment by capturing full screen evidence with timestamps.")
+            advice.append("For persistent harassment or cyberbullying, lodge a formal report at https://cybercrime.gov.in.")
+
+        elif top_cat == "abusive_language" and top_score >= 25.0:
+            advice.append("Block the sender and use platform filtering tools to hide abusive commentary.")
+            advice.append("If abuse becomes targeted or sustained, preserve copies for reporting.")
+
+        else:
+            advice.append("The message appears safe, but always verify unfamiliar senders before sharing personal information.")
+
+        return advice
+
+    # ── Core Analysis Pipeline ─────────────────────────────────────────────────
+
+    def analyze(self, text: str) -> Dict[str, Any]:
+        """
+        Main analysis method for single text.
+        Returns full schema: score (0-100), level, category_scores, signals,
+        which_layer, explanation, and advice.
+        """
+        clean_text = (text or "").strip()
+        # Empty or single-character trivial strings
+        if not clean_text or len(clean_text) <= 2:
+            return {
+                "score": 0.0,
+                "level": "low",
+                "category_scores": {
+                    "harassment": 0.0,
+                    "threat": 0.0,
+                    "abusive_language": 0.0,
+                    "phishing": 0.0,
+                    "scam": 0.0,
+                    "sextortion": 0.0
+                },
+                "signals": [],
+                "which_layer": "none",
+                "explanation": "No malicious indicators detected. The analyzed content appears safe and harmless." if clean_text else "No text provided.",
+                "advice": ["The message appears safe, but always verify unfamiliar senders before sharing personal information."] if clean_text else ["Enter text to analyze."]
+            }
+
+        # Check in-memory cache
+        if clean_text in self.cache:
+            self.cache.move_to_end(clean_text)
+            return self.cache[clean_text]
+
+        # Normalize text before model and rules (leetspeak, zero-width chars, mixed spacing, symbols)
+        norm_text = normalize_text(clean_text)
+        text_lower = norm_text.lower()
+        is_gaming_banter = any(re.search(pat, text_lower) for pat in BENIGN_VIOLENT_IDIOM_PATTERNS)
+
+        # 1. Neural Model Inference (run on normalized text)
+        model_res = self._predict_model_batch([norm_text])[0]
+        model_scores = model_res.get("scores", {})
+        model_probs = model_res.get("probs", {})
+        model_active = model_res.get("active", False)
+
+        model_signals: List[Dict[str, Any]] = []
+        model_threat = 0.0
+        model_harassment = 0.0
+        model_abusive = 0.0
+
+        if model_active:
+            # Threat
+            threat_p = model_probs.get("Threat", 0.0)
+            threat_thresh = self.thresholds.get("Threat", 0.9867)
+            threat_rel = model_scores.get("Threat", 0.0)
+            
+            # Neutralize violent words when clearly used in friendly gaming banter
+            if is_gaming_banter:
+                threat_rel = min(threat_rel * 0.15, 20.0)
+                threat_p = min(threat_p, 0.20)
+
+            model_threat = threat_rel
+            if threat_p >= threat_thresh:
+                model_signals.append({
+                    "layer": "model",
+                    "category": "threat",
+                    "signal": f"Model flagged high-confidence threat ({threat_p*100:.1f}% vs threshold {threat_thresh*100:.1f}%)",
+                    "score": threat_rel
+                })
+
+            # Harassment (Hate Speech + Cyberbullying)
+            hate_p = model_probs.get("Hate Speech", 0.0)
+            hate_thresh = self.thresholds.get("Hate Speech", 0.6567)
+            cb_p = model_probs.get("Cyberbullying / Harassment", 0.0)
+            cb_thresh = self.thresholds.get("Cyberbullying / Harassment", 0.8897)
+
+            hate_rel = model_scores.get("Hate Speech", 0.0)
+            cb_rel = model_scores.get("Cyberbullying / Harassment", 0.0)
+            model_harassment = max(hate_rel, cb_rel)
+
+            if hate_p >= hate_thresh:
+                model_signals.append({
+                    "layer": "model",
+                    "category": "harassment",
+                    "signal": f"Model flagged hate speech ({hate_p*100:.1f}% vs threshold {hate_thresh*100:.1f}%)",
+                    "score": hate_rel
+                })
+            if cb_p >= cb_thresh:
+                model_signals.append({
+                    "layer": "model",
+                    "category": "harassment",
+                    "signal": f"Model flagged cyberbullying/harassment ({cb_p*100:.1f}% vs threshold {cb_thresh*100:.1f}%)",
+                    "score": cb_rel
+                })
+
+            # Abusive language (Toxicity + Profanity)
+            tox_p = model_probs.get("Toxicity / Offensive Language", 0.0)
+            tox_thresh = self.thresholds.get("Toxicity / Offensive Language", 0.6840)
+            prof_p = model_probs.get("Profanity", 0.0)
+            prof_thresh = self.thresholds.get("Profanity", 0.9842)
+
+            tox_rel = model_scores.get("Toxicity / Offensive Language", 0.0)
+            prof_rel = model_scores.get("Profanity", 0.0)
+
+            # Check if text contains explicit profane words from lexicon
+            has_profane_word = any(re.search(pat, text_lower) for pat in PROFANITY_WORD_PATTERNS)
+            if not has_profane_word:
+                # Down-weight Profanity label heavily when no profane word is present in the text
+                prof_rel = min(prof_rel * 0.2, 20.0)
+
+            # Toxicity & Profanity lower weight
+            model_abusive = max(tox_rel, prof_rel) * 0.7
+
+            if tox_p >= tox_thresh:
+                model_signals.append({
+                    "layer": "model",
+                    "category": "abusive_language",
+                    "signal": f"Model flagged toxic language ({tox_p*100:.1f}% vs threshold {tox_thresh*100:.1f}%)",
+                    "score": tox_rel
+                })
+
+            # Avoid claiming profanity unless a word list also confirms it
+            if prof_p >= prof_thresh and has_profane_word:
+                model_signals.append({
+                    "layer": "model",
+                    "category": "abusive_language",
+                    "signal": f"Model flagged profanity ({prof_p*100:.1f}% vs threshold {prof_thresh*100:.1f}%)",
+                    "score": prof_rel
+                })
+
+        # 2. Rules Inference (evaluated on normalized text)
+        rules_res = self.evaluate_rules(norm_text)
+        rules_cats = rules_res["category_scores"]
+        rules_signals = rules_res["signals"]
+
+        # 3. Hybrid Blending & Scoring
+        # Threat: use the HIGHER of model and rules as specified
+        final_threat = max(model_threat, rules_cats["threat"])
+
+        # Sextortion: model does not cover sextortion; rules provide base, boosted if model flags threat/harassment
+        final_sextortion = rules_cats["sextortion"]
+        if final_sextortion > 0 and (model_threat > 50 or model_harassment > 50):
+            final_sextortion = min(100.0, final_sextortion + 3.0)
+
+        # Phishing & Scams: model does not cover; driven strictly by rules + links
+        final_phishing = rules_cats["phishing"]
+        final_scam = rules_cats["scam"]
+
+        # Harassment: weighted blend (higher weight on model, rules assist)
+        if model_active:
+            final_harassment = max(
+                model_harassment,
+                0.85 * model_harassment + 0.15 * rules_cats["harassment"]
+            )
+            final_abusive = max(
+                model_abusive,
+                0.80 * model_abusive + 0.20 * rules_cats["abusive_language"]
+            )
+        else:
+            final_harassment = rules_cats["harassment"]
+            final_abusive = rules_cats["abusive_language"]
+
+        # Clean sanity check
+        clean_p = model_probs.get("Clean", 0.0) if model_active else 0.0
+        clean_thresh = self.thresholds.get("Clean", 0.5179)
+        all_rules_zero = all(v == 0.0 for v in rules_cats.values())
+
+        if clean_p >= clean_thresh and all_rules_zero and model_threat < 35 and model_harassment < 35:
+            final_threat = min(final_threat, 10.0)
+            final_harassment = min(final_harassment, 10.0)
+            final_abusive = min(final_abusive, 10.0)
+
+        final_category_scores = {
+            "threat": round(final_threat, 1),
+            "sextortion": round(final_sextortion, 1),
+            "phishing": round(final_phishing, 1),
+            "scam": round(final_scam, 1),
+            "harassment": round(final_harassment, 1),
+            "abusive_language": round(final_abusive, 1)
+        }
+
+        # Overall risk score calculation:
+        primary_risks = [
+            final_threat,
+            final_sextortion,
+            final_phishing,
+            final_scam,
+            final_harassment,
+            final_abusive * 0.8
+        ]
+        max_score = max(primary_risks)
+
+        # Multi-category reinforcement bonus (max 5%)
+        active_high_cats = sum(1 for s in primary_risks if s >= 50.0)
+        multi_boost = min(5.0, (active_high_cats - 1) * 2.5) if active_high_cats > 1 else 0.0
+
+        overall_score = round(min(100.0, max_score + multi_boost), 1)
+
+        combined_signals = model_signals + rules_signals
+
+        # ── Severity Caps & Critical Level Eligibility ────────────────────────
+        # CRITICAL level is reserved ONLY for:
+        # 1. Threats (physical violence, death threats)
+        # 2. Sextortion (webcam/intimate photo blackmail)
+        # 3. Hate Speech (identity attack, racism, religious hatred)
+        # 4. Scams or Phishing with strong verified signals (malicious links, OTP/credential traps)
+        # Plain insults, cyberbullying, or abusive language are capped at plain_abuse_cap (default 80.0, High level).
+        is_threat = final_threat >= 75.0
+        is_sextortion = final_sextortion >= 75.0
+        is_hate_speech = (
+            (model_active and model_probs.get("Hate Speech", 0.0) >= self.thresholds.get("Hate Speech", 0.6567))
+            or any(s["category"] == "harassment" and "hate speech" in s["signal"].lower() for s in combined_signals)
+        )
+        has_strong_phishing = any(
+            s["category"] == "phishing" and s.get("score", 0) >= 80.0
+            for s in rules_signals
+        )
+        has_strong_scam = any(
+            s["category"] == "scam" and s.get("score", 0) >= 80.0
+            for s in rules_signals
+        )
+        is_strong_fraud = (final_phishing >= 75.0 and has_strong_phishing) or (final_scam >= 75.0 and has_strong_scam)
+
+        is_critical_eligible = is_threat or is_sextortion or is_hate_speech or is_strong_fraud
+
+        if not is_critical_eligible:
+            abuse_cap = self.severity_caps.get("plain_abuse_cap", 80.0)
+            overall_score = min(overall_score, abuse_cap)
+            if overall_score >= 50.0:
+                level = "high"
+            elif overall_score >= 25.0:
+                level = "medium"
+            else:
+                level = "low"
+        else:
+            if overall_score >= 75.0:
+                level = "critical"
+            elif overall_score >= 50.0:
+                level = "high"
+            elif overall_score >= 25.0:
+                level = "medium"
+            else:
+                level = "low"
+
+        # Determine which layer produced output
+        has_model_signals = len(model_signals) > 0
+        has_rules_signals = len(rules_signals) > 0
+
+        if has_model_signals and has_rules_signals:
+            which_layer = "hybrid"
+        elif has_model_signals:
+            which_layer = "model"
+        elif has_rules_signals:
+            which_layer = "rules"
+        else:
+            which_layer = "model" if model_active else "rules"
+
+        explanation = self._generate_explanation(final_category_scores, combined_signals)
+        advice = self._generate_advice(final_category_scores)
+
+        result = {
+            "score": overall_score,
+            "level": level,
+            "category_scores": final_category_scores,
+            "signals": combined_signals,
+            "which_layer": which_layer,
+            "explanation": explanation,
+            "advice": advice
+        }
+
+        # Save to LRU cache
+        if len(self.cache) >= self.max_cache_size:
+            self.cache.popitem(last=False)
+        self.cache[clean_text] = result
+
+        return result
+
+    def analyze_batch(self, texts: List[str]) -> List[Dict[str, Any]]:
+        """Batch analysis for the Chrome extension endpoint."""
+        results = []
+        uncached_indices = []
+        uncached_texts = []
+
+        # Check cache first
+        for i, text in enumerate(texts):
+            clean_t = (text or "").strip()
+            if clean_t in self.cache:
+                self.cache.move_to_end(clean_t)
+                results.append(self.cache[clean_t])
+            else:
+                results.append(None)
+                uncached_indices.append(i)
+                uncached_texts.append(clean_t)
+
+        if uncached_texts:
+            model_batch_res = self._predict_model_batch(uncached_texts)
+
+            for idx, raw_t, m_res in zip(uncached_indices, uncached_texts, model_batch_res):
+                if not raw_t:
+                    empty_res = {
+                        "score": 0.0,
+                        "level": "low",
+                        "category_scores": {k: 0.0 for k in ["harassment", "threat", "abusive_language", "phishing", "scam", "sextortion"]},
+                        "signals": [],
+                        "which_layer": "none",
+                        "explanation": "No text provided.",
+                        "advice": ["Enter text to analyze."]
+                    }
+                    results[idx] = empty_res
+                    continue
+
+                item_res = self.analyze(raw_t)
+                results[idx] = item_res
+
+        return results
+
+
+# Module-level convenience singleton
+model_service = ModelService.get_instance()

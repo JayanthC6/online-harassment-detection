@@ -1,0 +1,225 @@
+[
+  {
+    "test_case": "1_bank_sms_shortened_link",
+    "description": "Fake Bank SMS with Shortened Link",
+    "input_text": "Dear SBI customer, your account 5821 is suspended due to pending KYC update. Click immediately within 24 hours to verify: https://bit.ly/sbi-kyc-update",
+    "result": {
+      "score": 85.0,
+      "level": "critical",
+      "category_scores": {
+        "threat": 0.0,
+        "sextortion": 0.0,
+        "phishing": 85.0,
+        "scam": 0.0,
+        "harassment": 0.0,
+        "abusive_language": 0.0
+      },
+      "signals": [
+        {
+          "layer": "rules",
+          "category": "phishing",
+          "signal": "Suspicious URL shortener detected (bit.ly) hiding actual destination",
+          "score": 82.0
+        },
+        {
+          "layer": "rules",
+          "category": "phishing",
+          "signal": "Urgent account suspension warning paired with link",
+          "score": 85.0
+        }
+      ],
+      "which_layer": "rules",
+      "explanation": "High risk phishing: Deceptive urgency or fake verification detected trying to steal credentials or financial data. \u2022 Suspicious URL shortener detected (bit.ly) hiding actual destination \u2022 Urgent account suspension warning paired with link",
+      "advice": [
+        "DO NOT click any link, scan QR codes, or open attachments received in this message.",
+        "NEVER share OTPs, PINs, passwords, Aadhaar, PAN, or bank credentials over message or phone.",
+        "Report financial fraud attempts immediately to National Cyber Crime Helpline 1930.",
+        "Verify directly by visiting the official banking website or calling the toll-free number printed on the back of your card."
+      ]
+    }
+  },
+  {
+    "test_case": "2_lottery_scam",
+    "description": "Lottery Scam",
+    "input_text": "CONGRATULATIONS! You have won $1,000,000 in the International Mobile Lucky Draw. To claim your cash prize, pay a $150 processing fee via Steam Gift Card or Bitcoin to prize@lottery-winner.xyz",
+    "result": {
+      "score": 95.0,
+      "level": "critical",
+      "category_scores": {
+        "threat": 0.0,
+        "sextortion": 0.0,
+        "phishing": 0.0,
+        "scam": 95.0,
+        "harassment": 0.0,
+        "abusive_language": 0.0
+      },
+      "signals": [
+        {
+          "layer": "rules",
+          "category": "scam",
+          "signal": "High-risk domain ending (.xyz) frequently used in fraudulent campaigns",
+          "score": 75.0
+        },
+        {
+          "layer": "rules",
+          "category": "scam",
+          "signal": "Lottery/prize award requiring upfront fee via gift card or cryptocurrency",
+          "score": 95.0
+        }
+      ],
+      "which_layer": "rules",
+      "explanation": "Fraudulent scam: Fraudulent prize, lottery, courier, or cryptocurrency/gift-card payment pattern detected. \u2022 High-risk domain ending (.xyz) frequently used in fraudulent campaigns \u2022 Lottery/prize award requiring upfront fee via gift card or cryptocurrency",
+      "advice": [
+        "Legitimate lotteries or official agencies never ask for payment via gift cards or crypto.",
+        "If contacted by callers claiming to be police or customs ('digital arrest'), hang up immediately. Law enforcement does not conduct arrests over video calls.",
+        "Report financial and cyber frauds at https://cybercrime.gov.in or call 1930."
+      ]
+    }
+  },
+  {
+    "test_case": "3_direct_threat",
+    "description": "Direct Threat",
+    "input_text": "I know where you live and which gym you go to. I am going to find you tomorrow and kill you with my bare hands.",
+    "result": {
+      "score": 100.0,
+      "level": "critical",
+      "category_scores": {
+        "threat": 99.4,
+        "sextortion": 0.0,
+        "phishing": 0.0,
+        "scam": 0.0,
+        "harassment": 18.9,
+        "abusive_language": 69.1
+      },
+      "signals": [
+        {
+          "layer": "model",
+          "category": "threat",
+          "signal": "Model flagged high-confidence threat (100.0% vs threshold 98.7%)",
+          "score": 99.4
+        },
+        {
+          "layer": "model",
+          "category": "abusive_language",
+          "signal": "Model flagged toxic language (99.2% vs threshold 68.4%)",
+          "score": 98.7
+        },
+        {
+          "layer": "rules",
+          "category": "threat",
+          "signal": "Explicit physical harm or death threat detected",
+          "score": 98.0
+        }
+      ],
+      "which_layer": "hybrid",
+      "explanation": "Critical danger: Explicit threats of physical violence were detected. \u2022 Model flagged high-confidence threat (100.0% vs threshold 98.7%) \u2022 Model flagged toxic language (99.2% vs threshold 68.4%) \u2022 Explicit physical harm or death threat detected",
+      "advice": [
+        "IMMEDIATE ACTION: Dial Emergency Helpline 112 if you are in immediate physical danger.",
+        "Preserve all unedited screenshots, headers, timestamps, and message links as legal evidence.",
+        "Do not engage, negotiate, or retaliate against the sender.",
+        "File a complaint immediately with your local cyber police station or at https://cybercrime.gov.in."
+      ]
+    }
+  },
+  {
+    "test_case": "4_sextortion_message",
+    "description": "Sextortion Message",
+    "input_text": "I recorded an intimate video from your webcam while you were visiting private sites. Pay me 0.5 BTC within 24 hours or I will leak these photos and video to all your friends and family.",
+    "result": {
+      "score": 96.0,
+      "level": "critical",
+      "category_scores": {
+        "threat": 0.0,
+        "sextortion": 96.0,
+        "phishing": 0.0,
+        "scam": 0.0,
+        "harassment": 0.0,
+        "abusive_language": 0.1
+      },
+      "signals": [
+        {
+          "layer": "rules",
+          "category": "sextortion",
+          "signal": "Sextortion blackmail detected: threat to leak private photos/webcam video",
+          "score": 96.0
+        }
+      ],
+      "which_layer": "rules",
+      "explanation": "Critical alert: Blackmail or sextortion attempt detected threatening private image leakage. \u2022 Sextortion blackmail detected: threat to leak private photos/webcam video",
+      "advice": [
+        "DO NOT PAY OR SEND MONEY: Paying extortion demands will not stop the attacker and leads to repeated demands.",
+        "Dial National Cyber Crime Helpline 1930 immediately to report the extortion incident.",
+        "Report the incident and request image removal assistance at https://cybercrime.gov.in and StopNCII.org.",
+        "Immediately block the sender on all communication channels and restrict your social media privacy settings.",
+        "Take full screenshots showing the sender's account handle/ID, message text, and timestamp before blocking."
+      ]
+    }
+  },
+  {
+    "test_case": "5_abusive_insult",
+    "description": "Abusive Insult",
+    "input_text": "You are a completely worthless, stupid idiot and a disgusting piece of trash. Nobody will ever care about you.",
+    "result": {
+      "score": 80.0,
+      "level": "high",
+      "category_scores": {
+        "threat": 0.5,
+        "sextortion": 0.0,
+        "phishing": 0.0,
+        "scam": 0.0,
+        "harassment": 99.5,
+        "abusive_language": 69.7
+      },
+      "signals": [
+        {
+          "layer": "model",
+          "category": "harassment",
+          "signal": "Model flagged cyberbullying/harassment (99.9% vs threshold 89.0%)",
+          "score": 99.5
+        },
+        {
+          "layer": "model",
+          "category": "abusive_language",
+          "signal": "Model flagged toxic language (99.8% vs threshold 68.4%)",
+          "score": 99.6
+        },
+        {
+          "layer": "rules",
+          "category": "abusive_language",
+          "signal": "Hostile, degrading, or abusive personal insult detected",
+          "score": 65.0
+        }
+      ],
+      "which_layer": "hybrid",
+      "explanation": "Harassment detected: Content contains targeted attacks, hate speech, or severe cyberbullying. \u2022 Model flagged cyberbullying/harassment (99.9% vs threshold 89.0%) \u2022 Model flagged toxic language (99.8% vs threshold 68.4%) \u2022 Hostile, degrading, or abusive personal insult detected",
+      "advice": [
+        "Block the abusive profile and report the message to the platform's safety team.",
+        "Document all harassment by capturing full screen evidence with timestamps.",
+        "For persistent harassment or cyberbullying, lodge a formal report at https://cybercrime.gov.in."
+      ]
+    }
+  },
+  {
+    "test_case": "6_harmless_message",
+    "description": "Harmless Message",
+    "input_text": "Hey Sarah, are we still meeting at the library at 4 PM to work on our computer science project?",
+    "result": {
+      "score": 0.0,
+      "level": "low",
+      "category_scores": {
+        "threat": 0.0,
+        "sextortion": 0.0,
+        "phishing": 0.0,
+        "scam": 0.0,
+        "harassment": 0.0,
+        "abusive_language": 0.0
+      },
+      "signals": [],
+      "which_layer": "model",
+      "explanation": "No malicious indicators detected. The analyzed content appears safe and harmless.",
+      "advice": [
+        "The message appears safe, but always verify unfamiliar senders before sharing personal information."
+      ]
+    }
+  }
+]

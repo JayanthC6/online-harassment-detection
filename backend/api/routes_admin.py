@@ -113,6 +113,130 @@ def admin_profiles(token_data):
     return jsonify({"profiles": profiles})
 
 
+# ── Repeat Offenders (Admin | Moderator | Viewer) ───────────────────────────
+
+@admin_bp.route("/admin/offenders", methods=["GET"])
+@token_required
+@require_role("Admin", "Moderator", "Viewer")
+def admin_offenders(token_data):
+    entity_type = request.args.get("entity_type", "all")
+    min_risk = float(request.args.get("min_risk", 0.0))
+    search = request.args.get("search", "")
+    sort_by = request.args.get("sort_by", "hit_count")
+    sort_order = request.args.get("sort_order", "desc")
+    page = int(request.args.get("page", 1))
+    page_size = int(request.args.get("page_size", 50))
+
+    from services.offender_service import OffenderService
+    result = OffenderService.get_offenders(
+        entity_type=entity_type,
+        min_risk=min_risk,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        page_size=page_size
+    )
+    return jsonify(result)
+
+
+@admin_bp.route("/admin/offenders/<path:entity_value>", methods=["GET"])
+@token_required
+@require_role("Admin", "Moderator", "Viewer")
+def admin_offender_detail(entity_value, token_data):
+    from services.offender_service import OffenderService
+    offender = OffenderService.get_offender_by_value(entity_value)
+    if not offender:
+        return jsonify({"error": f"Offender '{entity_value}' not found"}), 404
+    return jsonify({"offender": offender})
+
+
+@admin_bp.route("/admin/offenders/<path:entity_value>/status", methods=["POST"])
+@token_required
+@require_role("Admin", "Moderator")
+def admin_update_offender_status(entity_value, token_data):
+    data = request.get_json(silent=True) or {}
+    new_status = data.get("status", "").strip().lower()
+    notes = data.get("notes", "")
+    if new_status not in {"active", "flagged", "banned", "monitored", "cleared"}:
+        return jsonify({"error": "Invalid status. Allowed: active, flagged, banned, monitored, cleared"}), 400
+
+    from services.offender_service import OffenderService
+    success = OffenderService.update_offender_status(entity_value, new_status, notes)
+    if not success:
+        return jsonify({"error": f"Offender '{entity_value}' not found or could not be updated"}), 404
+
+    actor = token_data.get("user", "unknown")
+    db.log_audit_event(
+        actor=actor,
+        action="update_offender_status",
+        resource=entity_value,
+        detail={"status": new_status, "notes": notes},
+        status="success"
+    )
+    return jsonify({"status": "updated", "entity_value": entity_value, "new_status": new_status})
+
+
+# ── Report & Incident Status Updates ────────────────────────────────────────
+
+@admin_bp.route("/admin/reports/<report_id>/status", methods=["POST", "PATCH"])
+@admin_bp.route("/admin/incidents/<report_id>/status", methods=["POST", "PATCH"])
+@token_required
+@require_role("Admin", "Moderator")
+def update_report_status(report_id, token_data):
+    data = request.get_json(silent=True) or {}
+    new_status = data.get("status", "").strip().lower()
+    allowed_statuses = {"open", "reviewing", "resolved", "dismissed"}
+    if new_status not in allowed_statuses:
+        return jsonify({"error": f"Invalid status '{new_status}'. Allowed: {sorted(list(allowed_statuses))}"}), 400
+
+    rep = db.get_incident(report_id)
+    if not rep:
+        return jsonify({"error": f"Report '{report_id}' not found"}), 404
+
+    db.update_incident(report_id, {"status": new_status})
+    actor = token_data.get("user", "unknown")
+    db.log_audit_event(
+        actor=actor,
+        action="update_report_status",
+        resource=report_id,
+        detail={"status": new_status, "note": data.get("note", "")},
+        status="success"
+    )
+    return jsonify({"status": "updated", "report_id": report_id, "new_status": new_status})
+
+
+@admin_bp.route("/admin/status", methods=["POST"])
+@token_required
+@require_role("Admin", "Moderator")
+def update_status_generic(token_data):
+    """Generic status update accepting report_id or incident_id in body."""
+    data = request.get_json(silent=True) or {}
+    report_id = data.get("id") or data.get("report_id") or data.get("incident_id")
+    new_status = (data.get("status") or "").strip().lower()
+    if not report_id:
+        return jsonify({"error": "Report ID ('id' or 'report_id') is required"}), 400
+
+    allowed_statuses = {"open", "reviewing", "resolved", "dismissed"}
+    if new_status not in allowed_statuses:
+        return jsonify({"error": f"Invalid status '{new_status}'. Allowed: {sorted(list(allowed_statuses))}"}), 400
+
+    rep = db.get_incident(report_id)
+    if not rep:
+        return jsonify({"error": f"Report '{report_id}' not found"}), 404
+
+    db.update_incident(report_id, {"status": new_status})
+    actor = token_data.get("user", "unknown")
+    db.log_audit_event(
+        actor=actor,
+        action="update_status",
+        resource=report_id,
+        detail={"status": new_status, "note": data.get("note", "")},
+        status="success"
+    )
+    return jsonify({"status": "updated", "report_id": report_id, "new_status": new_status})
+
+
 @admin_bp.route("/admin/audit", methods=["GET"])
 @token_required
 @require_role("Admin")
@@ -194,3 +318,22 @@ def ban_actor(actor_id, token_data):
     except Exception as e:
         db.log_audit_event(actor=actor, action="ban_actor", resource=actor_id, detail=detail, status="failed", error=str(e))
         return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admin/purge", methods=["POST"])
+@token_required
+@require_role("Admin")
+def purge_expired_records(token_data):
+    """Purge records older than retention period. Admin only."""
+    actor = token_data.get("user", "unknown")
+    data = request.get_json(silent=True) or {}
+    days = data.get("days")
+    if days is not None:
+        try:
+            days = int(days)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid days parameter"}), 400
+
+    result = db.purge_expired_data(retention_days=days)
+    db.log_audit_event(actor=actor, action="purge_expired_records", resource="database", detail={"result": result}, status="success")
+    return jsonify(result)

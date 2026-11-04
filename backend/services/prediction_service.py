@@ -91,25 +91,47 @@ class PredictionService:
 
     @staticmethod
     def classify_text(text: str) -> dict:
-        result = PredictionService.get_adapter().predict(text)
-        
-        # Explainability for Primary Label if it maps to the old classes (only works if model is baseline)
-        if _explain_available and "baseline" in result.get("model", ""):
-            CATEGORY_TO_CLASS = {"hate_speech": 0, "offensive_language": 1, "none": 2}
-            cat = result.get("category")
-            if cat in CATEGORY_TO_CLASS:
-                result["explanation"] = explain_module.explain_prediction(
-                    text, CATEGORY_TO_CLASS[cat], top_n=5
-                )
-        else:
-            result["explanation"] = []
-            
-        # Append heuristic explanations for secondary labels
-        adapter = PredictionService.get_adapter()
-        if hasattr(adapter, "explain_heuristics") and result.get("secondary_labels"):
-            result["explanation"].extend(adapter.explain_heuristics(text, result["secondary_labels"]))
-            result["evidence_plan"] = EvidenceService.get_action_plan(result)
-            
+        from services.model_service import model_service
+        analysis = model_service.analyze(text)
+
+        cat_scores = analysis.get("category_scores", {})
+        sorted_cats = sorted(cat_scores.items(), key=lambda x: x[1], reverse=True)
+        top_cat, top_score = sorted_cats[0] if sorted_cats else ("clean", 0.0)
+
+        primary_label = top_cat.replace("_", " ").title() if top_score >= 25.0 else "Clean"
+        secondary_labels = {
+            k.replace("_", " ").title(): round(v / 100.0, 3)
+            for k, v in cat_scores.items()
+            if k != top_cat and v >= 25.0
+        }
+
+        # Build explainable signals
+        signals = analysis.get("signals", [])
+        reasons = [s["signal"] for s in signals] if signals else []
+
+        result = {
+            "score": analysis["score"],
+            "level": analysis["level"],
+            "risk_score": analysis["score"],
+            "threat_score": analysis["score"],
+            "category_scores": analysis["category_scores"],
+            "signals": signals,
+            "which_layer": analysis["which_layer"],
+            "explanation": analysis["explanation"],
+            "advice": analysis["advice"],
+            "flagging_reasons": reasons,
+            "primary_label": primary_label,
+            "category": top_cat if top_score >= 25.0 else "clean",
+            "label": "harassing" if analysis["score"] >= 40.0 else "non_harassing",
+            "confidence": round(top_score / 100.0, 3) if top_score > 0 else 0.95,
+            "secondary_labels": secondary_labels,
+            "model": "distilbert" if model_service.is_loaded else "rules_only",
+            "evidence_plan": EvidenceService.get_action_plan({
+                "category": top_cat,
+                "primary_label": primary_label,
+                "risk_score": analysis["score"]
+            })
+        }
         return result
 
     @staticmethod
@@ -168,11 +190,12 @@ class PredictionService:
         if result.get("multilingual_analysis", {}).get("translation_status") == "success" and "_translated_text" in result:
             text_for_embedding = result["_translated_text"]
 
-        result["risk_score"] = PredictionService.compute_risk_score(
-            result.get("primary_label", result.get("category", "none")),
-            result.get("confidence", 0),
-            result.get("secondary_labels", {})
-        )
+        if "risk_score" not in result:
+            result["risk_score"] = PredictionService.compute_risk_score(
+                result.get("primary_label", result.get("category", "none")),
+                result.get("confidence", 0),
+                result.get("secondary_labels", {})
+            )
 
         if result.get("label") == "harassing" and _similarity_available:
             try:
@@ -184,32 +207,35 @@ class PredictionService:
                     result["cluster_id"] = f"cluster-{hash(matches[0]['text_preview']) % 10000:04d}"
             except Exception:
                 pass 
-                
+
         # Attach structured guidance
         platform = result.get("platform", "generic")
         primary_label = result.get("primary_label", result.get("category", "none"))
         primary_conf = result.get("confidence", 0)
         secondary_labels = result.get("secondary_labels", {})
-        
+
         result["guidance"] = GuidanceService.get_guidance(
             primary_label, primary_conf, secondary_labels, result["risk_score"], platform
         )
 
-        result["severity_tier"] = GuidanceService.compute_severity(
-            result["guidance"].get("show_critical_resources", False),
-            result["risk_score"]
-        )
+        if result.get("level"):
+            result["severity_tier"] = result["level"].capitalize()
+        else:
+            result["severity_tier"] = GuidanceService.compute_severity(
+                result["guidance"].get("show_critical_resources", False),
+                result["risk_score"]
+            )
 
         # Unified Threat Analysis (Phase 1)
         result["threat_score"] = result["risk_score"]
-        result["safety_status"] = "Safe" if result["severity_tier"] == "Safe" else "At Risk"
-        result["evidence"] = text_for_embedding if result["severity_tier"] != "Safe" else "No specific threat evidence detected."
+        result["safety_status"] = "Safe" if result["severity_tier"] in ["Safe", "Low"] else "At Risk"
+        result["evidence"] = text_for_embedding if result["severity_tier"] not in ["Safe", "Low"] else "No specific threat evidence detected."
 
         if "threat_intel" in result and "malicious_urls" in result["threat_intel"]:
             result["malicious_urls"] = result["threat_intel"]["malicious_urls"]
         elif "malicious_urls" not in result:
             result["malicious_urls"] = []
-            
+
         result["evidence_plan"] = EvidenceService.get_action_plan(result)
 
         # Deterministic Explainability (Why was this flagged?)

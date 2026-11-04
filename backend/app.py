@@ -26,16 +26,37 @@ from api.routes_admin import admin_bp
 from api.routes_complaints import complaints_bp
 from api.routes_auth import auth_bp
 
+import re
+
 app = Flask(__name__)
-CORS(app)  # allow the React dev server to call this API
+
+# Dev passwords and open CORS must work ONLY when APP_ENV=development.
+# In any other environment, restrict CORS to an allowlist plus chrome-extension origins.
+app_env = os.environ.get("APP_ENV", "development").lower()
+if app_env == "development":
+    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+else:
+    allowed_origins = [
+        o.strip() for o in os.environ.get(
+            "ALLOWED_ORIGINS",
+            "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://127.0.0.1:5173"
+        ).split(",") if o.strip()
+    ]
+    cors_origins = allowed_origins + [re.compile(r"^chrome-extension://[a-z0-9]+$")]
+    CORS(app, resources={r"/*": {"origins": cors_origins}}, supports_credentials=True)
 
 # Bind limiter to app after app is created
 limiter.init_app(app)
 
+# Register both root-level and /api-prefixed routes to eliminate frontend/backend proxy mismatches
 app.register_blueprint(public_bp)
+app.register_blueprint(public_bp, name="public_api", url_prefix="/api")
 app.register_blueprint(admin_bp)
+app.register_blueprint(admin_bp, name="admin_api", url_prefix="/api")
 app.register_blueprint(complaints_bp)
+app.register_blueprint(complaints_bp, name="complaints_api", url_prefix="/api")
 app.register_blueprint(auth_bp)
+app.register_blueprint(auth_bp, name="auth_api", url_prefix="/api")
 
 @app.errorhandler(404)
 def not_found(e):

@@ -1,0 +1,491 @@
+{
+  "total": 44,
+  "passed": 33,
+  "discrepancies": [
+    {
+      "id": "7",
+      "type": "friendly_banter",
+      "text": "I am going to murder you in FIFA tonight bro, prepare yourse...",
+      "expected": "low/clean",
+      "actual": "high/abusive_language (score: 55.7)",
+      "status": "MISMATCH",
+      "notes": "Gaming banter with violent words",
+      "signals": [
+        "Model flagged toxic language (99.7% vs threshold 68.4%)"
+      ]
+    },
+    {
+      "id": "11",
+      "type": "friendly_banter",
+      "text": "I am gonna slaughter your team in Valorant this weekend",
+      "expected": "low/clean",
+      "actual": "medium/abusive_language (score: 40.8)",
+      "status": "MISMATCH",
+      "notes": "Gaming rivalry banter",
+      "signals": [
+        "Model flagged toxic language (82.9% vs threshold 68.4%)"
+      ]
+    },
+    {
+      "id": "13",
+      "type": "educational_news",
+      "text": "Cybercrime awareness bulletin: Do not click on links claimin...",
+      "expected": "low/clean",
+      "actual": "critical/scam (score: 82.0)",
+      "status": "MISMATCH",
+      "notes": "Awareness bulletin advising citizens",
+      "signals": [
+        "Unsolicited prize or lottery winning notification"
+      ]
+    },
+    {
+      "id": "14",
+      "type": "educational_news",
+      "text": "Police have arrested three individuals running a fake courie...",
+      "expected": "low/clean",
+      "actual": "critical/scam (score: 94.0)",
+      "status": "MISMATCH",
+      "notes": "News report about police crackdown on digital arrest scam",
+      "signals": [
+        "Courier/Customs or 'Digital Arrest' extortion scheme impersonating law enforcement"
+      ]
+    },
+    {
+      "id": "17",
+      "type": "quoted_victim_report",
+      "text": "I am submitting a complaint because a user sent me: \"you are...",
+      "expected": "low/clean",
+      "actual": "high/harassment (score: 80.0)",
+      "status": "MISMATCH",
+      "notes": "Victim reporting received insult - contains quoted abuse",
+      "signals": [
+        "Model flagged cyberbullying/harassment (99.0% vs threshold 89.0%)",
+        "Model flagged toxic language (99.7% vs threshold 68.4%)",
+        "Hostile, degrading, or abusive personal insult detected"
+      ]
+    },
+    {
+      "id": "18",
+      "type": "quoted_victim_report",
+      "text": "The stalker posted a comment saying \"I know where you live a...",
+      "expected": "low/clean",
+      "actual": "critical/threat (score: 98.0)",
+      "status": "MISMATCH",
+      "notes": "Victim reporting threat - contains quoted threat",
+      "signals": [
+        "Model flagged toxic language (69.1% vs threshold 68.4%)",
+        "Explicit physical harm or death threat detected"
+      ]
+    },
+    {
+      "id": "20",
+      "type": "hinglish_threat",
+      "text": "Kal college ke bahar mil tereko jaan se maar dunga samjha.",
+      "expected": "critical/threat",
+      "actual": "low/clean (score: 0.1)",
+      "status": "MISMATCH",
+      "notes": "Direct physical death threat in Hinglish",
+      "signals": []
+    },
+    {
+      "id": "22",
+      "type": "hinglish_insult",
+      "text": "Tu ekdum pagal aur kutta hai chup kar behenchod.",
+      "expected": "high/abusive_language",
+      "actual": "low/clean (score: 7.4)",
+      "status": "MISMATCH",
+      "notes": "Hinglish abusive slur and insult",
+      "signals": []
+    },
+    {
+      "id": "23",
+      "type": "hinglish_insult",
+      "text": "Abe chutiye apna ganda muh band rakh harami kahin ka.",
+      "expected": "high/abusive_language",
+      "actual": "low/clean (score: 14.7)",
+      "status": "MISMATCH",
+      "notes": "Vulgar Hinglish abuse",
+      "signals": [
+        "Hostile, degrading, or abusive personal insult detected"
+      ]
+    },
+    {
+      "id": "24",
+      "type": "hinglish_scam",
+      "text": "Aapka SBI account suspend hone wala hai, turant KYC update k...",
+      "expected": "high/scam",
+      "actual": "low/clean (score: 0.6)",
+      "status": "MISMATCH",
+      "notes": "Hinglish banking KYC suspension scam",
+      "signals": []
+    },
+    {
+      "id": "35",
+      "type": "long_phishing",
+      "text": "Dear Valued Customer, We have detected suspicious unauthoriz...",
+      "expected": "high/phishing",
+      "actual": "high/scam (score: 75.0)",
+      "status": "MISMATCH",
+      "notes": "Long banking security phishing email with urgent ultimatum",
+      "signals": [
+        "High-risk domain ending (.xyz) frequently used in fraudulent campaigns"
+      ]
+    }
+  ],
+  "passes": [
+    {
+      "id": "1",
+      "type": "genuine_bank_otp",
+      "text": "Your OTP for transaction of INR 4,500.00 at Amazon with SBI ...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.1)",
+      "status": "PASS",
+      "notes": "Legitimate SBI transaction OTP with warning",
+      "signals": []
+    },
+    {
+      "id": "2",
+      "type": "genuine_bank_otp",
+      "text": "123456 is your HDFC Bank NetBanking OTP. Valid for 10 mins. ...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Legitimate HDFC Bank OTP",
+      "signals": []
+    },
+    {
+      "id": "3",
+      "type": "genuine_bank_otp",
+      "text": "492011 is your ICICI Bank verification code to authorize log...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "ICICI login verification code",
+      "signals": []
+    },
+    {
+      "id": "4",
+      "type": "genuine_bank_otp",
+      "text": "739201 is your Amazon OTP. Do not share it with anyone. Amaz...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.1)",
+      "status": "PASS",
+      "notes": "Amazon 2FA OTP",
+      "signals": []
+    },
+    {
+      "id": "5",
+      "type": "genuine_bank_otp",
+      "text": "G-492019 is your Google verification code.",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Standard Google 2FA message",
+      "signals": []
+    },
+    {
+      "id": "6",
+      "type": "friendly_banter",
+      "text": "Dude you are literally slaying this presentation, keep killi...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 8.0)",
+      "status": "PASS",
+      "notes": "Slang compliment using slaying/killing",
+      "signals": []
+    },
+    {
+      "id": "8",
+      "type": "friendly_banter",
+      "text": "OMG she is drop dead gorgeous in that red dress!",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 10.5)",
+      "status": "PASS",
+      "notes": "Idiom drop dead gorgeous",
+      "signals": [
+        "Hostile, degrading, or abusive personal insult detected"
+      ]
+    },
+    {
+      "id": "9",
+      "type": "friendly_banter",
+      "text": "This spicy chicken curry is killer, my tongue is burning!",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 1.7)",
+      "status": "PASS",
+      "notes": "Food compliment using killer",
+      "signals": []
+    },
+    {
+      "id": "10",
+      "type": "friendly_banter",
+      "text": "We totally destroyed that pizza last night haha lol",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 5.7)",
+      "status": "PASS",
+      "notes": "Casual dining statement using destroyed",
+      "signals": []
+    },
+    {
+      "id": "12",
+      "type": "educational_news",
+      "text": "RBI Advisory: Beware of fraudulent SMS claiming your account...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.4)",
+      "status": "PASS",
+      "notes": "RBI official advisory bulletin",
+      "signals": []
+    },
+    {
+      "id": "15",
+      "type": "educational_news",
+      "text": "In today's tech news, phishing campaigns impersonating Netfl...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Tech news article discussing phishing trends",
+      "signals": []
+    },
+    {
+      "id": "16",
+      "type": "educational_news",
+      "text": "Tips to stay safe online: Never share your OTP, UPI PIN, or ...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.1)",
+      "status": "PASS",
+      "notes": "Cyber safety tips",
+      "signals": []
+    },
+    {
+      "id": "19",
+      "type": "quoted_victim_report",
+      "text": "Attached is screenshot where the scammer says: \"Pay 50000 IN...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Victim reporting sextortion quote",
+      "signals": []
+    },
+    {
+      "id": "21",
+      "type": "hinglish_threat",
+      "text": "Tere ghar aake marunga tujhe, dekh lunga.",
+      "expected": "critical/threat",
+      "actual": "critical/threat (score: 98.0)",
+      "status": "PASS",
+      "notes": "Hinglish threat to come home and beat/kill",
+      "signals": [
+        "Explicit physical harm or death threat detected"
+      ]
+    },
+    {
+      "id": "25",
+      "type": "hinglish_benign",
+      "text": "Bhai kya haal hai kal movie dekhne chale kya?",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 1.6)",
+      "status": "PASS",
+      "notes": "Casual Hinglish greeting inviting to a movie",
+      "signals": []
+    },
+    {
+      "id": "26",
+      "type": "hinglish_benign",
+      "text": "Bhai tu toh macha diya ekdum aag laga di stage pe!",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 8.0)",
+      "status": "PASS",
+      "notes": "Hinglish compliment praising performance",
+      "signals": []
+    },
+    {
+      "id": "27",
+      "type": "hinglish_benign",
+      "text": "Arre yaar train late ho gayi main 15 minute mein pahunchta h...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.4)",
+      "status": "PASS",
+      "notes": "Everyday travel update in Hinglish",
+      "signals": []
+    },
+    {
+      "id": "28",
+      "type": "obfuscated_threat",
+      "text": "I will f*cking k!ll you if you show your face here again",
+      "expected": "critical/threat",
+      "actual": "critical/threat (score: 100.0)",
+      "status": "PASS",
+      "notes": "Obfuscated threat with symbols",
+      "signals": [
+        "Model flagged high-confidence threat (100.0% vs threshold 98.7%)",
+        "Model flagged toxic language (99.6% vs threshold 68.4%)"
+      ]
+    },
+    {
+      "id": "29",
+      "type": "obfuscated_scam",
+      "text": "Click here for fr33 crypto and b!tcoin rewards http://claim-...",
+      "expected": "high/scam",
+      "actual": "high/scam (score: 75.0)",
+      "status": "PASS",
+      "notes": "Obfuscated scam with l33tspeak and .xyz domain",
+      "signals": [
+        "High-risk domain ending (.xyz) frequently used in fraudulent campaigns"
+      ]
+    },
+    {
+      "id": "30",
+      "type": "obfuscated_insult",
+      "text": "Shut up you ugly b!tch nobody likes you",
+      "expected": "high/abusive_language",
+      "actual": "high/harassment (score: 80.0)",
+      "status": "PASS",
+      "notes": "Obfuscated slur b!tch in harassment context",
+      "signals": [
+        "Model flagged cyberbullying/harassment (99.5% vs threshold 89.0%)",
+        "Model flagged toxic language (99.7% vs threshold 68.4%)",
+        "Model flagged profanity (98.5% vs threshold 98.4%)",
+        "Hostile, degrading, or abusive personal insult detected"
+      ]
+    },
+    {
+      "id": "31",
+      "type": "obfuscated_insult",
+      "text": "Go d!e alone in a ditch loser",
+      "expected": "high/abusive_language",
+      "actual": "high/harassment (score: 80.0)",
+      "status": "PASS",
+      "notes": "Obfuscated suicide incitement / insult",
+      "signals": [
+        "Model flagged cyberbullying/harassment (99.7% vs threshold 89.0%)",
+        "Model flagged toxic language (99.9% vs threshold 68.4%)"
+      ]
+    },
+    {
+      "id": "32",
+      "type": "obfuscated_scam",
+      "text": "Download this free g!ft c@rd now http://win-card.top",
+      "expected": "high/scam",
+      "actual": "high/scam (score: 75.0)",
+      "status": "PASS",
+      "notes": "Obfuscated gift card scam with suspicious TLD",
+      "signals": [
+        "High-risk domain ending (.top) frequently used in fraudulent campaigns"
+      ]
+    },
+    {
+      "id": "33",
+      "type": "long_benign",
+      "text": "Hey Sarah! Hope you are doing well. Just wanted to follow up...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Long benign academic team coordination message",
+      "signals": []
+    },
+    {
+      "id": "34",
+      "type": "long_harassment",
+      "text": "You think you are so smart walking around like you own the p...",
+      "expected": "high/harassment",
+      "actual": "high/abusive_language (score: 67.5)",
+      "status": "PASS",
+      "notes": "Long continuous harassment and workplace/academic bullying",
+      "signals": [
+        "Model flagged cyberbullying/harassment (92.3% vs threshold 89.0%)",
+        "Model flagged toxic language (98.3% vs threshold 68.4%)"
+      ]
+    },
+    {
+      "id": "36",
+      "type": "long_sextortion",
+      "text": "Greetings. I have installed malware on your system via a com...",
+      "expected": "critical/sextortion",
+      "actual": "critical/sextortion (score: 96.0)",
+      "status": "PASS",
+      "notes": "Long classic webcam sextortion email",
+      "signals": [
+        "Sextortion blackmail detected: threat to leak private photos/webcam video"
+      ]
+    },
+    {
+      "id": "37",
+      "type": "empty_input",
+      "text": "",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Empty string",
+      "signals": []
+    },
+    {
+      "id": "38",
+      "type": "whitespace_input",
+      "text": "   ",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Whitespace only",
+      "signals": []
+    },
+    {
+      "id": "39",
+      "type": "short_benign",
+      "text": "ok",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Common single-word acknowledgement",
+      "signals": []
+    },
+    {
+      "id": "40",
+      "type": "short_benign",
+      "text": "k",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Single letter reply",
+      "signals": []
+    },
+    {
+      "id": "41",
+      "type": "short_benign",
+      "text": "hey",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.8)",
+      "status": "PASS",
+      "notes": "Short greeting",
+      "signals": []
+    },
+    {
+      "id": "42",
+      "type": "short_benign",
+      "text": "hello there",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Two-word greeting",
+      "signals": []
+    },
+    {
+      "id": "43",
+      "type": "short_benign",
+      "text": "yes",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Single word affirmative",
+      "signals": []
+    },
+    {
+      "id": "44",
+      "type": "short_benign",
+      "text": "?",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Single punctuation mark",
+      "signals": []
+    }
+  ]
+}
