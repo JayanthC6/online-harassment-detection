@@ -9,7 +9,9 @@
   ],
   "host_permissions": [
     "http://127.0.0.1:5000/*",
-    "http://localhost:5000/*"
+    "http://localhost:5000/*",
+    "*://127.0.0.1/*",
+    "*://localhost/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -18,7 +20,11 @@
     {
       "matches": [
         "*://mail.google.com/*",
-        "*://web.whatsapp.com/*"
+        "*://web.whatsapp.com/*",
+        "*://localhost/*",
+        "*://127.0.0.1/*",
+        "file:///*",
+        "<all_urls>"
       ],
       "css": ["content.css"],
       "js": ["content.js"]

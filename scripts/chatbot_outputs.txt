@@ -1,0 +1,74 @@
+=== SBI SMS ANALYST ===
+### 🛡️ Structured Incident Assessment (Analyst Mode)
+
+**Classification:** Credential Harvesting & Brand Impersonation Phishing
+**Assessed Risk Level:** CRITICAL (Score: 90.5/100)
+**Confidence:** High
+**Legal Framework:** This incident may fall under IT Act Section 66D (cheating by personation using computer resource) and relevant fraud provisions.
+
+#### Technical & Behavioral Indicators:
+- High-risk domain ending (.xyz) frequently used in fraudulent campaigns
+- Look-alike brand impersonation in domain: 'sbi-kyc-update.xyz' mimicking 'sbi.co.in'
+- Urgent account suspension warning paired with link
+- **Look-alike Brand Finding:** Look-alike brand impersonation in domain: 'sbi-kyc-update.xyz' mimicking 'sbi.co.in'
+
+#### Attacker Tactics Identified:
+- **Sender Header Spoofing / Look-alike Sender ID:** Impersonating a trusted financial or governmental entity.
+- **Artificial Account Urgency:** Fabricating imminent account deactivation or KYC deadline to force rushed actions.
+- **Deceptive Credential Harvester:** Directing victim to an off-domain phishing form (e.g. suspicious TLD) to harvest banking credentials and OTPs.
+
+#### Recommended Escalation Steps:
+1. **SMS & Sender Evidence Capture:** Preserve the raw SMS message with exact originating sender ID (e.g. shortcode or alphatag), complete arrival timestamp, and exact link target without clicking.
+2. **Spam & Telecom Takedown:** Report fraudulent SMS to the Telecom Regulatory Authority of India (TRAI) by forwarding to **1909** (DND reporting) and log on the DoT **Chakshu Portal (`sancharsaathi.gov.in`)**.
+3. **Emergency Banking Containment:** If credentials or OTP were entered, immediately call the bank's official emergency helpline to freeze net banking and debit cards.
+4. **National Cyber Reporting:** File a complaint with the **National Cyber Crime Helpline at 1930** and report on **`https://cybercrime.gov.in`**.
+
+#### Uncertainties & Investigation Limits:
+- Sender identity and phone/email display names may be spoofed; raw server logs and telecom CDR records required for physical attribution.
+- Claims of compromised devices or leaked media cannot be forensically confirmed without endpoint telemetry or device inspection.
+
+[Engine: rules]
+
+=== SEXTORTION ANALYST ===
+### 🛡️ Structured Incident Assessment (Analyst Mode)
+
+**Classification:** Financial Sextortion & Digital Blackmail
+**Assessed Risk Level:** CRITICAL (Score: 96.0/100)
+**Confidence:** High
+**Legal Framework:** This incident may fall under IT Act Section 66E (privacy violation), Section 67/67A (transmission of obscene material), and BNS / IPC provisions relating to extortion and criminal intimidation.
+
+#### Technical & Behavioral Indicators:
+- Sextortion blackmail detected: threat to leak private photos/webcam video
+
+#### Attacker Tactics Identified:
+- **Psychological Intimidation & Shaming:** Threatening imminent disclosure of private/compromising media to contacts to induce panic.
+- **Financial Coercion:** Demanding irreversible payment (cryptocurrency, gift cards, or UPI).
+- **Credential Bluff / Fake Malware:** Citing leaked credentials from historical data breaches or fictitious webcam capture without actual compromise.
+
+#### Recommended Escalation Steps:
+1. **Strict Non-Payment & Disengagement:** Never pay or negotiate; compliance guarantees escalation of extortion demands.
+2. **Digital Evidence Capture:** Document complete uncropped chat logs, sender profile links, and payment wallet/UPI handles before blocking.
+3. **Image Protection & Takedown:** Submit non-consensual image protection hashes to **StopNCII.org** (or Take It Down for minors) to prevent media sharing across participating platforms.
+4. **Statutory Incident Dispatch:** Lodge a formal cyber blackmail complaint on the **National Cyber Crime Reporting Portal at `https://cybercrime.gov.in`** or dial helpline **1930**.
+
+#### Uncertainties & Investigation Limits:
+- Sender identity and phone/email display names may be spoofed; raw server logs and telecom CDR records required for physical attribution.
+- Claims of compromised devices or leaked media cannot be forensically confirmed without endpoint telemetry or device inspection.
+
+[Engine: rules]
+
+=== SEXTORTION VICTIM ===
+I am here to help you navigate this step by step. Remember that **you did nothing wrong**, and there are concrete actions we can take right now.
+
+Regarding the demand for **50000 rupees**, the deadline of **in 24 hours**, contact via **Instagram**: **do not send any money, cryptocurrency, or gift cards**, and do not reply or negotiate.
+
+### Concrete Next Steps:
+1. **DO NOT PAY OR NEGOTIATE:** Paying blackmailers never stops them; it leads to repeated extortion demands.
+2. **Context on Digital Blackmail:** Many sextortion messages are automated mass-sent bluffs where attackers claim to have webcam recordings or private files using leaked passwords from old data breaches without actually possessing any media. Even when bluffs, they must still be reported.
+3. **Preserve All Evidence:** Capture uncropped screenshots showing the sender's account handle, phone number, messages, and timestamps before blocking.
+4. **Stop All Contact & Block:** Block their profile on all platforms. Restrict your social media privacy settings so your friend/follower lists are private.
+5. **Report to Image Takedown & Authorities:** File an immediate report on the **National Cyber Crime Reporting Portal at [cybercrime.gov.in](https://cybercrime.gov.in)** or call the **National Cyber Crime Helpline at 1930**. You can also submit image hashes confidentially to **StopNCII.org** to prevent sharing across participating platforms.
+
+*Note: ShieldAI provides technical guidance and evidence triaging. For legal action or ongoing danger, contact local law enforcement (112) or the National Cybercrime Helpline at 1930.*
+
+[Engine: rules]

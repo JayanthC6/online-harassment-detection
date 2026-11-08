@@ -43,3 +43,11 @@ id,case_type,text,expected_level,expected_category,notes
 42,short_benign,hello there,low,clean,Two-word greeting
 43,short_benign,yes,low,clean,Single word affirmative
 44,short_benign,?,low,clean,Single punctuation mark
+45,hinglish_threat,"Tere ghar aake marunga samjha, zinda nahi chhodunga.",critical,threat,Direct home invasion and death threat in Hinglish
+46,hinglish_threat,"Goli mar dunga agar kal dikha toh, teri maut aayegi.",critical,threat,Direct shooting threat in Hinglish
+47,hinglish_insult,"Tu ekdum harami aur kamina kutta hai.",high,abusive_language,Common Hinglish abusive slurs
+48,hinglish_insult,"Chup kar saale suar aur bhadwe, teri aukaat nahi hai.",high,abusive_language,Aggressive vulgar Hinglish abuse
+49,hinglish_scam,"Aapka SBI account suspend hone wala hai, turant kyc update karein.",high,scam,Hinglish banking scam notification
+50,hinglish_sextortion,"Paise bhej warna photo leak kar dunga tere dosto ko.",critical,sextortion,Hinglish photo leak extortion
+51,hinglish_benign,"Bhai shaam ko chai peene chalte hain, ready rehna.",low,clean,Casual Hinglish tea invite
+52,hinglish_benign,"Maine project ka code push kar diya hai github pe dekh lena.",low,clean,Casual Hinglish work coordination update

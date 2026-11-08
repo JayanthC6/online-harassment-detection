@@ -3,7 +3,7 @@ Pytest test suite for ShieldAI Phase 4 Chatbot Engine with Enhanced Safety & Tel
 
 Tests:
 1. Anthropic path with mocked client (success, API error, timeout) and fallback logging.
-2. Default ANTHROPIC_MODEL validation (current model name, never legacy claude-3-haiku).
+2. Default ANTHROPIC_MODEL validation (current model name, never legacy models).
 3. Analyst mode: built from real analysis results (actual score/level, signals, extracted indicators, 'may fall under').
 4. Victim mode wording: no false safety claims, portal vs helpline distinction, dynamic user specifics, sextortion mass-bluff context.
 5. Prompt injection: calm one-line response and scam detection when injection is embedded in malicious text.
@@ -39,10 +39,9 @@ def client():
 class TestAnthropicPathAndFallback:
 
     def test_default_anthropic_model_is_current(self):
-        """Default ANTHROPIC_MODEL must be a current model name, never legacy claude-3-haiku."""
-        assert DEFAULT_ANTHROPIC_MODEL != "claude-3-haiku"
-        assert DEFAULT_ANTHROPIC_MODEL != "claude-3-haiku-20240307"
-        assert "claude-3-5" in DEFAULT_ANTHROPIC_MODEL
+        """Default ANTHROPIC_MODEL must be a current model name, never legacy claude-3 models."""
+        assert "claude-3" not in DEFAULT_ANTHROPIC_MODEL
+        assert DEFAULT_ANTHROPIC_MODEL == "claude-haiku-5-5" or "haiku-5-5" in DEFAULT_ANTHROPIC_MODEL
 
     def test_anthropic_mock_success(self, monkeypatch):
         """When Anthropic API succeeds, return engine='claude' and the generated response."""
@@ -50,7 +49,7 @@ class TestAnthropicPathAndFallback:
 
         mock_client = MagicMock()
         mock_block = MagicMock()
-        mock_block.text = "Hello from Claude 3.5 Haiku. Here is structured cyber safety assistance."
+        mock_block.text = "Hello from Claude Haiku 5.5. Here is structured cyber safety assistance."
         mock_response = MagicMock()
         mock_response.content = [mock_block]
         mock_client.messages.create.return_value = mock_response
@@ -60,7 +59,7 @@ class TestAnthropicPathAndFallback:
         history = [{"role": "user", "content": "How do I secure my WhatsApp account?"}]
         resp = generate_chat_response(history, persona="victim")
 
-        assert "Claude 3.5 Haiku" in resp
+        assert "Claude Haiku 5.5" in resp
         assert resp.engine == "claude"
         mock_client.messages.create.assert_called_once()
 

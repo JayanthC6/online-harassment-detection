@@ -109,14 +109,66 @@ SEXTORTION_PATTERNS = [
 THREAT_PATTERNS = [
     r"\b(?:i will kill you|i am going to kill you|i will hunt you down|i know where you live|watch your back|i will murder you|gonna beat you up|put a bullet in you|slit your throat|end your life)\b",
     r"\b(?:swat your house|find and kill you|destroy your family)\b",
-    # Hinglish threats
-    r"\b(?:mar dalunga|jaan se mar|teri jaan le|dekh lunga tujhe|tere ghar aake marunga)\b"
+    # Hinglish core threats
+    r"\b(?:mar dalunga|maar dalunga|jaan se mar|teri jaan le|dekh lunga tujhe|tere ghar aake marunga)\b"
 ]
 
-# Benign context keywords that neutralize violent words used as idioms, sports, or gaming banter
+# Severe death wishes and suicide encouragement (CAN NEVER BE ATTENUATED)
+SEVERE_DEATH_WISH_PATTERNS = [
+    r"\b(?:kys|kill your\s*self|go die|should go die|hope you die|you should die|you should go die|hang your\s*self|drink bleach|end your\s*life)\b"
+]
+
+# ── Common Roman-Script Hindi / Hinglish Abuse & Threat Patterns (Rules-Only) ──
+# Easy to extend: matches common phonetic Roman-script Hindi threats, vulgar insults, and scams.
+HINGLISH_THREAT_PATTERNS = [
+    r"\b(?:(?:tere\s*ko\s+|tujhe\s+|teri\s+)?jaan\s+se\s+m[a]*r\s*(?:dunga|dungi|dalunga|dalungi|dene|denge))\b",
+    r"\b(?:tere\s+ghar\s+aake\s+m[a]*runga|ghar\s+me\s+ghus\s+ke\s+m[a]*runga|tujhe\s+peetunga)\b",
+    r"\b(?:tujhe\s+(?:zinda\s+)?nahi\s+chhodunga|tujhe\s+chhodunga\s+nahi|dekh\s+lunga\s+tujhe|tujhe\s+dekh\s+lunga)\b",
+    r"\b(?:teri\s+maut\s+aayegi|tujhe\s+khatam\s+kar\s+(?:dunga|denge)|tujhe\s+uda\s+dunga|goli\s+m[a]*r\s+dunga)\b",
+    r"\b(?:hath\s+pair\s+tod\s+dunga|gala\s+kaat\s+dunga|chhuri\s+ghop\s+dunga)\b"
+]
+
+HINGLISH_ABUSE_PATTERNS = [
+    r"\b(?:kutta|kutti|kutte|kutto|kamina|kamine|kameena|kameene)\b",
+    r"\b(?:harami|haraami|haramkhor|haraamkhor)\b",
+    r"\b(?:chutiya|chutiye|chutye|choothiya)\b",
+    r"\b(?:bhadwa|bhadwe|bhadve|randi|raand|suar|suwar)\b",
+    r"\b(?:madarchod|bhenchod|behenchod|mc|bc|bsdk|bhosdike|bhosadi)\b",
+    r"\b(?:gandu|gaandu|chirkut|chapri)\b",
+    r"\b(?:saala|saale|sale)\s+(?:kutta|suar|kutte|pagal|kamina|harami)\b"
+]
+
+HINGLISH_SCAM_PATTERNS = [
+    r"\b(?:account\s+suspend\s+hone\s+wala\s+hai|turant\s+kyc\s+update\s+karein|kyc\s+update\s+warna\s+fine)\b",
+    r"\b(?:inaam\s+jeeta\s+hai|lottery\s+lagi\s+hai|itne\s+rupaye\s+transfer\s+karein)\b",
+    r"\b(?:paise\s+(?:bhej|de|daal)\s+warna\s+photo\s+(?:leak|viral))\b"
+]
+
+# Benign context keywords that neutralize violent words strictly when used as idioms, sports, or gaming banter
 BENIGN_VIOLENT_IDIOM_PATTERNS = [
     r"\b(?:in fifa|in cod|in valorant|in pubg|in fortnite|in chess|in the game|gaming|game tonight)\b",
-    r"\b(?:killed that presentation|slaying it|drop dead gorgeous|killing this workout|kill time|killed the exam|haha|lol|lmao)\b"
+    r"\b(?:killed that presentation|slaying it|drop dead gorgeous|killing this workout|kill time|killed the exam|killed it on stage)\b"
+]
+
+# Benign self-directed or self-deprecating remarks (not targeted harassment)
+SELF_DIRECTED_PATTERNS = [
+    r"\b(?:of me|of myself|on my part|stupid me|foolish of me|silly me|how stupid of me)\b",
+    r"\b(?:i(?:'m| am| was)\s+(?:so\s+|such\s+a\s+|really\s+)?(?:stupid|dumb|idiot|fool|loser|freak|mess|clown))\b",
+    r"\b(?:i feel like (?:a\s+)?(?:loser|failure|idiot|fool))\b",
+    r"\b(?:my bad|i messed up|i forgot)\b"
+]
+
+# Benign talent or skill compliment idioms
+TALENT_IDIOM_PATTERNS = [
+    r"\b(?:freak|beast|monster|demon|wizard|genius|machine|god)\s+at\s+[a-zA-Z]+\b",
+    r"\b(?:freak|force)\s+of\s+nature\b"
+]
+
+# Friendly banter / playful competition / laughter context
+FRIENDLY_BANTER_PATTERNS = [
+    r"\b(?:haha|hehe|lol|lmao|rofl)\b.{0,60}\b(?:you beat me|beat me|you won|beat my score|in the game|gg|good game|rematch|next time|nice one)\b",
+    r"\b(?:you beat me|beat me|you won|beat my score|in the game|gg|good game)\b.{0,60}\b(?:haha|hehe|lol|lmao|rofl)\b",
+    r"\b(?:just kidding|jk|only teasing|all in good fun)\b"
 ]
 
 # Educational or news advisory indicators
@@ -125,7 +177,16 @@ EDUCATIONAL_SCAM_PATTERNS = [
 ]
 
 HARASSMENT_INSULT_PATTERNS = [
-    r"\b(?:worthless|stupid idiot|disgusting pig|piece of trash|nobody likes you|kill yourself|kys|drop dead|ugly freak|scumbag)\b",
+    # Inherently hostile expressions & severe abuse
+    r"\b(?:worthless piece of (?:trash|crap|shit)|disgusting pig|piece of trash|waste of (?:space|oxygen))\b",
+    r"\b(?:nobody wants you(?:\s+here)?|nobody likes you)\b",
+    r"\b(?:kill yourself|kys|drop dead|burn in hell)\b",
+    r"\b(?:ugly\s+and\s+stupid|stupid\s+and\s+ugly|ugly\s+freak|stupid\s+idiot|pathetic\s+loser|scumbag)\b",
+    # Targeted 2nd-person insults ("you're so ugly and stupid", "you loser", "you idiot")
+    r"\b(?:you(?:'re| are|\s+r)?|u(?:'re| r)?|ur)\s+(?:(?:so|such\s+a|a|an|total|complete|real|fucking|very)\s+)*(?:ugly|stupid|idiot|loser|freak|pathetic|scumbag|moron)\b",
+    r"\b(?:you|u)\s+(?:ugly|stupid|loser|idiot|freak|scumbag|moron)\b",
+    # 3rd-person targeted insults
+    r"\b(?:he|she|they|that\s+(?:guy|girl|person))\s+is\s+(?:(?:so|such\s+a|a|an|total)\s+)*(?:ugly|stupid|idiot|loser|pathetic|scumbag)\b",
     # Hinglish insults
     r"\b(?:kutte|kameene|bewakoof|gadhe|chutiye|bhosadike|harami)\b"
 ]
@@ -553,11 +614,13 @@ class ModelService:
                 "score": score
             })
 
-        # 5. Direct Violence Threats
+        # 5. Direct Violence Threats & Severe Death Wishes
         threat_hit = any(re.search(pat, text_deobf) for pat in THREAT_PATTERNS)
+        hinglish_threat_hit = any(re.search(pat, text_deobf) for pat in HINGLISH_THREAT_PATTERNS)
+        death_wish_hit = any(re.search(pat, text_deobf) for pat in SEVERE_DEATH_WISH_PATTERNS)
         is_gaming_banter = any(re.search(pat, text_lower) for pat in BENIGN_VIOLENT_IDIOM_PATTERNS)
 
-        if threat_hit and not is_gaming_banter:
+        if threat_hit or hinglish_threat_hit:
             score = 98.0
             category_scores["threat"] = max(category_scores["threat"], score)
             signals.append({
@@ -567,9 +630,66 @@ class ModelService:
                 "score": score
             })
 
-        # 6. Abusive language / Harassment keywords
+        if death_wish_hit:
+            score = 82.0
+            category_scores["threat"] = max(category_scores["threat"], score)
+            category_scores["harassment"] = max(category_scores["harassment"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "threat",
+                "signal": "Severe death wish or suicide incitement detected ('kys', 'go die')",
+                "score": score
+            })
+
+        # 6. Hinglish Scams & Fraud
+        hinglish_scam_hit = any(re.search(pat, text_deobf) for pat in HINGLISH_SCAM_PATTERNS)
+        if hinglish_scam_hit:
+            score = 75.0
+            category_scores["scam"] = max(category_scores["scam"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "scam",
+                "signal": "Fraudulent banking, KYC, or extortion lure in Roman-script Hindi (Hinglish)",
+                "score": score
+            })
+
+        # ── SAFETY INVARIANT ──
+        # Laughter, banter, and self-directed remarks can ONLY attenuate mild insults.
+        # They must NEVER reduce threat, sextortion, blackmail, scam, phishing, or 'kys/you should die' scores.
+        has_severe_danger = (
+            threat_hit or hinglish_threat_hit or death_wish_hit or sextortion_hit or
+            hinglish_scam_hit or otp_request_hit or lottery_hit or digital_arrest_hit or has_phish_link
+        )
+
+        # Check benign non-harassment contexts (self-directed, talent idiom, friendly banter)
+        if has_severe_danger:
+            is_self_directed = False
+            is_talent_idiom = False
+            is_friendly_banter = False
+            is_gaming_banter = False
+            is_benign_insult_context = False
+        else:
+            is_self_directed = any(re.search(pat, text_deobf) for pat in SELF_DIRECTED_PATTERNS)
+            is_talent_idiom = any(re.search(pat, text_deobf) for pat in TALENT_IDIOM_PATTERNS)
+            is_friendly_banter = any(re.search(pat, text_deobf) for pat in FRIENDLY_BANTER_PATTERNS) or is_gaming_banter
+            is_benign_insult_context = is_self_directed or is_talent_idiom or is_friendly_banter
+
+        # 7. Abusive language / Harassment keywords (English & Hinglish)
         insult_hit = any(re.search(pat, text_deobf) for pat in HARASSMENT_INSULT_PATTERNS)
-        if insult_hit:
+        hinglish_abuse_hit = any(re.search(pat, text_deobf) for pat in HINGLISH_ABUSE_PATTERNS)
+
+        if hinglish_abuse_hit and not is_benign_insult_context:
+            score = 75.0
+            category_scores["harassment"] = max(category_scores["harassment"], score)
+            category_scores["abusive_language"] = max(category_scores["abusive_language"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "abusive_language",
+                "signal": "Vulgar Hindi/Hinglish slur or abusive profanity detected",
+                "score": score
+            })
+
+        if insult_hit and not is_benign_insult_context:
             score = 65.0
             category_scores["harassment"] = max(category_scores["harassment"], score)
             category_scores["abusive_language"] = max(category_scores["abusive_language"], score)
@@ -697,7 +817,33 @@ class ModelService:
         # Normalize text before model and rules (leetspeak, zero-width chars, mixed spacing, symbols)
         norm_text = normalize_text(clean_text)
         text_lower = norm_text.lower()
-        is_gaming_banter = any(re.search(pat, text_lower) for pat in BENIGN_VIOLENT_IDIOM_PATTERNS)
+        text_deobf = deobfuscate_text(text_lower)
+
+        # ── SAFETY INVARIANT: Severe threats, sextortion, scams & death wishes CAN NEVER be attenuated ──
+        has_severe_threat = (
+            any(re.search(pat, text_deobf) for pat in THREAT_PATTERNS) or
+            any(re.search(pat, text_deobf) for pat in SEVERE_DEATH_WISH_PATTERNS) or
+            any(re.search(pat, text_deobf) for pat in HINGLISH_THREAT_PATTERNS) or
+            any(re.search(pat, text_deobf) for pat in SEXTORTION_PATTERNS) or
+            any(re.search(pat, text_deobf) for pat in HINGLISH_SCAM_PATTERNS) or
+            any(re.search(pat, text_deobf) for pat in SCAM_LOTTERY_PRIZE_PATTERNS) or
+            any(re.search(pat, text_deobf) for pat in SCAM_PAYMENT_PATTERNS) or
+            any(re.search(pat, text_deobf) for pat in SCAM_COURIER_DIGITAL_ARREST_PATTERNS) or
+            any(re.search(pat, text_deobf) for pat in SE_OTP_KYC_REQUEST_PATTERNS)
+        )
+
+        if has_severe_threat:
+            is_gaming_banter = False
+            is_self_directed = False
+            is_talent_idiom = False
+            is_friendly_banter = False
+            is_benign_insult_context = False
+        else:
+            is_gaming_banter = any(re.search(pat, text_lower) for pat in BENIGN_VIOLENT_IDIOM_PATTERNS)
+            is_self_directed = any(re.search(pat, text_lower) for pat in SELF_DIRECTED_PATTERNS)
+            is_talent_idiom = any(re.search(pat, text_lower) for pat in TALENT_IDIOM_PATTERNS)
+            is_friendly_banter = any(re.search(pat, text_lower) for pat in FRIENDLY_BANTER_PATTERNS) or is_gaming_banter
+            is_benign_insult_context = is_self_directed or is_talent_idiom or is_friendly_banter
 
         # 1. Neural Model Inference (run on normalized text)
         model_res = self._predict_model_batch([norm_text])[0]
@@ -738,16 +884,24 @@ class ModelService:
 
             hate_rel = model_scores.get("Hate Speech", 0.0)
             cb_rel = model_scores.get("Cyberbullying / Harassment", 0.0)
+
+            # Attenuate harassment scores when benign banter, self-directed, or talent compliment context
+            if is_benign_insult_context:
+                hate_rel = min(hate_rel * 0.15, 20.0)
+                hate_p = min(hate_p, 0.20)
+                cb_rel = min(cb_rel * 0.15, 20.0)
+                cb_p = min(cb_p, 0.20)
+
             model_harassment = max(hate_rel, cb_rel)
 
-            if hate_p >= hate_thresh:
+            if hate_p >= hate_thresh and not is_benign_insult_context:
                 model_signals.append({
                     "layer": "model",
                     "category": "harassment",
                     "signal": f"Model flagged hate speech ({hate_p*100:.1f}% vs threshold {hate_thresh*100:.1f}%)",
                     "score": hate_rel
                 })
-            if cb_p >= cb_thresh:
+            if cb_p >= cb_thresh and not is_benign_insult_context:
                 model_signals.append({
                     "layer": "model",
                     "category": "harassment",
@@ -764,6 +918,12 @@ class ModelService:
             tox_rel = model_scores.get("Toxicity / Offensive Language", 0.0)
             prof_rel = model_scores.get("Profanity", 0.0)
 
+            if is_benign_insult_context:
+                tox_rel = min(tox_rel * 0.25, 25.0)
+                tox_p = min(tox_p, 0.20)
+                prof_rel = min(prof_rel * 0.25, 25.0)
+                prof_p = min(prof_p, 0.20)
+
             # Check if text contains explicit profane words from lexicon
             has_profane_word = any(re.search(pat, text_lower) for pat in PROFANITY_WORD_PATTERNS)
             if not has_profane_word:
@@ -773,7 +933,7 @@ class ModelService:
             # Toxicity & Profanity lower weight
             model_abusive = max(tox_rel, prof_rel) * 0.7
 
-            if tox_p >= tox_thresh:
+            if tox_p >= tox_thresh and not is_benign_insult_context:
                 model_signals.append({
                     "layer": "model",
                     "category": "abusive_language",
@@ -808,14 +968,16 @@ class ModelService:
         final_phishing = rules_cats["phishing"]
         final_scam = rules_cats["scam"]
 
-        # Harassment: weighted blend (higher weight on model, rules assist)
+        # Harassment: hybrid blend (model and rules assist each other)
         if model_active:
             final_harassment = max(
                 model_harassment,
+                rules_cats["harassment"],
                 0.85 * model_harassment + 0.15 * rules_cats["harassment"]
             )
             final_abusive = max(
                 model_abusive,
+                rules_cats["abusive_language"],
                 0.80 * model_abusive + 0.20 * rules_cats["abusive_language"]
             )
         else:
@@ -883,10 +1045,18 @@ class ModelService:
         )
         is_strong_fraud = (final_phishing >= 75.0 and has_strong_phishing) or (final_scam >= 75.0 and has_strong_scam)
 
-        is_critical_eligible = is_threat or is_sextortion or is_hate_speech or is_strong_fraud
+        has_severe_death_wish = any(
+            s.get("category") == "threat" and "severe death wish" in s.get("signal", "").lower()
+            for s in rules_signals
+        )
+        is_critical_eligible = is_threat or is_sextortion or is_hate_speech or is_strong_fraud or has_severe_death_wish
+
+        abuse_cap = self.severity_caps.get("plain_abuse_cap", 80.0)
+        if not is_hate_speech and not has_severe_death_wish:
+            final_category_scores["harassment"] = min(final_category_scores["harassment"], abuse_cap)
+            final_category_scores["abusive_language"] = min(final_category_scores["abusive_language"], abuse_cap)
 
         if not is_critical_eligible:
-            abuse_cap = self.severity_caps.get("plain_abuse_cap", 80.0)
             overall_score = min(overall_score, abuse_cap)
             if overall_score >= 50.0:
                 level = "high"

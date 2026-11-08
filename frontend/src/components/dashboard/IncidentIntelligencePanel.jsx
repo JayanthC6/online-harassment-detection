@@ -8,10 +8,29 @@ import GuidancePanel from '../prediction/GuidancePanel';
 export default function IncidentIntelligencePanel({ report, onClose }) {
   const [summary, setSummary] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(report?.status || 'open');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     setSummary(null);
+    setCurrentStatus(report?.status || 'open');
   }, [report]);
+
+  const handleStatusUpdate = async (newStatus) => {
+    setUpdatingStatus(true);
+    try {
+      await apiClient(`/admin/incidents/${report.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus })
+      });
+      setCurrentStatus(newStatus);
+      if (report) report.status = newStatus;
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   if (!report) return null;
 
@@ -26,7 +45,7 @@ export default function IncidentIntelligencePanel({ report, onClose }) {
           confidence: report.confidence
         })
       });
-      setSummary(data.summary || data.error);
+      setSummary(data.summary || data.incident_description || data.error || 'Summary generated.');
     } catch (e) {
       setSummary('Failed to generate summary.');
     } finally {
@@ -72,6 +91,38 @@ export default function IncidentIntelligencePanel({ report, onClose }) {
           >
             <X size={20} />
           </button>
+        </div>
+
+        {/* Status Workflow Action Bar */}
+        <div className="px-6 py-3 bg-black/60 border-b border-border/50 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono text-text-muted">Status:</span>
+            <span className={`text-xs font-mono uppercase px-2 py-0.5 rounded font-bold ${
+              currentStatus === 'resolved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' :
+              currentStatus === 'reviewing' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' :
+              currentStatus === 'dismissed' ? 'bg-slate-700 text-slate-300 border border-slate-600' :
+              'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+            }`}>
+              {currentStatus}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {['open', 'reviewing', 'resolved', 'dismissed'].map((st) => (
+              <button
+                key={st}
+                type="button"
+                disabled={updatingStatus || currentStatus === st}
+                onClick={() => handleStatusUpdate(st)}
+                className={`text-[11px] font-mono px-2.5 py-1 rounded transition-colors uppercase font-semibold ${
+                  currentStatus === st
+                    ? 'opacity-40 cursor-not-allowed bg-surface border border-border text-text-muted'
+                    : 'bg-surface-3 hover:bg-surface border border-border text-text-secondary hover:text-white'
+                }`}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Content */}

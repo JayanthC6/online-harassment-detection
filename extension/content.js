@@ -1,25 +1,40 @@
-const CONFIDENCE_THRESHOLD = 0.6;
+// ShieldAI Content Script — Message Scanner & Threat Badging
 let isEnabled = true;
+const pendingBatch = [];
+let batchTimeout = null;
+const BATCH_INTERVAL_MS = 250;
+const MAX_BATCH_SIZE = 30;
 
-// Check extension state
-if (chrome.runtime && chrome.runtime.sendMessage) {
+// Initialize state from background service worker
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
   try {
     chrome.runtime.sendMessage({ type: 'GET_STATE' }, (response) => {
       if (response && response.isEnabled !== undefined) {
         isEnabled = response.isEnabled;
       }
     });
-  } catch (e) {}
+  } catch (e) {
+    // Context invalidated or extension reloaded
+  }
 }
 
-// Update state when toggled
-chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === 'local' && changes.isEnabled) {
-    isEnabled = changes.isEnabled.newValue;
-  }
-});
+// React to state changes toggled in popup
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+  chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'local' && changes.isEnabled !== undefined) {
+      isEnabled = changes.isEnabled.newValue;
+      if (!isEnabled) {
+        // Hide badges when toggled off
+        document.querySelectorAll('.shieldai-badge').forEach(b => b.style.display = 'none');
+      } else {
+        document.querySelectorAll('.shieldai-badge').forEach(b => b.style.display = 'inline-flex');
+        debouncedScanDOM();
+      }
+    }
+  });
+}
 
-// Utility to debounce function calls
+// Debounce helper
 function debounce(func, wait) {
   let timeout;
   return function(...args) {
@@ -28,136 +43,205 @@ function debounce(func, wait) {
   };
 }
 
-// Check if a node is a message node we care about
+// Select message containers across Gmail, WhatsApp Web, and local test harness
 function getMessageSelector() {
   const hostname = window.location.hostname;
   if (hostname.includes('mail.google.com')) {
-    // Gmail email body containers
     return '.a3s.aiL, div[role="listitem"] .a3s';
   } else if (hostname.includes('web.whatsapp.com')) {
-    // WhatsApp Web message containers
     return 'div.message-in, div.message-out, span.selectable-text';
   }
-  return null;
+  // Generic test harness and other web messengers
+  return '.chat-message, .message-content, .msg-text, [data-message], .message-bubble, .message-body';
 }
 
-function processMessageElement(el) {
+// Check an element and queue it for batch scanning
+function queueElementForScan(el) {
   if (!isEnabled) return;
-  
-  // Deduplication: prevent redundant checks
-  if (el.getAttribute('data-shieldai-checked') === 'true') {
+  if (!el || el.getAttribute('data-shieldai-checked') === 'true') return;
+
+  // Mark immediately to guarantee no redundant scans
+  el.setAttribute('data-shieldai-checked', 'true');
+
+  let text = (el.innerText || el.textContent || '').trim();
+  // Filter: skip very short (< 5 chars) or very long (> 2000 chars)
+  if (!text || text.length < 5 || text.length > 2000) {
     return;
   }
-  
-  // Mark as checked immediately to prevent concurrent duplicate checks
-  el.setAttribute('data-shieldai-checked', 'true');
-  
-  let text = el.innerText || el.textContent;
-  if (!text || text.trim().length < 5) return;
-  
-  // Truncate text to avoid hitting the backend's 2000 character limit for long emails
-  if (text.length > 1950) {
-    text = text.substring(0, 1950);
+
+  pendingBatch.push({ element: el, text: text });
+
+  if (pendingBatch.length >= MAX_BATCH_SIZE) {
+    flushBatch();
+  } else if (!batchTimeout) {
+    batchTimeout = setTimeout(flushBatch, BATCH_INTERVAL_MS);
   }
-  
-  // Safety check: if extension was reloaded, chrome.runtime becomes undefined
-  if (!chrome.runtime || !chrome.runtime.sendMessage) return;
-  
+}
+
+// Flush queued elements as a batch to the background service worker
+function flushBatch() {
+  if (batchTimeout) {
+    clearTimeout(batchTimeout);
+    batchTimeout = null;
+  }
+
+  if (pendingBatch.length === 0 || !isEnabled) return;
+
+  const currentBatch = pendingBatch.splice(0, MAX_BATCH_SIZE);
+  const texts = currentBatch.map(item => item.text);
+
+  if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+    return;
+  }
+
   try {
-    chrome.runtime.sendMessage({ type: 'CHECK_PREDICT', text: text }, (response) => {
-      if (!response || response.status !== 'success' || !response.data) return;
-      
-      const result = response.data;
-    
-    const isThreat = result.confidence >= CONFIDENCE_THRESHOLD && result.label === 'harassing';
-         
-    // Inject badge for ALL scanned messages
-    injectBadge(el, result, isThreat);
-    
-    // Only report to background script (increment popup count) if it's an actual threat
-    if (isThreat) {
+    // Content script sends batch to background service worker (NEVER calls localhost directly)
+    chrome.runtime.sendMessage({ type: 'CHECK_BATCH', texts: texts }, (response) => {
+      if (chrome.runtime.lastError) {
+        // Backend or extension connection error: handle silently without breaking page
+        console.debug('[ShieldAI] Batch runtime notice:', chrome.runtime.lastError.message);
+        return;
+      }
+
+      if (!response || response.status !== 'success' || !Array.isArray(response.results)) {
+        // Backend offline or error: gracefully do nothing
+        return;
+      }
+
+      const results = response.results;
+      currentBatch.forEach((item, idx) => {
+        const res = results[idx];
+        if (res && !res.error) {
+          injectBadge(item.element, res);
+        }
+      });
+    });
+  } catch (err) {
+    // Ignore runtime disconnection errors gracefully
+    console.debug('[ShieldAI] Extension communication error:', err);
+  }
+}
+
+// Inject colour-coded badge (Amber, Orange, Red) with explanatory tooltip
+function injectBadge(element, result) {
+  if (!element || element.querySelector('.shieldai-badge')) return;
+
+  const score = floatVal(result.score || (result.confidence ? result.confidence * 100 : 0));
+  const level = (result.level || result.severity_tier || '').toLowerCase();
+  const category = (result.primary_label || result.category || 'Threat').toUpperCase();
+
+  // Determine badge color tier
+  // Red: Critical (Score >= 75 or threats/sextortion/phishing)
+  // Orange: High (Score 50-74, harassment, abusive language)
+  // Amber: Medium (Score 25-49, suspicious)
+  // Safe: Clean (< 25)
+  let badgeClass = 'badge-safe';
+  let badgeLabel = 'SAFE';
+
+  if (level === 'critical' || score >= 75) {
+    badgeClass = 'badge-red';
+    badgeLabel = category === 'CLEAN' ? 'CRITICAL' : category;
+  } else if (level === 'high' || score >= 50) {
+    badgeClass = 'badge-orange';
+    badgeLabel = category === 'CLEAN' ? 'HIGH RISK' : category;
+  } else if (level === 'medium' || score >= 25) {
+    badgeClass = 'badge-amber';
+    badgeLabel = category === 'CLEAN' ? 'SUSPICIOUS' : category;
+  } else {
+    badgeClass = 'badge-safe';
+    badgeLabel = 'SAFE';
+  }
+
+  // Construct explanatory tooltip explaining why
+  let tooltipReason = '';
+  if (result.signals && Array.isArray(result.signals) && result.signals.length > 0) {
+    const firstSig = result.signals[0];
+    tooltipReason = typeof firstSig === 'string' ? firstSig : (firstSig.signal || '');
+  } else if (result.explanation) {
+    tooltipReason = result.explanation;
+  } else if (badgeClass !== 'badge-safe') {
+    tooltipReason = `Elevated risk indicators detected for ${category}`;
+  } else {
+    tooltipReason = 'No malicious or abusive patterns detected.';
+  }
+
+  const tooltip = `[${badgeLabel} - Risk Score: ${score.toFixed(0)}/100]\nReason: ${tooltipReason}`;
+
+  const badge = document.createElement('span');
+  badge.className = `shieldai-badge ${badgeClass}`;
+  badge.textContent = badgeLabel;
+  badge.title = tooltip;
+
+  // Append badge next to or inside the message container
+  try {
+    element.appendChild(badge);
+  } catch (e) {
+    element.parentElement && element.parentElement.appendChild(badge);
+  }
+
+  // Report flagged threat to background for icon badge counter if not safe
+  if (badgeClass !== 'badge-safe' && chrome.runtime && chrome.runtime.sendMessage) {
+    try {
       chrome.runtime.sendMessage({
         type: 'REPORT_FLAGGED',
         item: {
-          category: result.primary_label,
-          confidence: result.confidence,
-          text: result.text_preview,
-          threatIntel: result.threat_intel ? Object.keys(result.threat_intel.urls || {}).join(', ') : null
+          category: badgeLabel,
+          confidence: score / 100,
+          text: (result.text_preview || element.innerText || '').slice(0, 100),
+          reason: tooltipReason
         }
       });
-    }
-    }); // <-- Added missing callback closure
-  } catch (e) {
-    // Ignore context invalidated errors silently
+    } catch (e) {}
   }
 }
 
-function injectBadge(element, result, isThreat) {
-  // Prevent duplicate badges on the exact same element if somehow called twice
-  if (element.querySelector('.shieldai-badge')) return;
-  
-  const badge = document.createElement('span');
-  badge.className = isThreat ? 'shieldai-badge badge-threat' : 'shieldai-badge badge-safe';
-  
-  if (isThreat) {
-    badge.textContent = result.primary_label;
-  } else {
-    badge.textContent = 'SAFE';
-  }
-  
-  let tooltip = `Score: ${(result.confidence * 100).toFixed(0)}%`;
-  if (result.threat_intel && result.threat_intel.urls && Object.keys(result.threat_intel.urls).length > 0) {
-    tooltip += `\nThreat Intel: Detected known malicious URLs`;
-  } else if (!isThreat) {
-    tooltip += '\nNo threats detected';
-  }
-  badge.title = tooltip;
-  
-  // Append inside the message bubble for layout stability
-  element.appendChild(badge);
+function floatVal(val) {
+  const f = parseFloat(val);
+  return isNaN(f) ? 0.0 : f;
 }
 
-// Set up Intersection Observer to only scan visible messages
-const observerOptions = {
-  root: null,
-  rootMargin: '0px',
-  threshold: 0.1
-};
-
-const messageObserver = new IntersectionObserver((entries, observer) => {
+// Intersection Observer: prioritize visible messages on screen
+const visibleObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
-      processMessageElement(entry.target);
+      queueElementForScan(entry.target);
     }
   });
-}, observerOptions);
+}, { root: null, threshold: 0.1 });
 
-// Observe DOM mutations to find newly added messages (e.g. infinite scroll)
+// Debounced DOM Scanner
 const debouncedScanDOM = debounce(() => {
   if (!isEnabled) return;
-  
   const selector = getMessageSelector();
   if (!selector) return;
-  
+
   const elements = document.querySelectorAll(selector);
   elements.forEach(el => {
     if (el.getAttribute('data-shieldai-checked') !== 'true') {
-      messageObserver.observe(el);
+      visibleObserver.observe(el);
     }
   });
-}, 1000);
+}, 400);
 
+// MutationObserver: observe incoming chat/email elements
 const mutationObserver = new MutationObserver((mutations) => {
-  let shouldScan = false;
-  for (let m of mutations) {
-    if (m.addedNodes.length > 0) {
-      shouldScan = true;
+  let hasNew = false;
+  for (const m of mutations) {
+    if (m.addedNodes && m.addedNodes.length > 0) {
+      hasNew = true;
       break;
     }
   }
-  if (shouldScan) debouncedScanDOM();
+  if (hasNew) debouncedScanDOM();
 });
 
-// Start observing
-debouncedScanDOM();
-mutationObserver.observe(document.body, { childList: true, subtree: true });
+// Kick off initial scan
+if (document.body) {
+  debouncedScanDOM();
+  mutationObserver.observe(document.body, { childList: true, subtree: true });
+} else {
+  document.addEventListener('DOMContentLoaded', () => {
+    debouncedScanDOM();
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+  });
+}

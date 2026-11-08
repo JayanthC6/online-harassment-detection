@@ -47,8 +47,8 @@ export default function RiskBadge({ safetyStatus, severityTier, category, threat
           <span 
             className="text-5xl font-extrabold tabular-nums font-mono tracking-tight"
             style={{ 
-              color: score >= 80 ? '#F43F5E' : score >= 55 ? '#F97316' : score >= 30 ? '#F59E0B' : '#10B981',
-              textShadow: `0 0 20px ${score >= 80 ? 'rgba(244,63,94,0.4)' : score >= 55 ? 'rgba(249,115,22,0.4)' : score >= 30 ? 'rgba(245,158,11,0.4)' : 'rgba(16,185,129,0.4)'}` 
+              color: score >= 80 ? '#EF4444' : score >= 55 ? '#F97316' : score >= 30 ? '#F59E0B' : '#10B981',
+              textShadow: `0 0 20px ${score >= 80 ? 'rgba(239,68,68,0.4)' : score >= 55 ? 'rgba(249,115,22,0.4)' : score >= 30 ? 'rgba(245,158,11,0.4)' : 'rgba(16,185,129,0.4)'}` 
             }}
           >
             {score}

@@ -30,6 +30,7 @@ export default function ChatbotPanel({ role }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileError, setFileError] = useState('');
   const [activePredictionContext, setActivePredictionContext] = useState(null);
+  const [chatMode, setChatMode] = useState(role && role !== 'User' ? 'analyst' : 'victim');
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -116,8 +117,7 @@ export default function ChatbotPanel({ role }) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('session_id', sessionId);
-        const persona = role && role !== 'User' ? 'analyst' : 'user';
-        formData.append('persona', persona);
+        formData.append('persona', chatMode);
 
         const res = await fetch('/chat/file', { method: 'POST', body: formData });
         const data = await res.json();
@@ -149,7 +149,7 @@ export default function ChatbotPanel({ role }) {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
     try {
-      const persona = role && role !== 'User' ? 'analyst' : 'user';
+      const persona = chatMode;
       const res = await fetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -158,7 +158,8 @@ export default function ChatbotPanel({ role }) {
       const data = await res.json();
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: res.ok ? data.response : `Error: ${data.error}`
+        content: res.ok ? data.response : `Error: ${data.error}`,
+        engine: data.engine || 'rules'
       }]);
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Network error communicating with the server.' }]);
@@ -185,19 +186,31 @@ export default function ChatbotPanel({ role }) {
         style={{ boxShadow: '0 8px 48px rgba(0,242,254,0.15), inset 0 0 20px rgba(0,242,254,0.05)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-black/40 shrink-0">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50 bg-black/40 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-full bg-blue/10 border border-blue/40 flex items-center justify-center text-blue shadow-[0_0_10px_rgba(0,242,254,0.3)]">
               <ShieldAlert size={16} />
             </div>
             <div>
               <h3 className="text-sm font-bold text-text-primary tracking-wide">
-                Cyber Security AI Assistant
+                ShieldAI Assistant
               </h3>
-              <p className="text-xs text-blue flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue animate-pulse inline-block" />
-                Online · PDF, DOCX, TXT supported
-              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setChatMode('victim')}
+                  className={`text-[10px] px-2 py-0.5 rounded transition-colors ${chatMode === 'victim' ? 'bg-cyan-500/20 text-cyan-400 font-semibold border border-cyan-500/40' : 'text-text-muted hover:text-text-primary'}`}
+                >
+                  Victim Mode
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChatMode('analyst')}
+                  className={`text-[10px] px-2 py-0.5 rounded transition-colors ${chatMode === 'analyst' ? 'bg-purple-500/20 text-purple-400 font-semibold border border-purple-500/40' : 'text-text-muted hover:text-text-primary'}`}
+                >
+                  Analyst Mode
+                </button>
+              </div>
             </div>
           </div>
           <button onClick={() => setIsOpen(false)} className="p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-3 rounded-md transition-colors">
@@ -224,6 +237,12 @@ export default function ChatbotPanel({ role }) {
                 ) : (
                   <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-a:text-blue prose-strong:text-blue-dim prose-headings:text-blue-dim prose-li:my-0.5">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    {msg.engine && (
+                      <div className="mt-2 pt-1 border-t border-border/30 flex items-center gap-1.5 text-[10px] text-text-muted select-none">
+                        <span className={`w-1.5 h-1.5 rounded-full ${msg.engine === 'claude' ? 'bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.6)]' : 'bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.6)]'}`} />
+                        <span>Engine: {msg.engine === 'claude' ? 'Claude' : 'Rules'}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

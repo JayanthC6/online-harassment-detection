@@ -5,7 +5,7 @@ Supports:
 - "victim" mode: Calm, supportive, practical, tailored to user specifics, helpline referrals (112, 1930, cybercrime.gov.in).
 - "analyst" mode: Structured tactical evaluation (Classification, Indicators, Tactics, Confidence, Escalation, Uncertainties)
   built strictly from real detection engine outputs (ModelService scores, signals, extracted URLs/domains/brands/phones).
-- Anthropic API integration (when ANTHROPIC_API_KEY is configured). Default model: claude-3-5-haiku-20241022.
+- Anthropic API integration (when ANTHROPIC_API_KEY is configured). Default model: claude-haiku-5-5.
 - Robust rule-based fallback when ANTHROPIC_API_KEY is absent, fails, or times out.
 - Fallback logging: Logs exact reason whenever the fallback engine is triggered.
 - Engine indicator: Returns ChatResponse with .engine ("claude" or "rules") for subtle UI display.
@@ -22,7 +22,7 @@ from typing import List, Dict, Any, Optional, Tuple
 
 logger = logging.getLogger("ShieldAI.Chatbot")
 
-DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"
+DEFAULT_ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-5-5")
 MAX_FILE_TEXT_CHARS = 12000
 MAX_HISTORY_TURNS = 20
 MAX_MESSAGE_CHARS = 2000
@@ -164,10 +164,11 @@ def extract_user_specifics(text: str) -> Dict[str, Any]:
     if not text:
         return specifics
 
-    # 1. Amounts (e.g. $500, 500 dollars, Rs 10000, ₹50,000, 0.5 BTC)
-    amt_match = re.search(r'(?:[\$₹£€]|Rs\.?\s*|INR\s*)\s*[\d,]+(?:\.\d+)?|\b\d+(?:,\d+)*(?:\.\d+)?\s*(?:dollars|usd|inr|rupees|bitcoin|btc|eth)\b', text, re.IGNORECASE)
+    # 1. Amounts (e.g. $500, 500 dollars, Rs 10000, ₹50,000, 0.5 BTC, 50000 INR, Send 5000)
+    amt_match = re.search(r'(?:[\$₹£€]|Rs\.?\s*|INR\s*)\s*[\d,]+(?:\.\d+)?|\b\d+(?:,\d+)*(?:\.\d+)?\s*(?:dollars|usd|inr|rupees|bitcoin|btc|eth)\b|\b(?:send|pay|demanding|demands|transfer)\s+(?:me\s+)?([\$₹£€]?\s*[\d,]+(?:\.\d+)?(?:\s*(?:inr|rupees|usd|dollars|btc|bitcoin))?)', text, re.IGNORECASE)
     if amt_match:
-        specifics["amount"] = amt_match.group(0).strip()
+        val = amt_match.group(1) if amt_match.lastindex and amt_match.group(1) else amt_match.group(0)
+        specifics["amount"] = val.strip()
 
     # 2. Deadlines (e.g. within 24 hours, in 2 days, today, immediately, by tomorrow)
     dl_match = re.search(r'\b(?:within|in)\s+\d+\s*(?:hours?|hrs?|days?|minutes?|mins?)\b|\b(?:by\s+tomorrow|tonight|immediately|urgent(?:ly)?)\b', text, re.IGNORECASE)
@@ -365,22 +366,79 @@ def generate_fallback_response(user_text: str, persona: str = "victim", predicti
         if specifics.get("amount"):
             lines.append(f"- **Extortion / Payment Demand:** {specifics['amount']}")
 
+        # Look-alike brand findings from signals and domain analysis
+        lookalike_findings = []
+        if real_signals:
+            for s in real_signals:
+                sig_text = s.get("signal") if isinstance(s, dict) else str(s)
+                if "mimicking" in sig_text.lower() or "look-alike" in sig_text.lower():
+                    lookalike_findings.append(sig_text)
+        if specifics.get("brand") and specifics.get("domains"):
+            for d in specifics["domains"]:
+                if specifics["brand"].lower() in d.lower() and not any(d in f for f in lookalike_findings):
+                    lookalike_findings.append(f"Domain '{d}' mimics official brand '{specifics['brand']}'")
+        for lf in lookalike_findings:
+            lines.append(f"- **Look-alike Brand Finding:** {lf}")
+
+        # Distinguish channel modality: SMS smishing vs Email phishing
+        is_sms_phishing = False
+        is_email_phishing = False
+        if "phishing" in top_cat or "scam" in top_cat:
+            if specifics.get("emails") or any(k in user_text.lower() for k in ["from:", "subject:", "mailer", "inbox", "dkim", "spf"]):
+                is_email_phishing = True
+            else:
+                is_sms_phishing = True
+
         lines.append("\n#### Attacker Tactics Identified:")
         if "sextortion" in top_cat:
-            lines.append("- **Fear & Panic Induction:** Immediate deadline pressure threatening exposure to contacts.")
-            lines.append("- **Financial Coercion:** Demanding irreversible payments (cryptocurrency, gift cards, UPI).")
-        elif "phishing" in top_cat:
-            lines.append("- **Authority Impersonation:** Posing as a financial institution or governmental body.")
-            lines.append("- **Urgent Verification Trap:** Feigning account deactivation to elicit OTP/KYC.")
+            lines.append("- **Psychological Intimidation & Shaming:** Threatening imminent disclosure of private/compromising media to contacts to induce panic.")
+            lines.append("- **Financial Coercion:** Demanding irreversible payment (cryptocurrency, gift cards, or UPI).")
+            lines.append("- **Credential Bluff / Fake Malware:** Citing leaked credentials from historical data breaches or fictitious webcam capture without actual compromise.")
+        elif is_sms_phishing:
+            lines.append("- **Sender Header Spoofing / Look-alike Sender ID:** Impersonating a trusted financial or governmental entity.")
+            lines.append("- **Artificial Account Urgency:** Fabricating imminent account deactivation or KYC deadline to force rushed actions.")
+            lines.append("- **Deceptive Credential Harvester:** Directing victim to an off-domain phishing form (e.g. suspicious TLD) to harvest banking credentials and OTPs.")
+        elif is_email_phishing:
+            lines.append("- **Display Name & Domain Spoofing:** Masquerading as an authorized entity with forged sender names or look-alike domains.")
+            lines.append("- **Credential Harvesting & Attachment Trap:** Directing targets to fake authentication portals or delivering malicious attachments.")
         elif "threat" in top_cat:
-            lines.append("- **Intimidation & Violence:** Intentional intimidation to compel submission or silence.")
+            lines.append("- **Direct Physical Intimidation:** Explicit declaration of intent to inflict physical injury or death.")
+            lines.append("- **Surveillance Assertion:** Claiming physical proximity or knowledge of home/workplace coordinates to amplify terror.")
+        elif "harassment" in top_cat:
+            lines.append("- **Targeted Hostility & Personal Degradation:** Sustained personal insults, demeaning slurs, or hostile targeting.")
+            lines.append("- **Social Dogpiling & Intimidation:** Coercive pressure intended to silence or distress the individual.")
         else:
-            lines.append("- **Social Engineering:** Leveraging urgency, authority, or emotional manipulation.")
+            lines.append("- **Social Engineering:** Leveraging artificial urgency, authority, or emotional pressure to deceive.")
 
         lines.append("\n#### Recommended Escalation Steps:")
-        lines.append("1. **Forensic Evidence Preservation:** Capture raw RFC 822 email headers, SMS originating sender IDs, uncompressed screenshots, and full URLs.")
-        lines.append("2. **Incident Dispatch:** Lodge incident report with National Cyber Crime Reporting Portal (`https://cybercrime.gov.in`) or National Helpline `1930`.")
-        lines.append("3. **Containment:** Implement platform-level domain blocks, sender restrictions, and notify internal fraud monitoring if institutional credentials were exposed.")
+        if "sextortion" in top_cat:
+            lines.append("1. **Strict Non-Payment & Disengagement:** Never pay or negotiate; compliance guarantees escalation of extortion demands.")
+            lines.append("2. **Digital Evidence Capture:** Document complete uncropped chat logs, sender profile links, and payment wallet/UPI handles before blocking.")
+            lines.append("3. **Image Protection & Takedown:** Submit non-consensual image protection hashes to **StopNCII.org** (or Take It Down for minors) to prevent media sharing across participating platforms.")
+            lines.append("4. **Statutory Incident Dispatch:** Lodge a formal cyber blackmail complaint on the **National Cyber Crime Reporting Portal at `https://cybercrime.gov.in`** or dial helpline **1930**.")
+        elif is_sms_phishing:
+            lines.append("1. **SMS & Sender Evidence Capture:** Preserve the raw SMS message with exact originating sender ID (e.g. shortcode or alphatag), complete arrival timestamp, and exact link target without clicking.")
+            lines.append("2. **Spam & Telecom Takedown:** Report fraudulent SMS to the Telecom Regulatory Authority of India (TRAI) by forwarding to **1909** (DND reporting) and log on the DoT **Chakshu Portal (`sancharsaathi.gov.in`)**.")
+            lines.append("3. **Emergency Banking Containment:** If credentials or OTP were entered, immediately call the bank's official emergency helpline to freeze net banking and debit cards.")
+            lines.append("4. **National Cyber Reporting:** File a complaint with the **National Cyber Crime Helpline at 1930** and report on **`https://cybercrime.gov.in`**.")
+        elif is_email_phishing:
+            lines.append("1. **Forensic Header Export:** Export raw RFC 822 email headers (`.eml` / `.msg`) to capture originating IP address, SPF/DKIM verification results, and envelope sender.")
+            lines.append("2. **Infrastructure Takedown:** File abuse takedown requests with the authoritative DNS registrar and hosting provider for the credential-harvesting domain.")
+            lines.append("3. **Mail Gateway Containment:** Block the sender domain and quarantine associated phishing URLs at the mail filter and DNS firewall.")
+            lines.append("4. **Statutory Reporting:** Report to CERT-In (`incident@cert-in.org.in`) and file an incident report on **`https://cybercrime.gov.in`**.")
+        elif "threat" in top_cat:
+            lines.append("1. **Immediate Physical Safety:** If the sender knows your physical whereabouts or you feel in immediate danger, call **112** (National Emergency Response) immediately.")
+            lines.append("2. **Forensic Evidence Logging:** Preserve complete chat exports, voicemail recordings, caller IDs, and platform usernames without alteration.")
+            lines.append("3. **Police FIR Filing:** Register a formal First Information Report (FIR) under BNS / IPC criminal intimidation (Section 503/506) and IT Act Section 66 at your local police station or cyber crime cell.")
+            lines.append("4. **Platform Preservation:** Request trust & safety preservation of IP addresses and server logs from the platform for law enforcement inquiry.")
+        elif "harassment" in top_cat:
+            lines.append("1. **Evidence Archiving:** Capture uncropped, timestamped screenshots showing account URLs, post links, and message content.")
+            lines.append("2. **Platform Moderation Enforcement:** Utilize in-app abuse reporting to suspend offending accounts and restrict incoming messages to approved contacts.")
+            lines.append("3. **Formal Complaint:** If harassment is continuous or amounts to stalking, file a report on the **National Cyber Crime Reporting Portal at `https://cybercrime.gov.in`**.")
+        else:
+            lines.append("1. **Evidence Archiving:** Preserve uncropped screenshots and raw message headers/timestamps.")
+            lines.append("2. **Platform Safety Reporting:** Block and report the sender via native platform safety controls.")
+            lines.append("3. **Statutory Dispatch:** Report cyber incidents to **`https://cybercrime.gov.in`** or Helpline **1930**.")
 
         lines.append("\n#### Uncertainties & Investigation Limits:")
         lines.append("- Sender identity and phone/email display names may be spoofed; raw server logs and telecom CDR records required for physical attribution.")

@@ -35,10 +35,12 @@ CATEGORY_RISK_BASE = {
     "Spam": 60,
     "Profanity": 50,
     "Toxicity / Offensive Language": 50,
-    "Clean": 5,
+    "Clean": 0,
     "hate_speech": 80,
     "offensive_language": 50,
-    "none": 5
+    "none": 0,
+    "Safe": 0,
+    "safe": 0
 }
 
 class PredictionService:
@@ -74,18 +76,24 @@ class PredictionService:
 
     @staticmethod
     def compute_risk_score(primary_category: str, primary_conf: float, secondary_categories: dict) -> float:
+        if str(primary_category).lower() in ["clean", "none", "safe"]:
+            if not secondary_categories:
+                return 0.0
         # Base severity of primary
-        base = CATEGORY_RISK_BASE.get(primary_category, 5)
+        base = CATEGORY_RISK_BASE.get(primary_category, 0)
         score = base * primary_conf
         
         # Add risk for secondary categories
         for sec_cat, sec_conf in secondary_categories.items():
+            if str(sec_cat).lower() in ["clean", "none", "safe"]:
+                continue
             sec_base = CATEGORY_RISK_BASE.get(sec_cat, 20)
             score += (sec_base * sec_conf * 0.2) # 20% weight for secondary labels
             
         # Add bonus for multi-vector attacks
-        if len(secondary_categories) > 0:
-            score += len(secondary_categories) * 5
+        non_clean_sec = [k for k in secondary_categories.keys() if str(k).lower() not in ["clean", "none", "safe"]]
+        if len(non_clean_sec) > 0 and score > 0:
+            score += len(non_clean_sec) * 5
             
         return round(min(100, max(0, score)), 1)
 
@@ -349,12 +357,11 @@ class PredictionService:
         # Determine platform if provided
         platform = messages[0].get("platform", "generic") if messages else "generic"
         
-        # We need primary and secondary labels for the entire conversation to pass to get_guidance.
-        # Let's aggregate them from the highest risk message.
+        # Primary and secondary labels for the conversation
         highest_risk_msg = max(result["messages"], key=lambda m: m.get("risk_score", 0), default={})
-        primary_label = highest_risk_msg.get("primary_label", highest_risk_msg.get("category", "none"))
+        primary_label = result.get("primary_label") or highest_risk_msg.get("primary_label", highest_risk_msg.get("category", "none"))
         primary_conf = highest_risk_msg.get("confidence", 0)
-        secondary_labels = highest_risk_msg.get("secondary_labels", {})
+        secondary_labels = result.get("secondary_labels", highest_risk_msg.get("secondary_labels", {}))
         
         result["guidance"] = GuidanceService.get_guidance(
             primary_label, primary_conf, secondary_labels, result["conversation_risk"], platform
@@ -368,22 +375,61 @@ class PredictionService:
         # Unified Threat Analysis (Phase 1)
         result["threat_score"] = result["conversation_risk"]
         result["safety_status"] = "Safe" if result["severity_tier"] == "Safe" else "At Risk"
-        result["evidence"] = highest_risk_msg.get("text", "No specific threat evidence detected.") if result["severity_tier"] != "Safe" else "No specific threat evidence detected."
-            
-        result["evidence_plan"] = EvidenceService.get_action_plan(result)
 
-        # Deterministic Explainability (Why was this flagged?) for Conversation
+        # Deterministic Explainability & Top Flagged Evidence
         reasons = []
         def add_reason(r):
-            if r not in reasons:
+            if r and r not in reasons:
                 reasons.append(r)
+
+        # 1. Top Flagged Messages as concrete evidence (PII masked, sender, category, one-line reason)
+        flagged_msgs = [
+            m for m in result.get("messages", [])
+            if (m.get("risk_score", 0) >= 30.0 and m.get("prediction", {}).get("primary_label", "").lower() not in ["clean", "none", "safe"])
+            or (m.get("prediction", {}).get("label") == "harassing" and m.get("prediction", {}).get("primary_label", "").lower() not in ["clean", "none", "safe"])
+        ]
+        flagged_msgs.sort(key=lambda m: m.get("risk_score", 0), reverse=True)
+
+        top_evidence_lines = []
+        for m in flagged_msgs[:3]:
+            sender = m.get("sender", "Unknown")
+            raw_text = m.get("text", "").strip().replace("\n", " ")
+            masked = mask_pii(raw_text)
+            if len(masked) > 60:
+                masked = masked[:57] + "..."
+            pred = m.get("prediction", {})
+            cat = pred.get("primary_label") or pred.get("category", "Flagged")
+            if str(cat).lower() in ["clean", "none", "safe"]:
+                continue
+            
+            # Extract specific one-line reason from message signals
+            signals = m.get("signals") or pred.get("signals", [])
+            reason_str = ""
+            if signals and isinstance(signals, list) and len(signals) > 0 and "signal" in signals[0]:
+                reason_str = signals[0]["signal"]
+            elif pred.get("explanation"):
+                exp = pred.get("explanation")
+                reason_str = exp if isinstance(exp, str) else (exp[0] if isinstance(exp, list) and exp else "")
+            if not reason_str:
+                reason_str = f"Risk score reached {m.get('risk_score', 0):.0f}/100"
+
+            evidence_line = f'[{sender}] "{masked}" — Flagged as {cat}: {reason_str}'
+            top_evidence_lines.append(evidence_line)
+            add_reason(evidence_line)
+
+        # Set conversation evidence to concrete evidence line(s)
+        if top_evidence_lines:
+            result["evidence"] = " | ".join(top_evidence_lines[:2])
+        else:
+            result["evidence"] = highest_risk_msg.get("text", "No specific threat evidence detected.") if result["severity_tier"] != "Safe" else "No specific threat evidence detected."
+            
+        result["evidence_plan"] = EvidenceService.get_action_plan(result)
 
         if primary_label.lower() not in ["none", "clean", "safe"]:
             add_reason(f"Conversation classified as {primary_label.title()}.")
             
-        for msg in result.get("messages", []):
-            for sec_cat in msg.get("secondary_labels", {}).keys():
-                add_reason(f"Indicators of {sec_cat.title()} detected.")
+        for sec_cat in secondary_labels.keys():
+            add_reason(f"Indicators of {sec_cat.title()} detected.")
                 
         pii_cats = set()
         for msg in result.get("messages", []):
@@ -458,7 +504,7 @@ class PredictionService:
             add_reason("An urgency indicator was detected.")
             
         if not reasons and result["conversation_risk"] > 0:
-            add_reason("Flagged by automated safety checks.")
+            add_reason(f"Elevated risk score ({result['conversation_risk']:.0f}/100) identified based on detected conversation patterns.")
             
         result["flagging_reasons"] = reasons
         

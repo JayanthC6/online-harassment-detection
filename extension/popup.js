@@ -1,16 +1,22 @@
 document.addEventListener('DOMContentLoaded', () => {
   const toggleSwitch = document.getElementById('toggle-switch');
   const statusLabel = document.getElementById('status-label');
+  const serverUrlInput = document.getElementById('server-url');
   const apiKeyInput = document.getElementById('api-key');
   const privacyBanner = document.getElementById('privacy-banner');
   const flaggedCount = document.getElementById('flagged-count');
   const flaggedList = document.getElementById('flagged-list');
 
   // Load saved state
-  chrome.storage.local.get(['isEnabled', 'apiKey'], (result) => {
+  chrome.storage.local.get(['isEnabled', 'serverUrl', 'apiKey'], (result) => {
     if (result.isEnabled !== undefined) {
       toggleSwitch.checked = result.isEnabled;
       updateUIState(result.isEnabled);
+    }
+    if (result.serverUrl) {
+      serverUrlInput.value = result.serverUrl;
+    } else {
+      serverUrlInput.value = 'http://127.0.0.1:5000';
     }
     if (result.apiKey) {
       apiKeyInput.value = result.apiKey;
@@ -22,6 +28,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const isEnabled = e.target.checked;
     chrome.storage.local.set({ isEnabled: isEnabled });
     updateUIState(isEnabled);
+  });
+
+  // Server URL listener
+  serverUrlInput.addEventListener('change', (e) => {
+    let url = e.target.value.trim();
+    if (!url) url = 'http://127.0.0.1:5000';
+    chrome.storage.local.set({ serverUrl: url });
   });
 
   // API Key listener

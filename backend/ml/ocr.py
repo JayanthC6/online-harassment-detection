@@ -11,8 +11,6 @@ Usage:
 import os
 import sys
 
-import easyocr
-
 sys.path.append(os.path.dirname(__file__))
 
 _reader = None
@@ -20,9 +18,14 @@ _reader = None
 def _load_reader():
     global _reader
     if _reader is None:
-        print("Loading EasyOCR model (first call only, may download weights)...")
-        # Initialize the reader for English
-        _reader = easyocr.Reader(['en'], gpu=False)
+        try:
+            import easyocr
+            print("Loading EasyOCR model (first call only, may download weights)...")
+            # Initialize the reader for English
+            _reader = easyocr.Reader(['en'], gpu=False)
+        except Exception as e:
+            print(f"Warning: EasyOCR failed to initialize: {e}")
+            return None
     return _reader
 
 def extract_text(file_path: str) -> str:
@@ -33,6 +36,8 @@ def extract_text(file_path: str) -> str:
         raise FileNotFoundError(file_path)
 
     reader = _load_reader()
+    if not reader:
+        return "OCR temporarily unavailable due to system library limitation."
     results = reader.readtext(file_path)
     
     # results is a list of tuples: (bbox, text, prob)

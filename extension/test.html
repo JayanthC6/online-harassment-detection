@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShieldAI Chrome Extension Test Harness</title>
+  <link rel="stylesheet" href="content.css">
+  <style>
+    :root {
+      --bg: #0B0E17;
+      --card-bg: #151A28;
+      --border: #232B3E;
+      --text: #F1F5F9;
+      --text-muted: #94A3B8;
+      --cyan: #06B6D4;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 32px 16px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+    }
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 24px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h1 span.logo-ai {
+      color: var(--cyan);
+    }
+    p.subtitle {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .instructions-card {
+      background: rgba(6, 182, 212, 0.08);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      border-radius: 8px;
+      padding: 18px 22px;
+      margin-bottom: 28px;
+    }
+    .instructions-card h2 {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      color: var(--cyan);
+      font-family: ui-monospace, monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .instructions-card ol {
+      margin: 0;
+      padding-left: 20px;
+      font-size: 13.5px;
+      color: var(--text);
+    }
+    .instructions-card li {
+      margin-bottom: 6px;
+    }
+    .instructions-card code {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: ui-monospace, monospace;
+      color: #38BDF8;
+      font-size: 12.5px;
+    }
+    .test-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+    }
+    .test-section h2 {
+      margin: 0 0 16px 0;
+      font-size: 16px;
+      font-family: ui-monospace, monospace;
+    }
+    .chat-stream {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .chat-message {
+      background: #1E2538;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color 0.2s ease;
+    }
+    .chat-message:hover {
+      border-color: #3B82F6;
+    }
+    .meta-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: ui-monospace, monospace;
+    }
+    .sender-name {
+      font-weight: 700;
+      color: #CBD5E1;
+    }
+    .expected-tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .message-content {
+      font-size: 14.5px;
+      color: var(--text);
+      display: inline-block;
+      line-height: 1.5;
+    }
+    footer {
+      margin-top: 36px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: ui-monospace, monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Shield<span class="logo-ai">AI</span> Threat Detection — Chrome Extension Test Harness</h1>
+      <p class="subtitle">Validates real-time DOM mutation scanning, non-blocking batch inference, and risk-tier badge injection.</p>
+    </header>
+
+    <div class="instructions-card">
+      <h2>Step-by-Step Extension Setup & Verification</h2>
+      <ol>
+        <li>Start your ShieldAI backend: <code>cd backend; .\venv\Scripts\python.exe app.py</code> (running on <code>http://127.0.0.1:5000</code>).</li>
+        <li>Open Chrome and navigate to <code>chrome://extensions</code>.</li>
+        <li>Enable <strong>Developer mode</strong> (toggle switch in the top-right corner).</li>
+        <li>Click <strong>Load unpacked</strong> and select the <code>extension</code> folder in this project: <code>c:\Users\jayanth\Downloads\online-harassment-detection\extension</code>.</li>
+        <li>Open this file (<code>extension/test.html</code>) directly in Chrome.</li>
+        <li>Observe the colour-coded threat badges injected automatically next to each message below. Hover over any badge to inspect the detailed analytical reason.</li>
+        <li>Click the ShieldAI extension icon in your Chrome toolbar to test toggling scanning on/off and configuring custom server URLs.</li>
+      </ol>
+    </div>
+
+    <div class="test-section">
+      <h2>Simulated Live Messaging Feed</h2>
+      <div class="chat-stream">
+
+        <!-- Case 1: Safe Message -->
+        <div class="chat-message" id="msg-safe">
+          <div class="meta-bar">
+            <span class="sender-name">Alex [Colleague]</span>
+            <span class="expected-tag">Expected: Green (SAFE) Badge</span>
+          </div>
+          <div class="message-content">
+            Hey! Hope you are having a productive day. Let's catch up over coffee this afternoon to discuss the sprint backlog.
+          </div>
+        </div>
+
+        <!-- Case 2: Phishing / Fake KYC Message -->
+        <div class="chat-message" id="msg-phishing">
+          <div class="meta-bar">
+            <span class="sender-name">VM-SBIINB [SMS Sender ID]</span>
+            <span class="expected-tag">Expected: Red/Orange (PHISHING) Badge</span>
+          </div>
+          <div class="message-content">
+            Urgent: Your SBI net banking account has been temporarily blocked. Verify your KYC immediately at http://sbi-kyc-update.xyz to restore access.
+          </div>
+        </div>
+
+        <!-- Case 3: Abusive Language / Harassment Message -->
+        <div class="chat-message" id="msg-abusive">
+          <div class="meta-bar">
+            <span class="sender-name">Anonymous Troll</span>
+            <span class="expected-tag">Expected: Orange (HARASSMENT / ABUSIVE) Badge</span>
+          </div>
+          <div class="message-content">
+            You are an ugly, stupid idiot and nobody wants you here loser.
+          </div>
+        </div>
+
+        <!-- Case 4: Violent Threat Message -->
+        <div class="chat-message" id="msg-threat">
+          <div class="meta-bar">
+            <span class="sender-name">Stalker99</span>
+            <span class="expected-tag">Expected: Red (THREAT) Badge</span>
+          </div>
+          <div class="message-content">
+            I know where you live and I will murder you tonight. Watch your back.
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <footer>
+      ShieldAI Manifest V3 Extension &bull; Batch Processing with Zero Server-Side Retention
+    </footer>
+  </div>
+</body>
+</html>
+

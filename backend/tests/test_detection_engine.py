@@ -125,3 +125,66 @@ def test_hard_cases_benchmark_and_discrepancy_tracking(model_service):
     print(f"\nHard cases accuracy: {passes}/{total} ({accuracy:.1%})")
     assert passes >= 28, f"Benchmark regression: expected >= 28 passes, got {passes}/{total}"
 
+def test_benign_insult_false_positives(model_service):
+    """
+    Verify that self-directed remarks, friendly gaming banter, and talent idioms
+    stay low or medium risk, and are NOT flagged as harassment.
+    """
+    cases = [
+        "that was so stupid of me, I forgot my keys",
+        "haha you loser, you beat me again!",
+        "my brother is such a freak at chess"
+    ]
+    for text in cases:
+        res = model_service.analyze(text)
+        assert res["level"] in ["low", "medium"], f"Expected low or medium, got {res['level']} for: {text}"
+        assert res["score"] < 40.0, f"Expected score < 40.0, got {res['score']} for: {text}"
+        # Primary category should not be harassment and score should be low
+        assert res["category_scores"]["harassment"] < 35.0, f"Falsely flagged as harassment: {res['category_scores']}"
+        signals = [s.get("signal", "").lower() for s in res.get("signals", [])]
+        assert not any("hostile" in s or "cyberbullying" in s for s in signals), f"Harassment signal falsely emitted: {signals}"
+
+
+def test_safety_bypass_resilience(model_service):
+    """
+    SAFETY INVARIANT:
+    Laughter, banter and self-directed patterns must only attenuate mild insults.
+    They must NEVER reduce threat, sextortion, blackmail, scam, phishing, or 'you should die / kys' style scores.
+    """
+    must_flag_cases = [
+        ("haha I will kill you lol", ["high", "critical"]),
+        ("lol you're worthless, kys", ["high", "critical"]),
+        ("just kidding, send nudes or I leak your photos", ["critical"]),
+        ("I'm so stupid, you should go die", ["high", "critical"])
+    ]
+    for text, expected_levels in must_flag_cases:
+        res = model_service.analyze(text)
+        assert res["level"] in expected_levels, f"Safety bypass! Expected {expected_levels}, got {res['level']} for: {text}"
+        assert res["score"] >= 70.0, f"Safety bypass! Expected score >= 70.0, got {res['score']} for: {text}"
+
+
+def test_new_benign_banter_and_self_deprecation(model_service):
+    """
+    Verify 10 new distinct benign banter and self-deprecation sentences remain low risk.
+    """
+    new_benign_cases = [
+        "lol I totally botched that dinner recipe, what a clown I am",
+        "ggwp man you crushed my defense in that match haha",
+        "silly me, I completely misread the train timetable today",
+        "haha nice shot dude, you destroyed my high score again!",
+        "honestly my fault, I made such a foolish blunder on that question",
+        "my sister is an absolute wizard at mathematics",
+        "rofl you got me good this round, rematch tomorrow?",
+        "how dumb of me to leave my umbrella in the taxi lol",
+        "you completely outplayed me on the board today haha gg",
+        "my bad guys, I dropped the pass, clumsy of me"
+    ]
+    for text in new_benign_cases:
+        res = model_service.analyze(text)
+        assert res["level"] in ["low", "medium"], f"Expected low or medium, got {res['level']} for: {text}"
+        assert res["score"] < 35.0, f"Expected score < 35.0, got {res['score']} for: {text}"
+        signals = [s.get("signal", "").lower() for s in res.get("signals", [])]
+        assert not any("hostile" in s or "cyberbullying" in s or "threat" in s for s in signals), f"False signal emitted for {text}: {signals}"
+
+
+

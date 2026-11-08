@@ -54,6 +54,13 @@ def test_batch_extension_stores_nothing(client):
     count_after = db_instance.get_reports(page_size=1000).get("total", 0)
     assert count_before == count_after, "POST /api/batch must not persist data"
 
+def test_batch_large_payload_60_messages(client):
+    texts = [f"Message #{i}: Hello this is test text for 60-message batch verification {i}" for i in range(60)]
+    res = client.post("/api/batch", json={"texts": texts})
+    assert res.status_code == 200
+    data = res.get_json()
+    assert len(data.get("results", [])) == 60
+
 def test_whatsapp_chat_export_and_attribution(client):
     wa_content = (
         "[12/10/24, 10:15:20] Alice: Hey Bob, are you coming to the group study?\n"

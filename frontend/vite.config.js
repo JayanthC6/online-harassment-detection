@@ -5,19 +5,31 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      // Forwards /api/* calls to the Flask backend during local dev
       '/api': {
         target: 'http://127.0.0.1:5000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
-      // Forwards /chat/* calls to Flask backend
       '/chat': {
         target: 'http://127.0.0.1:5000',
         changeOrigin: true,
       },
-      // Forwards /predict/* calls to Flask backend (includes /predict/explain)
       '/predict': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+      },
+      '/admin': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+      },
+      '/complaints': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+      },
+      '/history': {
+        target: 'http://127.0.0.1:5000',
+        changeOrigin: true,
+      },
+      '/summarize': {
         target: 'http://127.0.0.1:5000',
         changeOrigin: true,
       },

@@ -1,31 +1,7 @@
 {
-  "total": 44,
-  "passed": 33,
+  "total": 52,
+  "passed": 46,
   "discrepancies": [
-    {
-      "id": "7",
-      "type": "friendly_banter",
-      "text": "I am going to murder you in FIFA tonight bro, prepare yourse...",
-      "expected": "low/clean",
-      "actual": "high/abusive_language (score: 55.7)",
-      "status": "MISMATCH",
-      "notes": "Gaming banter with violent words",
-      "signals": [
-        "Model flagged toxic language (99.7% vs threshold 68.4%)"
-      ]
-    },
-    {
-      "id": "11",
-      "type": "friendly_banter",
-      "text": "I am gonna slaughter your team in Valorant this weekend",
-      "expected": "low/clean",
-      "actual": "medium/abusive_language (score: 40.8)",
-      "status": "MISMATCH",
-      "notes": "Gaming rivalry banter",
-      "signals": [
-        "Model flagged toxic language (82.9% vs threshold 68.4%)"
-      ]
-    },
     {
       "id": "13",
       "type": "educational_news",
@@ -78,46 +54,18 @@
       ]
     },
     {
-      "id": "20",
-      "type": "hinglish_threat",
-      "text": "Kal college ke bahar mil tereko jaan se maar dunga samjha.",
-      "expected": "critical/threat",
-      "actual": "low/clean (score: 0.1)",
-      "status": "MISMATCH",
-      "notes": "Direct physical death threat in Hinglish",
-      "signals": []
-    },
-    {
-      "id": "22",
-      "type": "hinglish_insult",
-      "text": "Tu ekdum pagal aur kutta hai chup kar behenchod.",
+      "id": "31",
+      "type": "obfuscated_insult",
+      "text": "Go d!e alone in a ditch loser",
       "expected": "high/abusive_language",
-      "actual": "low/clean (score: 7.4)",
+      "actual": "critical/harassment (score: 100.0)",
       "status": "MISMATCH",
-      "notes": "Hinglish abusive slur and insult",
-      "signals": []
-    },
-    {
-      "id": "23",
-      "type": "hinglish_insult",
-      "text": "Abe chutiye apna ganda muh band rakh harami kahin ka.",
-      "expected": "high/abusive_language",
-      "actual": "low/clean (score: 14.7)",
-      "status": "MISMATCH",
-      "notes": "Vulgar Hinglish abuse",
+      "notes": "Obfuscated suicide incitement / insult",
       "signals": [
-        "Hostile, degrading, or abusive personal insult detected"
+        "Model flagged cyberbullying/harassment (99.7% vs threshold 89.0%)",
+        "Model flagged toxic language (99.9% vs threshold 68.4%)",
+        "Severe death wish or suicide incitement detected ('kys', 'go die')"
       ]
-    },
-    {
-      "id": "24",
-      "type": "hinglish_scam",
-      "text": "Aapka SBI account suspend hone wala hai, turant KYC update k...",
-      "expected": "high/scam",
-      "actual": "low/clean (score: 0.6)",
-      "status": "MISMATCH",
-      "notes": "Hinglish banking KYC suspension scam",
-      "signals": []
     },
     {
       "id": "35",
@@ -194,16 +142,24 @@
       "signals": []
     },
     {
+      "id": "7",
+      "type": "friendly_banter",
+      "text": "I am going to murder you in FIFA tonight bro, prepare yourse...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 14.8)",
+      "status": "PASS",
+      "notes": "Gaming banter with violent words",
+      "signals": []
+    },
+    {
       "id": "8",
       "type": "friendly_banter",
       "text": "OMG she is drop dead gorgeous in that red dress!",
       "expected": "low/clean",
-      "actual": "low/clean (score: 10.5)",
+      "actual": "low/clean (score: 0.0)",
       "status": "PASS",
       "notes": "Idiom drop dead gorgeous",
-      "signals": [
-        "Hostile, degrading, or abusive personal insult detected"
-      ]
+      "signals": []
     },
     {
       "id": "9",
@@ -223,6 +179,16 @@
       "actual": "low/clean (score: 5.7)",
       "status": "PASS",
       "notes": "Casual dining statement using destroyed",
+      "signals": []
+    },
+    {
+      "id": "11",
+      "type": "friendly_banter",
+      "text": "I am gonna slaughter your team in Valorant this weekend",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 10.2)",
+      "status": "PASS",
+      "notes": "Gaming rivalry banter",
       "signals": []
     },
     {
@@ -266,6 +232,18 @@
       "signals": []
     },
     {
+      "id": "20",
+      "type": "hinglish_threat",
+      "text": "Kal college ke bahar mil tereko jaan se maar dunga samjha.",
+      "expected": "critical/threat",
+      "actual": "critical/threat (score: 98.0)",
+      "status": "PASS",
+      "notes": "Direct physical death threat in Hinglish",
+      "signals": [
+        "Explicit physical harm or death threat detected"
+      ]
+    },
+    {
       "id": "21",
       "type": "hinglish_threat",
       "text": "Tere ghar aake marunga tujhe, dekh lunga.",
@@ -275,6 +253,43 @@
       "notes": "Hinglish threat to come home and beat/kill",
       "signals": [
         "Explicit physical harm or death threat detected"
+      ]
+    },
+    {
+      "id": "22",
+      "type": "hinglish_insult",
+      "text": "Tu ekdum pagal aur kutta hai chup kar behenchod.",
+      "expected": "high/abusive_language",
+      "actual": "high/harassment (score: 77.5)",
+      "status": "PASS",
+      "notes": "Hinglish abusive slur and insult",
+      "signals": [
+        "Vulgar Hindi/Hinglish slur or abusive profanity detected"
+      ]
+    },
+    {
+      "id": "23",
+      "type": "hinglish_insult",
+      "text": "Abe chutiye apna ganda muh band rakh harami kahin ka.",
+      "expected": "high/abusive_language",
+      "actual": "high/harassment (score: 77.5)",
+      "status": "PASS",
+      "notes": "Vulgar Hinglish abuse",
+      "signals": [
+        "Vulgar Hindi/Hinglish slur or abusive profanity detected",
+        "Hostile, degrading, or abusive personal insult detected"
+      ]
+    },
+    {
+      "id": "24",
+      "type": "hinglish_scam",
+      "text": "Aapka SBI account suspend hone wala hai, turant KYC update k...",
+      "expected": "high/scam",
+      "actual": "high/scam (score: 75.0)",
+      "status": "PASS",
+      "notes": "Hinglish banking KYC suspension scam",
+      "signals": [
+        "Fraudulent banking, KYC, or extortion lure in Roman-script Hindi (Hinglish)"
       ]
     },
     {
@@ -345,19 +360,6 @@
         "Model flagged toxic language (99.7% vs threshold 68.4%)",
         "Model flagged profanity (98.5% vs threshold 98.4%)",
         "Hostile, degrading, or abusive personal insult detected"
-      ]
-    },
-    {
-      "id": "31",
-      "type": "obfuscated_insult",
-      "text": "Go d!e alone in a ditch loser",
-      "expected": "high/abusive_language",
-      "actual": "high/harassment (score: 80.0)",
-      "status": "PASS",
-      "notes": "Obfuscated suicide incitement / insult",
-      "signals": [
-        "Model flagged cyberbullying/harassment (99.7% vs threshold 89.0%)",
-        "Model flagged toxic language (99.9% vs threshold 68.4%)"
       ]
     },
     {
@@ -485,6 +487,100 @@
       "actual": "low/clean (score: 0.0)",
       "status": "PASS",
       "notes": "Single punctuation mark",
+      "signals": []
+    },
+    {
+      "id": "45",
+      "type": "hinglish_threat",
+      "text": "Tere ghar aake marunga samjha, zinda nahi chhodunga.",
+      "expected": "critical/threat",
+      "actual": "critical/threat (score: 98.0)",
+      "status": "PASS",
+      "notes": "Direct home invasion and death threat in Hinglish",
+      "signals": [
+        "Explicit physical harm or death threat detected"
+      ]
+    },
+    {
+      "id": "46",
+      "type": "hinglish_threat",
+      "text": "Goli mar dunga agar kal dikha toh, teri maut aayegi.",
+      "expected": "critical/threat",
+      "actual": "critical/threat (score: 98.0)",
+      "status": "PASS",
+      "notes": "Direct shooting threat in Hinglish",
+      "signals": [
+        "Explicit physical harm or death threat detected"
+      ]
+    },
+    {
+      "id": "47",
+      "type": "hinglish_insult",
+      "text": "Tu ekdum harami aur kamina kutta hai.",
+      "expected": "high/abusive_language",
+      "actual": "high/harassment (score: 77.5)",
+      "status": "PASS",
+      "notes": "Common Hinglish abusive slurs",
+      "signals": [
+        "Vulgar Hindi/Hinglish slur or abusive profanity detected",
+        "Hostile, degrading, or abusive personal insult detected"
+      ]
+    },
+    {
+      "id": "48",
+      "type": "hinglish_insult",
+      "text": "Chup kar saale suar aur bhadwe, teri aukaat nahi hai.",
+      "expected": "high/abusive_language",
+      "actual": "high/harassment (score: 77.5)",
+      "status": "PASS",
+      "notes": "Aggressive vulgar Hinglish abuse",
+      "signals": [
+        "Vulgar Hindi/Hinglish slur or abusive profanity detected"
+      ]
+    },
+    {
+      "id": "49",
+      "type": "hinglish_scam",
+      "text": "Aapka SBI account suspend hone wala hai, turant kyc update k...",
+      "expected": "high/scam",
+      "actual": "high/scam (score: 75.0)",
+      "status": "PASS",
+      "notes": "Hinglish banking scam notification",
+      "signals": [
+        "Fraudulent banking, KYC, or extortion lure in Roman-script Hindi (Hinglish)"
+      ]
+    },
+    {
+      "id": "50",
+      "type": "hinglish_sextortion",
+      "text": "Paise bhej warna photo leak kar dunga tere dosto ko.",
+      "expected": "critical/sextortion",
+      "actual": "critical/sextortion (score: 98.5)",
+      "status": "PASS",
+      "notes": "Hinglish photo leak extortion",
+      "signals": [
+        "Sextortion blackmail detected: threat to leak private photos/webcam video",
+        "Fraudulent banking, KYC, or extortion lure in Roman-script Hindi (Hinglish)"
+      ]
+    },
+    {
+      "id": "51",
+      "type": "hinglish_benign",
+      "text": "Bhai shaam ko chai peene chalte hain, ready rehna.",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.3)",
+      "status": "PASS",
+      "notes": "Casual Hinglish tea invite",
+      "signals": []
+    },
+    {
+      "id": "52",
+      "type": "hinglish_benign",
+      "text": "Maine project ka code push kar diya hai github pe dekh lena.",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.3)",
+      "status": "PASS",
+      "notes": "Casual Hinglish work coordination update",
       "signals": []
     }
   ]
