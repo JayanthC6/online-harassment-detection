@@ -50,6 +50,8 @@ def admin_stats(token_data):
     from services.prediction_service import PredictionService
     stats = AdminService.get_stats()
     stats["model"] = PredictionService.get_active_model_name()
+    stats["model_loaded"] = PredictionService.is_model_loaded()
+    stats["mode"] = "hybrid" if stats["model_loaded"] else "rules-only"
     return jsonify(stats)
 
 

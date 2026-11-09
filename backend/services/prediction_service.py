@@ -72,7 +72,21 @@ class PredictionService:
 
     @staticmethod
     def get_active_model_name() -> str:
-        return "distilbert+multi_label_heuristics" if predict_transformer.is_available() else "baseline+multi_label_heuristics"
+        try:
+            from services.model_service import ModelService
+            if ModelService.get_instance().is_loaded:
+                return "ShieldAI DistilBERT Multi-Label (Fine-tuned)"
+        except Exception:
+            pass
+        return "Rules-Only Fallback Engine"
+
+    @staticmethod
+    def is_model_loaded() -> bool:
+        try:
+            from services.model_service import ModelService
+            return ModelService.get_instance().is_loaded
+        except Exception:
+            return False
 
     @staticmethod
     def compute_risk_score(primary_category: str, primary_conf: float, secondary_categories: dict) -> float:
@@ -101,6 +115,79 @@ class PredictionService:
     def classify_text(text: str) -> dict:
         from services.model_service import model_service
         analysis = model_service.analyze(text)
+
+        if not analysis.get("language_supported", True):
+            signals = analysis.get("signals", [])
+            reasons = [s["signal"] for s in signals] if signals else []
+            sec_score = analysis.get("score", 0.0)
+            if sec_score >= 50.0:
+                # Actionable threat indicators fired on unsupported text (links, phone lures, crypto extortion, etc.)
+                cat_scores = analysis.get("category_scores", {})
+                sorted_cats = sorted(cat_scores.items(), key=lambda x: x[1], reverse=True)
+                top_cat, top_score = sorted_cats[0] if sorted_cats else ("threat", sec_score)
+                primary_label = top_cat.replace("_", " ").title() if top_score >= 25.0 else "Threat"
+                sec_level = analysis.get("level", "critical" if sec_score >= 75.0 else "high")
+                return {
+                    "score": sec_score,
+                    "level": sec_level,
+                    "risk_score": sec_score,
+                    "threat_score": sec_score,
+                    "safety_status": "Threat Detected",
+                    "severity_tier": sec_level.capitalize(),
+                    "category_scores": cat_scores,
+                    "signals": signals,
+                    "which_layer": analysis.get("which_layer", "rules"),
+                    "explanation": analysis.get("explanation", ""),
+                    "advice": analysis.get("advice", []),
+                    "flagging_reasons": reasons,
+                    "primary_label": primary_label,
+                    "category": top_cat,
+                    "label": "harassing",
+                    "confidence": round(top_score / 100.0, 3) if top_score > 0 else 0.85,
+                    "secondary_labels": {
+                        k.replace("_", " ").title(): round(v / 100.0, 3)
+                        for k, v in cat_scores.items()
+                        if k != top_cat and v >= 25.0
+                    },
+                    "language_supported": False,
+                    "language_detected": analysis.get("language_detected", "Unsupported"),
+                    "language_note": analysis.get("language_note", "Unsupported language or script."),
+                    "model": "distilbert" if model_service.is_loaded else "rules_only",
+                    "evidence_plan": {
+                        "actions": ["Actionable threat detected in unsupported language text.", "Preserve evidence and block malicious sender."],
+                        "retention_policy": "standard",
+                        "escalation_level": "immediate" if sec_level == "critical" else "elevated"
+                    }
+                }
+
+            return {
+                "score": 0.0,
+                "level": "unsupported",
+                "risk_score": 0.0,
+                "threat_score": 0.0,
+                "safety_status": "Unverified",
+                "severity_tier": "Unsupported",
+                "category_scores": analysis.get("category_scores", {}),
+                "signals": signals,
+                "which_layer": analysis.get("which_layer", "language_filter"),
+                "explanation": analysis.get("explanation", ""),
+                "advice": analysis.get("advice", []),
+                "flagging_reasons": reasons,
+                "primary_label": "Unsupported Language",
+                "category": "unsupported",
+                "label": "unsupported",
+                "confidence": 0.0,
+                "secondary_labels": {},
+                "language_supported": False,
+                "language_detected": analysis.get("language_detected", "Unsupported"),
+                "language_note": analysis.get("language_note", "Unsupported language or script."),
+                "model": "distilbert" if model_service.is_loaded else "rules_only",
+                "evidence_plan": {
+                    "actions": ["Language or script is unsupported. Manual human review is recommended."],
+                    "retention_policy": "standard",
+                    "escalation_level": "none"
+                }
+            }
 
         cat_scores = analysis.get("category_scores", {})
         sorted_cats = sorted(cat_scores.items(), key=lambda x: x[1], reverse=True)
@@ -133,6 +220,9 @@ class PredictionService:
             "label": "harassing" if analysis["score"] >= 40.0 else "non_harassing",
             "confidence": round(top_score / 100.0, 3) if top_score > 0 else 0.95,
             "secondary_labels": secondary_labels,
+            "language_supported": True,
+            "language_detected": analysis.get("language_detected", "English / Hinglish"),
+            "language_note": "",
             "model": "distilbert" if model_service.is_loaded else "rules_only",
             "evidence_plan": EvidenceService.get_action_plan({
                 "category": top_cat,
@@ -236,8 +326,13 @@ class PredictionService:
 
         # Unified Threat Analysis (Phase 1)
         result["threat_score"] = result["risk_score"]
-        result["safety_status"] = "Safe" if result["severity_tier"] in ["Safe", "Low"] else "At Risk"
-        result["evidence"] = text_for_embedding if result["severity_tier"] not in ["Safe", "Low"] else "No specific threat evidence detected."
+        if result.get("language_supported") is False:
+            result["safety_status"] = "Unverified"
+            result["severity_tier"] = "Unsupported"
+            result["evidence"] = "Language or script is unsupported; manual review recommended."
+        else:
+            result["safety_status"] = "Safe" if result["severity_tier"] in ["Safe", "Low"] else "At Risk"
+            result["evidence"] = text_for_embedding if result["severity_tier"] not in ["Safe", "Low"] else "No specific threat evidence detected."
 
         if "threat_intel" in result and "malicious_urls" in result["threat_intel"]:
             result["malicious_urls"] = result["threat_intel"]["malicious_urls"]

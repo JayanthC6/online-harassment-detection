@@ -1,36 +1,25 @@
-version: '3.8'
-
 services:
-  mongodb:
-    image: mongo:6.0
-    container_name: shieldai-mongodb
-    restart: unless-stopped
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - shieldai_net
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: shieldai-backend
     restart: unless-stopped
-    depends_on:
-      mongodb:
-        condition: service_started
     ports:
       - "5000:5000"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/shieldai_db
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - HF_TOKEN=${HF_TOKEN}
-      - GOOGLE_SAFE_BROWSING_API_KEY=${GOOGLE_SAFE_BROWSING_API_KEY}
-      - EXTENSION_API_KEY=${EXTENSION_API_KEY}
-      - KAGGLE_API_TOKEN=${KAGGLE_API_TOKEN}
-      - ADMIN_USERNAME=${ADMIN_USERNAME}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - APP_ENV=production
+      - PORT=5000
+      - DATABASE_URL=sqlite:////app/data/shieldai.db
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-shieldai_secret_jwt_key_2026}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-haiku-5-5}
+      - EXTENSION_API_KEY=${EXTENSION_API_KEY:-shieldai-browser-ext-v1}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@ShieldAI2026!}
+      - DATA_RETENTION_DAYS=${DATA_RETENTION_DAYS:-90}
+    volumes:
+      - ./backend/data:/app/data
     networks:
       - shieldai_net
     entrypoint: ["/bin/bash", "/app/entrypoint.sh"]
@@ -45,12 +34,10 @@ services:
       - backend
     ports:
       - "80:80"
+      - "5173:80"
     networks:
       - shieldai_net
 
 networks:
   shieldai_net:
     driver: bridge
-
-volumes:
-  mongodb_data:

@@ -1,8 +1,8 @@
 {
-    "Hate Speech": 0.6567294597625732,
-    "Cyberbullying / Harassment": 0.8896879553794861,
-    "Threat": 0.9866632223129272,
-    "Toxicity / Offensive Language": 0.6840231418609619,
-    "Profanity": 0.9842190146446228,
-    "Clean": 0.5179439783096313
+    "Hate Speech": 0.807612419128418,
+    "Cyberbullying / Harassment": 0.8904848694801331,
+    "Threat": 0.5331543684005737,
+    "Toxicity / Offensive Language": 0.4209566116333008,
+    "Profanity": 0.9965969920158386,
+    "Clean": 0.6905590891838074
 }

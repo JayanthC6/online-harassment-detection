@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShieldAI Generic Fallback Test Page</title>
+  <link rel="stylesheet" href="content.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0B0E17;
+      color: #F1F5F9;
+      margin: 0;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+    .wrapper {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #06B6D4;
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+    .intro {
+      color: #94A3B8;
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    .card {
+      background: #151A28;
+      border: 1px solid #232B3E;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    p {
+      margin: 16px 0;
+      font-size: 15px;
+      padding: 12px;
+      background: #1E2538;
+      border-radius: 6px;
+      border-left: 3px solid #334155;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>ShieldAI &mdash; Generic HTML Paragraph Fallback Test</h1>
+    <div class="intro">
+      This page contains plain standard <code>&lt;p&gt;</code> tags without any custom chat classes or selectors.
+      It validates ShieldAI's generic fallback scanner, which scans visible text blocks of 15&ndash;600 characters on any website.
+    </div>
+
+    <div class="card">
+      <h2>Standard Unclassed Paragraphs</h2>
+
+      <!-- Paragraph 1: Safe Content -->
+      <p>
+        Good morning team! The weekly sprint planning review will start at 11:00 AM in Conference Room B. Please make sure all your pull requests are updated before the meeting.
+      </p>
+
+      <!-- Paragraph 2: Phishing Scam -->
+      <p>
+        Urgent: Your SBI net banking account has been temporarily blocked due to suspicious activity. Verify KYC immediately at http://sbi-kyc-update.xyz or your account will be suspended within 24 hours.
+      </p>
+
+      <!-- Paragraph 3: Abusive / Harassment Language -->
+      <p>
+        You are an ugly, stupid loser and nobody in this department wants to work with you. Get lost.
+      </p>
+
+      <!-- Paragraph 4: Violent Threat -->
+      <p>
+        I know exactly where you live and I will murder you tonight. Watch your back when you step outside.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+

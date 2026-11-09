@@ -271,7 +271,15 @@ def generate_fallback_response(user_text: str, persona: str = "victim", predicti
         if specifics.get("amount"):
             context_parts.append(f"the demand for **{specifics['amount']}**")
         if specifics.get("deadline"):
-            context_parts.append(f"the deadline of **{specifics['deadline']}**")
+            dl_raw = specifics["deadline"].strip()
+            # Clean leading prepositions to avoid "the deadline of in 24 hours"
+            dl_clean = re.sub(r'^(?:within|in|by)\s+', '', dl_raw, flags=re.IGNORECASE)
+            if dl_clean.lower() in ["immediately", "urgent", "urgently"]:
+                context_parts.append("the **immediate deadline**")
+            elif dl_clean.lower() in ["tomorrow", "tonight"]:
+                context_parts.append(f"the deadline by **{dl_clean}**")
+            else:
+                context_parts.append(f"the deadline of **{dl_clean}**")
         if specifics.get("platform"):
             context_parts.append(f"contact via **{specifics['platform']}**")
 
@@ -390,25 +398,41 @@ def generate_fallback_response(user_text: str, persona: str = "victim", predicti
                 is_sms_phishing = True
 
         lines.append("\n#### Attacker Tactics Identified:")
-        if "sextortion" in top_cat:
-            lines.append("- **Psychological Intimidation & Shaming:** Threatening imminent disclosure of private/compromising media to contacts to induce panic.")
-            lines.append("- **Financial Coercion:** Demanding irreversible payment (cryptocurrency, gift cards, or UPI).")
-            lines.append("- **Credential Bluff / Fake Malware:** Citing leaked credentials from historical data breaches or fictitious webcam capture without actual compromise.")
-        elif is_sms_phishing:
-            lines.append("- **Sender Header Spoofing / Look-alike Sender ID:** Impersonating a trusted financial or governmental entity.")
-            lines.append("- **Artificial Account Urgency:** Fabricating imminent account deactivation or KYC deadline to force rushed actions.")
-            lines.append("- **Deceptive Credential Harvester:** Directing victim to an off-domain phishing form (e.g. suspicious TLD) to harvest banking credentials and OTPs.")
-        elif is_email_phishing:
-            lines.append("- **Display Name & Domain Spoofing:** Masquerading as an authorized entity with forged sender names or look-alike domains.")
-            lines.append("- **Credential Harvesting & Attachment Trap:** Directing targets to fake authentication portals or delivering malicious attachments.")
-        elif "threat" in top_cat:
-            lines.append("- **Direct Physical Intimidation:** Explicit declaration of intent to inflict physical injury or death.")
-            lines.append("- **Surveillance Assertion:** Claiming physical proximity or knowledge of home/workplace coordinates to amplify terror.")
-        elif "harassment" in top_cat:
-            lines.append("- **Targeted Hostility & Personal Degradation:** Sustained personal insults, demeaning slurs, or hostile targeting.")
-            lines.append("- **Social Dogpiling & Intimidation:** Coercive pressure intended to silence or distress the individual.")
-        else:
-            lines.append("- **Social Engineering:** Leveraging artificial urgency, authority, or emotional pressure to deceive.")
+        tactics = []
+        sig_texts = [(s.get("signal") if isinstance(s, dict) else str(s)) for s in real_signals]
+        raw_text_lower = (user_text + " " + " ".join(sig_texts)).lower()
+
+        if "sextortion" in top_cat or any("sextortion" in s.lower() for s in sig_texts):
+            if any(k in raw_text_lower for k in ["leak", "send", "photo", "video", "webcam", "record", "contact", "instagram", "family", "friend"]):
+                tactics.append("- **Psychological Intimidation & Shaming:** Threatening imminent disclosure of private/compromising media to contacts to induce panic.")
+            if specifics.get("amount") or any(k in raw_text_lower for k in ["money", "bitcoin", "crypto", "pay", "rupee", "wallet", "transfer", "5000"]):
+                tactics.append("- **Financial Coercion:** Demanding irreversible payment (cryptocurrency, gift cards, or UPI).")
+            if any(k in raw_text_lower for k in ["webcam", "password", "device", "hack", "malware", "spyware"]):
+                tactics.append("- **Credential Bluff / Fake Malware:** Citing leaked credentials from historical data breaches or fictitious webcam capture without actual compromise.")
+        elif is_sms_phishing or is_email_phishing or "phishing" in top_cat or "scam" in top_cat:
+            if lookalike_findings or specifics.get("brand") or any(k in raw_text_lower for k in ["sbi", "bank", "customs", "police", "trai", "official"]):
+                tactics.append("- **Sender Header Spoofing / Look-alike Sender ID:** Impersonating a trusted financial or governmental entity.")
+            if specifics.get("deadline") or any(k in raw_text_lower for k in ["urgent", "immediately", "block", "suspend", "24 hour", "lock", "deactivat", "kyc"]):
+                tactics.append("- **Artificial Account Urgency:** Fabricating imminent account deactivation or KYC deadline to force rushed actions.")
+            if specifics.get("urls") or specifics.get("domains") or any(k in raw_text_lower for k in ["http", ".xyz", "verify", "update", "link", "click"]):
+                tactics.append("- **Deceptive Credential Harvester:** Directing victim to an off-domain phishing form (e.g. suspicious TLD) to harvest banking credentials and OTPs.")
+            if any("digital arrest" in s.lower() or "courier" in s.lower() for s in sig_texts):
+                tactics.append("- **Law Enforcement Coercion:** Fabricating fictitious arrest warrants or courier seizure notices to demand immediate transfer.")
+        elif "threat" in top_cat or any("threat" in s.lower() for s in sig_texts):
+            if any(k in raw_text_lower for k in ["kill", "murder", "harm", "shoot", "die", "hurt", "beat", "attack"]):
+                tactics.append("- **Direct Physical Intimidation:** Explicit declaration of intent to inflict physical injury or death.")
+            if any(k in raw_text_lower for k in ["know where you live", "watching", "outside", "follow", "house", "address"]):
+                tactics.append("- **Surveillance Assertion:** Claiming physical proximity or knowledge of home/workplace coordinates to amplify terror.")
+        elif "harassment" in top_cat or "abusive" in top_cat:
+            if any(k in raw_text_lower for k in ["ugly", "stupid", "idiot", "loser", "freak", "moron", "bitch", "shut up", "kutta", "harami"]):
+                tactics.append("- **Targeted Hostility & Personal Degradation:** Sustained personal insults, demeaning slurs, or hostile targeting.")
+            if any("death wish" in s.lower() or "kys" in s.lower() for s in sig_texts) or any(k in raw_text_lower for k in ["kys", "go die", "kill yourself"]):
+                tactics.append("- **Malicious Incitement:** Severe suicide or self-harm encouragement aimed at causing psychological harm.")
+
+        if not tactics:
+            tactics.append("- **Pattern-Based Social Engineering:** Manipulative communication pattern identified by detection rules.")
+
+        lines.extend(tactics)
 
         lines.append("\n#### Recommended Escalation Steps:")
         if "sextortion" in top_cat:

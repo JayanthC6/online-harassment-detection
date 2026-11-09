@@ -164,3 +164,65 @@ def test_admin_report_status_updates(client, auth_headers):
         assert res_stat.status_code == 200
         assert res_stat.get_json()["new_status"] == "resolved"
 
+
+def test_unsupported_language_admin_flow(client, auth_headers):
+    """
+    Verify level 'unsupported' end-to-end:
+    - /api/batch returns level 'unsupported' with language_supported=false
+    - /api/analyze logs incident with severity_tier 'Unsupported'
+    - /api/admin/reports filters by risk_level=unsupported
+    - /api/admin/stats, /api/admin/analytics, /api/admin/daily_counts, and /api/admin/offenders
+      all execute without error and return expected data.
+    """
+    # 1. /api/batch with unsupported Hindi message
+    hindi_text = "नमस्ते, यह एक परीक्षण संदेश है जो समर्थित नहीं है"
+    batch_res = client.post("/api/batch", json={"texts": [hindi_text]})
+    assert batch_res.status_code == 200
+    batch_data = batch_res.get_json()
+    assert batch_data["count"] == 1
+    item = batch_data["results"][0]
+    assert item["level"] == "unsupported"
+    assert item["language_supported"] is False
+    assert item["primary_label"] == "Unsupported Language"
+    assert item["score"] == 0.0
+
+    # 2. Analyze & persist an unsupported Hindi incident
+    analyze_res = client.post("/api/analyze", json={
+        "text": "नमस्ते दोस्त, यह केवल एक हिंदी संदेश है।",
+        "actor_id": "Hindi_Actor_01",
+        "persist": True
+    }, headers=auth_headers)
+    assert analyze_res.status_code == 200
+    analyzed = analyze_res.get_json()
+    assert analyzed["level"] == "unsupported"
+    assert analyzed["severity_tier"] == "Unsupported"
+    assert analyzed["language_supported"] is False
+
+    # 3. Queue filter: query reports by risk_level=unsupported
+    rep_res = client.get("/api/admin/reports?risk_level=unsupported", headers=auth_headers)
+    assert rep_res.status_code == 200
+    reports = rep_res.get_json().get("reports", [])
+    assert any(r.get("severity_tier") == "Unsupported" for r in reports)
+
+    # 4. Admin stats & dashboard
+    stats_res = client.get("/api/admin/stats", headers=auth_headers)
+    assert stats_res.status_code == 200
+    stats = stats_res.get_json()
+    assert "model_loaded" in stats
+    assert stats["total_reports"] >= 1
+
+    # 5. Admin analytics (category and severity charts)
+    analytics_res = client.get("/api/admin/analytics", headers=auth_headers)
+    assert analytics_res.status_code == 200
+
+    # 6. Daily trend chart
+    daily_res = client.get("/api/admin/daily_counts?days=7", headers=auth_headers)
+    assert daily_res.status_code == 200
+    assert "counts" in daily_res.get_json()
+
+    # 7. Repeat offenders view
+    offenders_res = client.get("/api/admin/offenders", headers=auth_headers)
+    assert offenders_res.status_code == 200
+    assert "offenders" in offenders_res.get_json()
+
+

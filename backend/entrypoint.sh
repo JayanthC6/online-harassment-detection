@@ -27,19 +27,21 @@ sys.exit(1)
 echo "Running idempotent seed script..."
 python -c '
 import os, sys
-# Add current dir to path so we can import app and db
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from db import get_stats
 
 stats = get_stats()
-if stats.get("total_flagged", 0) > 0:
+if stats.get("total_flagged", 0) > 0 or stats.get("total_reports", 0) > 0:
     print("Database already contains data. Skipping seed to prevent duplicates.")
     sys.exit(0)
 else:
-    print("Database is empty. Running seed_incidents.py...")
+    print("Database is empty. Running seed_demo_data.py...")
     import subprocess
-    subprocess.run(["python", "seed_incidents.py"])
+    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "seed_demo_data.py")
+    if not os.path.exists(script_path):
+        script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts", "seed_demo_data.py")
+    subprocess.run(["python", script_path])
 '
 
 echo "Starting backend server..."

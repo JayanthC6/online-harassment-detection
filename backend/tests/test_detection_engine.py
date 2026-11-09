@@ -40,7 +40,7 @@ def test_severity_caps(model_service):
     insult_text = "You are an ugly stupid idiot and a disgusting pig"
     res = model_service.analyze(insult_text)
     assert res["level"] in ["high", "medium"], f"Insult should be capped at high, got: {res['level']}"
-    assert res["score"] <= 85.0, f"Insult score should not exceed 85.0, got: {res['score']}"
+    assert res["score"] <= 75.0, f"Insult score should not exceed 75.0 (band maximum for High), got: {res['score']}"
 
     # Direct threat should be eligible for critical
     threat_text = "I know where you live and I will murder you tonight"
@@ -185,6 +185,164 @@ def test_new_benign_banter_and_self_deprecation(model_service):
         assert res["score"] < 35.0, f"Expected score < 35.0, got {res['score']} for: {text}"
         signals = [s.get("signal", "").lower() for s in res.get("signals", [])]
         assert not any("hostile" in s or "cyberbullying" in s or "threat" in s for s in signals), f"False signal emitted for {text}: {signals}"
+
+
+def test_multilingual_language_detection(model_service):
+    """
+    Automated tests for Hindi (Devanagari), Tamil, and Spanish threats.
+    Invariant: Non-Latin scripts and unsupported languages must NEVER return 'low / safe'.
+    Must return language_supported=False with a clear unreliability notice.
+    Roman-script Hinglish must remain supported (language_supported=True).
+    """
+    unsupported_threats = [
+        ("मैं तुम्हें जान से मार दूंगा", "Hindi (Devanagari)"),
+        ("நான் உன்னை கொன்று விடுவேன்", "Tamil"),
+        ("Te voy a matar esta noche, prepárate para morir", "Spanish")
+    ]
+    for text, expected_lang in unsupported_threats:
+        res = model_service.analyze(text)
+        assert res["language_supported"] is False, f"Expected language_supported=False for {expected_lang}: {text}"
+        assert res["level"] != "low", f"Unsupported language threat must NEVER return 'low' risk level: {text}"
+        assert res["level"] == "unsupported"
+        assert "unreliable" in res["explanation"].lower() or "unsupported" in res["explanation"].lower()
+
+    # Roman-script Hinglish must remain supported
+    hinglish_text = "tu bohot bada kutta hai saale jaan se maar dunga"
+    res_hinglish = model_service.analyze(hinglish_text)
+    assert res_hinglish["language_supported"] is True, f"Roman-script Hinglish must be supported: {hinglish_text}"
+
+
+def test_unsupported_european_language_threats(model_service):
+    """
+    Threats in Spanish, French, German, Italian, and Portuguese (using distinct wording).
+    All must return language_supported=False and never 'low/safe' (level=='unsupported').
+    """
+    european_threats = [
+        ("Te voy a buscar y vas a pagar con tu vida por lo que hiciste", "Spanish"),
+        ("Je sais exactement où tu habites et je vais te détruire sale traître", "French"),
+        ("Ich werde dich finden und deine Familie vernichten, warte nur ab", "German"),
+        ("So dove abiti e ti ammazzo se parli ancora, hai finito di vivere", "Italian"),
+        ("Eu vou te matar se você não fizer o que eu mandar imediatamente", "Portuguese")
+    ]
+    for text, lang in european_threats:
+        res = model_service.analyze(text)
+        assert res["language_supported"] is False, f"Expected language_supported=False for {lang}: {text}"
+        assert res["level"] != "low", f"Unsupported language threat must NEVER return 'low' risk level: {text}"
+        assert res["level"] == "unsupported", f"Expected level='unsupported', got {res['level']} for {lang}: {text}"
+        assert lang.lower() in res["language_detected"].lower() or res["language_detected"] != "English", f"Detected lang mismatch: {res['language_detected']}"
+
+
+def test_fraud_phone_call_lures(model_service):
+    """
+    Phone-call lures combining urgency + disconnection/penalty + a phone number.
+    Wording differs from fraud_cases.csv.
+    """
+    cases = [
+        "Urgent notice: Your residential gas connection will be terminated at 9 PM tonight due to unpaid dues. Call our billing desk at 9876543210 immediately to prevent cutoff.",
+        "Warning: Electricity supply to your meter will be disconnected today for incomplete documentation. Contact executive Verma at 9123456789 right away."
+    ]
+    for text in cases:
+        res = model_service.analyze(text)
+        assert res["level"] in ["high", "critical"], f"Expected high/critical for phone lure: {text}"
+        assert res["score"] >= 75.0, f"Expected score >= 75 for phone lure: {text}"
+        signals = [s["signal"].lower() for s in res.get("signals", [])]
+        assert any("phone" in s or "disconnection" in s or "urgency" in s for s in signals), f"Missing signal in: {signals}"
+
+
+def test_fraud_job_offers_telegram_whatsapp(model_service):
+    """
+    Task/job offers combining earning amounts + Telegram/WhatsApp contact.
+    Wording differs from fraud_cases.csv.
+    """
+    cases = [
+        "Earn 2500 to 7000 daily with simple remote data entry tasks. Flexible hours from home. Message our manager on Telegram @remotehr2024 to begin today!",
+        "Hiring online movie reviewers! Earn Rs 4000 per day with instant UPI payout. Connect with HR team on WhatsApp at +919876543210 to claim your spot."
+    ]
+    for text in cases:
+        res = model_service.analyze(text)
+        assert res["level"] in ["high", "critical"], f"Expected high/critical for job scam: {text}"
+        assert res["score"] >= 75.0, f"Expected score >= 75 for job scam: {text}"
+        signals = [s["signal"].lower() for s in res.get("signals", [])]
+        assert any("job" in s or "task" in s or "scam" in s for s in signals), f"Missing signal in: {signals}"
+
+
+def test_crypto_extortion_and_payment_demands(model_service):
+    """
+    Crypto wallet formats (0x + 40 hex, bc1/1/3 Bitcoin) and payment demands.
+    Wording differs from fraud_cases.csv.
+    """
+    ransom_text = "We have exfiltrated all confidential client records from your servers. Transfer 1.5 BTC to bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq within 48 hours or everything will be published publicly."
+    res_ransom = model_service.analyze(ransom_text)
+    assert res_ransom["level"] == "critical"
+    assert res_ransom["score"] >= 90.0
+    signals = [s["signal"].lower() for s in res_ransom.get("signals", [])]
+    assert any("cryptocurrency extortion" in s or "ransomware" in s for s in signals)
+
+    doubler_text = "Deposit at least 500 USDT to official staking contract 0x71C8451032855278d25C81273030d7b275727931 to earn guaranteed 200% returns in 3 hours."
+    res_doubler = model_service.analyze(doubler_text)
+    assert res_doubler["level"] in ["high", "critical"]
+    assert res_doubler["score"] >= 75.0
+
+
+def test_digit_substituted_lookalike_brands(model_service):
+    """
+    Digit-substituted look-alike brands (paypa1, g00gle, amaz0n, b1nance, c1t1bank) in URLs.
+    Wording differs from fraud_cases.csv.
+    """
+    cases = [
+        "Your transaction was placed on hold. Visit paypa1-account-resolution.com to verify your identity.",
+        "Security incident detected on your profile: check activity at g00gle-security-alert.xyz immediately.",
+        "Your recent order could not be delivered. Re-enter billing details on amaz0n-customer-update.com.",
+        "Emergency wallet migration notice: confirm your balance at b1nance-token-sync.net.",
+        "Important notice regarding your checking account: visit c1t1bank-ebanking-portal.com."
+    ]
+    for text in cases:
+        res = model_service.analyze(text)
+        assert res["level"] in ["high", "critical"], f"Expected high/critical for look-alike brand URL: {text}"
+        assert res["score"] >= 75.0, f"Expected score >= 75 for look-alike brand: {text}"
+        signals = [s["signal"].lower() for s in res.get("signals", [])]
+        assert any("look-alike" in s or "brand" in s or "phishing" in s or "shortener" in s for s in signals), f"Signals: {signals}"
+
+
+def test_language_detection_false_triggers(model_service):
+    """
+    Verify English with names, emoji, numbers-only, short text, Roman Hinglish,
+    and English with one Devanagari word are NOT marked as unsupported.
+    """
+    benign_multilingual_contexts = [
+        ("Catching up with Siobhan, Alejandro and Haruto at the café at 4pm.", "English with diverse foreign names"),
+        ("Awesome presentation today! 🚀🎉 Truly remarkable teamwork 👏", "English with emojis"),
+        ("1234567890 9876543210 456789", "Numbers only"),
+        ("ok sure", "Very short text"),
+        ("bhai kal shaam ko milte hain coffee pe, kya bolta hai?", "Roman Hinglish"),
+        ("Namaste नमस्ते everyone, thank you for joining our team standup today.", "English with single Devanagari greeting")
+    ]
+    for text, desc in benign_multilingual_contexts:
+        res = model_service.analyze(text)
+        assert res["language_supported"] is True, f"Failed for '{desc}': text='{text}', res={res}"
+        assert res["level"] == "low", f"Expected low level for '{desc}': text='{text}', res={res}"
+
+
+def test_unsupported_language_with_security_indicators(model_service):
+    """
+    Language-independent security checks (malicious links, crypto wallets, phone lures)
+    must still trigger real risk scores even on unsupported text, returning language_supported=False.
+    """
+    # Hindi text containing a suspicious URL shortener
+    hindi_with_link = "नमस्ते, अपने बैंक खाते को तुरंत अपडेट करने के लिए इस लिंक पर क्लिक करें http://bit.ly/sbi-kyc-verify"
+    res_link = model_service.analyze(hindi_with_link)
+    assert res_link["language_supported"] is False, "Should report language_supported=False for Devanagari"
+    assert res_link["score"] >= 75.0, f"Security indicator must produce real risk score >= 75, got {res_link['score']}"
+    assert res_link["level"] in ["high", "critical"], f"Expected high/critical risk level, got {res_link['level']}"
+    assert res_link["category_scores"]["phishing"] >= 75.0
+
+    # Hindi text containing a crypto extortion demand
+    hindi_with_crypto = "हमने आपका पूरा डेटा एनक्रिप्ट कर दिया है। 24 घंटे में 0x71C8451032855278d25C81273030d7b275727931 पर USDT ट्रांसफर करें"
+    res_crypto = model_service.analyze(hindi_with_crypto)
+    assert res_crypto["language_supported"] is False
+    assert res_crypto["score"] >= 80.0
+    assert res_crypto["level"] in ["high", "critical"]
+
 
 
 

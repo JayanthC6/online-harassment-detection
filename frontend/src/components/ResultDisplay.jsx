@@ -45,6 +45,21 @@ export default function ResultDisplay({ result }) {
 
   return (
     <div className="space-y-5 animate-slide-up mt-6">
+      {/* ── Unsupported Language Warning Banner ── */}
+      {result.language_supported === false && (
+        <div className="p-4 rounded-xl border border-amber-500/50 bg-amber-500/10 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
+          <div>
+            <h4 className="font-semibold text-sm text-amber-200">
+              Unsupported Language / Script Detected ({result.language_detected || 'Non-English script'})
+            </h4>
+            <p className="text-xs text-amber-200/90 mt-1">
+              {result.language_note || "ShieldAI models are calibrated for English and Roman-script Hinglish. Analysis for this script/language cannot be verified as safe and results may be unreliable."}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Top Row: Gauge + Classification + Confidence + Engine ── */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Risk Gauge */}

@@ -23,6 +23,7 @@ const CATEGORY_COLORS = {
   harassment: '#F97316',        // Orange
   clean: '#10B981',             // Low Green
   none: '#10B981',
+  unsupported: '#A855F7',       // Purple for Unsupported Language
 };
 
 const CATEGORY_LABELS = {
@@ -36,19 +37,20 @@ const CATEGORY_LABELS = {
   harassment: 'Harassment',
   clean: 'Clean',
   none: 'Clean',
+  unsupported: 'Unsupported',
 };
 
 export default function CategoryChart({ categories, stats }) {
   const cats = (categories && categories.length > 0)
     ? categories
     : Object.keys(stats?.category_breakdown || stats?.breakdown || {
-        threat: 0,
-        sextortion: 0,
-        phishing: 0,
-        scam: 0,
-        harassment: 0,
-        abusive_language: 0
-      });
+      threat: 0,
+      sextortion: 0,
+      phishing: 0,
+      scam: 0,
+      harassment: 0,
+      abusive_language: 0
+    });
 
   if (!cats || cats.length === 0) return null;
 

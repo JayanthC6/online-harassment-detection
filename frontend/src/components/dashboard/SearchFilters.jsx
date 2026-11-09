@@ -31,9 +31,11 @@ export default function SearchFilters({ filters }) {
           style={{ appearance: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2300F2FE' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center', paddingRight: '30px' }}
         >
           <option value="">All Risks</option>
+          <option value="critical">Critical Risk</option>
           <option value="high">High Risk</option>
           <option value="medium">Medium Risk</option>
           <option value="low">Safe / Low</option>
+          <option value="unsupported">Unsupported Language</option>
         </select>
       </div>
 

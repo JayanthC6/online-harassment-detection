@@ -65,5 +65,25 @@ def not_found(e):
         return jsonify(error="Not found"), 404
     return jsonify(error="Not found"), 404
 
+def log_engine_status():
+    try:
+        from services.prediction_service import PredictionService
+        loaded = PredictionService.is_model_loaded()
+        if loaded:
+            print("\n" + "="*72)
+            print(">>> [SHIELDAI] DETECTION ENGINE STATUS: HYBRID MODE ACTIVE (DistilBERT + Rules)")
+            print(">>> [SHIELDAI] Neural multi-label classifier is LOADED and verified.")
+            print("="*72 + "\n")
+        else:
+            print("\n" + "="*72)
+            print(">>> [SHIELDAI] DETECTION ENGINE STATUS: RULES-ONLY FALLBACK MODE ACTIVE")
+            print(">>> [SHIELDAI] All heuristics, regex, and pattern rules operational.")
+            print("="*72 + "\n")
+    except Exception as e:
+        print(f">>> [SHIELDAI] Detection engine startup check notice: {e}")
+
+with app.app_context():
+    log_engine_status()
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

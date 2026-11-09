@@ -12,6 +12,7 @@ export default function BehavioralIntelligence({ profilesData }) {
       case 'Critical': return 'text-critical bg-black/60 border-critical shadow-[inset_0_0_15px_rgba(244,63,94,0.3)] rounded-none';
       case 'High': return 'text-danger bg-black/60 border-danger shadow-[inset_0_0_15px_rgba(249,115,22,0.3)] rounded-none';
       case 'Watch': return 'text-blue bg-black/60 border-blue shadow-[inset_0_0_15px_rgba(0,242,254,0.3)] rounded-none';
+      case 'Unsupported': return 'text-purple-400 bg-black/60 border-purple-500/50 shadow-[inset_0_0_15px_rgba(168,85,247,0.3)] rounded-none';
       default: return 'text-success bg-black/60 border-success shadow-[inset_0_0_15px_rgba(16,185,129,0.3)] rounded-none';
     }
   };

@@ -408,12 +408,16 @@ class Database:
                 term = f"%{search}%"
                 q = q.filter(or_(ReportModel.text.ilike(term), ReportModel.text_preview.ilike(term), ReportModel.actor_id.ilike(term)))
             if risk_level:
-                if risk_level.lower() == "high":
+                if risk_level.lower() == "critical":
+                    q = q.filter(ReportModel.severity_tier == "Critical")
+                elif risk_level.lower() == "high":
                     q = q.filter(ReportModel.severity_tier.in_(["High", "Critical"]))
                 elif risk_level.lower() == "medium":
                     q = q.filter(ReportModel.severity_tier == "Medium")
                 elif risk_level.lower() == "low":
-                    q = q.filter(ReportModel.severity_tier == "Low")
+                    q = q.filter(ReportModel.severity_tier.in_(["Low", "Safe"]))
+                elif risk_level.lower() == "unsupported":
+                    q = q.filter(ReportModel.severity_tier == "Unsupported")
 
             total = q.count()
             total_pages = max(1, math.ceil(total / page_size))

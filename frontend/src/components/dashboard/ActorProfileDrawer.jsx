@@ -20,6 +20,7 @@ export default function ActorProfileDrawer({ profile, isOpen, onClose }) {
       case 'Critical': return 'text-white bg-critical/80 shadow-[0_0_10px_rgba(244,63,94,0.4)] border-critical rounded';
       case 'High': return 'text-white bg-danger/80 shadow-[0_0_10px_rgba(249,115,22,0.4)] border-danger rounded';
       case 'Watch': return 'text-text-primary bg-black/40 border-border/50 rounded';
+      case 'Unsupported': return 'text-purple-300 bg-purple-500/20 border-purple-500/40 rounded';
       default: return 'text-success bg-success/20 border-success/30 rounded';
     }
   };

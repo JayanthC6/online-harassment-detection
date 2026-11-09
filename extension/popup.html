@@ -207,6 +207,54 @@
       border-left: 2px solid var(--accent-red);
     }
     
+    .options-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 8px 10px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .options-row label.option-label {
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .options-subtext {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    
+    .url-row {
+      display: flex;
+      gap: 6px;
+    }
+    
+    .btn-save {
+      background: #0284C7;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: ui-monospace, monospace;
+      cursor: pointer;
+      border-radius: 2px;
+    }
+    .btn-save:hover { background: #0369A1; }
+    
+    .url-status {
+      font-size: 10.5px;
+      margin-top: 4px;
+      min-height: 14px;
+      font-family: ui-monospace, monospace;
+    }
+    
     /* Scrollbar */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg-ink); }
@@ -234,7 +282,47 @@
     
     <div class="input-group">
       <div class="section-title">Backend Server URL</div>
-      <input type="text" id="server-url" placeholder="http://127.0.0.1:5000" value="http://127.0.0.1:5000">
+      <div class="url-row">
+        <input type="text" id="server-url" placeholder="http://127.0.0.1:5000" value="http://127.0.0.1:5000">
+        <button id="save-url-btn" class="btn-save">SAVE</button>
+      </div>
+      <div id="url-status" class="url-status"></div>
+    </div>
+
+    <!-- Per-site opt-out toggle -->
+    <div class="options-row" id="site-opt-row">
+      <label class="option-label" for="site-toggle-switch">
+        <span id="site-opt-label">Scan this website</span>
+        <span class="options-subtext" id="current-domain-label">current site</span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="site-toggle-switch" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Safe badges display toggle (default off) -->
+    <div class="options-row">
+      <label class="option-label" for="show-safe-switch">
+        <span>Show Safe Badges</span>
+        <span class="options-subtext">Display green badge on clean messages</span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="show-safe-switch">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Unsupported language badges toggle (default off) -->
+    <div class="options-row">
+      <label class="option-label" for="show-unsupported-switch">
+        <span>Show Unsupported Language Badges</span>
+        <span class="options-subtext">Display purple badge on non-English text</span>
+      </label>
+      <label class="switch">
+        <input type="checkbox" id="show-unsupported-switch">
+        <span class="slider"></span>
+      </label>
     </div>
 
     <div class="input-group">

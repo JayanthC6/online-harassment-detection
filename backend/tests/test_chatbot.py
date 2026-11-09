@@ -63,6 +63,20 @@ class TestAnthropicPathAndFallback:
         assert resp.engine == "claude"
         mock_client.messages.create.assert_called_once()
 
+    def test_anthropic_missing_api_key_falls_back(self, monkeypatch, caplog):
+        """When ANTHROPIC_API_KEY is missing or empty, gracefully fall back to rules with engine='rules'."""
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.setattr("ml.chatbot._get_anthropic_client", lambda: None)
+
+        with caplog.at_level(logging.INFO, logger="ShieldAI.Chatbot"):
+            history = [{"role": "user", "content": "Someone is blackmailing me on Instagram."}]
+            resp = generate_chat_response(history, persona="victim")
+
+        assert resp is not None
+        assert resp.engine == "rules"
+        assert "DO NOT PAY" in resp or "Preserve" in resp
+        assert any("no api key" in record.message.lower() or "fallback" in record.message.lower() for record in caplog.records)
+
     def test_anthropic_mock_api_error_falls_back(self, monkeypatch, caplog):
         """When Anthropic API throws an API error, gracefully fall back to rules and log the reason."""
         monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-key-error")
@@ -213,6 +227,19 @@ class TestCrisisDetectionAccuracy:
         assert "112" in resp
         assert "Tele-MANAS" in resp or "KIRAN" in resp or "Vandrevala" in resp
 
+    def test_immediate_physical_danger_interception(self):
+        """Immediate physical danger threats must be intercepted before anything else with Emergency 112."""
+        danger_text = "Someone is outside my door right now with a weapon trying to break in and kill me!"
+        alert = check_crisis_or_danger(danger_text)
+        assert alert is not None
+        assert "IMMEDIATE PHYSICAL DANGER" in alert
+        assert "112" in alert
+
+        history = [{"role": "user", "content": danger_text}]
+        resp = generate_chat_response(history, persona="victim")
+        assert "112" in resp
+        assert "IMMEDIATE PHYSICAL DANGER" in resp or "Emergency" in resp
+
 
 class TestChatbotAPIEndpointTelemetry:
 
@@ -240,3 +267,59 @@ class TestChatbotAPIEndpointTelemetry:
         res = client.post("/api/chat", json=payload)
         assert res.status_code == 400
         assert "2000 character limit" in res.get_json().get("error", "")
+
+    def test_chat_session_history_persists(self, client):
+        """Chat session turns must persist in the database across turns."""
+        session_id = f"test_session_history_{os.urandom(4).hex()}"
+        payload_1 = {
+            "session_id": session_id,
+            "message": "Hello, someone sent me a suspicious phishing link.",
+            "persona": "victim"
+        }
+        res1 = client.post("/api/chat", json=payload_1)
+        assert res1.status_code == 200
+
+        payload_2 = {
+            "session_id": session_id,
+            "message": "Now they are demanding 5000 rupees.",
+            "persona": "victim"
+        }
+        res2 = client.post("/api/chat", json=payload_2)
+        assert res2.status_code == 200
+
+        # Query session history from db
+        stored = db.get_chat_session(session_id)
+        assert len(stored) >= 4  # 2 user turns + 2 assistant responses
+        user_msgs = [m["content"] for m in stored if m.get("role") == "user"]
+        assert any("phishing link" in m for m in user_msgs)
+        assert any("5000 rupees" in m for m in user_msgs)
+
+    def test_chat_endpoint_victim_mode(self, client):
+        """POST /api/chat with persona='victim' must return supportive guidance with 1930 / cybercrime.gov.in."""
+        payload = {
+            "session_id": f"test_victim_{os.urandom(4).hex()}",
+            "message": "Someone is blackmailing me on Instagram saying they have my private photos.",
+            "persona": "victim"
+        }
+        res = client.post("/api/chat", json=payload)
+        assert res.status_code == 200
+        data = res.get_json()
+        assert data["engine"] in ["claude", "rules"]
+        resp_text = data["response"]
+        assert "1930" in resp_text or "cybercrime.gov.in" in resp_text
+        assert "you are safe now" not in resp_text.lower()
+
+    def test_chat_endpoint_analyst_mode(self, client):
+        """POST /api/chat with persona='analyst' must return structured intelligence format."""
+        payload = {
+            "session_id": f"test_analyst_{os.urandom(4).hex()}",
+            "message": "URGENT: Your SBI account has been suspended. Update your PAN at http://sbi-portal.xyz/verify",
+            "persona": "analyst"
+        }
+        res = client.post("/api/chat", json=payload)
+        assert res.status_code == 200
+        data = res.get_json()
+        assert data["engine"] in ["claude", "rules"]
+        resp_text = data["response"]
+        assert "Score:" in resp_text or "Classification" in resp_text or "Assessed Risk" in resp_text
+        assert "IT Act" in resp_text or "may fall under" in resp_text

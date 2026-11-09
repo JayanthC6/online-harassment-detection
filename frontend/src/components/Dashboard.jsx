@@ -123,6 +123,22 @@ export default function Dashboard({ refreshKey, activeTab: sidebarTab, setActive
       {/* ── Dashboard overview: stats + Recharts trend/category charts + queue ── */}
       {sidebarTab !== 'incidents' && sidebarTab !== 'offenders' && sidebarTab !== 'retention' && subTab === 'overview' && (
         <div className="space-y-8">
+          {/* Engine Status Banner */}
+          {stats && (
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-lg border bg-surface/70 border-border text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <span className="text-text-secondary">Detection Engine:</span>
+                <span className="font-semibold text-text-primary">{stats.model || 'ShieldAI DistilBERT Multi-Label'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${stats.model_loaded ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.7)]'}`} />
+                <span className={stats.model_loaded ? 'text-emerald-400 font-semibold' : 'text-amber-400 font-semibold'}>
+                  {stats.model_loaded ? 'Neural Model Active (Hybrid Mode)' : 'Rules-Only Fallback Mode'}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Key Metric Stat Cards */}
           <DashboardStats stats={stats} />
 

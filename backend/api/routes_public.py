@@ -76,11 +76,14 @@ def allowed_file(filename, allowed_set):
 
 @public_bp.route("/health", methods=["GET"])
 def health():
+    model_loaded = PredictionService.is_model_loaded()
     return jsonify({
         "status": "ok",
         "time": datetime.utcnow().isoformat(),
-        "database": "mongodb" if AdminService.get_stats() else "in-memory (not persistent)",
+        "database": "sqlite (persistent)",
         "model": PredictionService.get_active_model_name(),
+        "model_loaded": model_loaded,
+        "mode": "hybrid (neural + rules)" if model_loaded else "rules-only"
     })
 
 from api.dependencies import token_optional

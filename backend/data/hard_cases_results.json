@@ -1,19 +1,7 @@
 {
   "total": 52,
-  "passed": 46,
+  "passed": 48,
   "discrepancies": [
-    {
-      "id": "13",
-      "type": "educational_news",
-      "text": "Cybercrime awareness bulletin: Do not click on links claimin...",
-      "expected": "low/clean",
-      "actual": "critical/scam (score: 82.0)",
-      "status": "MISMATCH",
-      "notes": "Awareness bulletin advising citizens",
-      "signals": [
-        "Unsolicited prize or lottery winning notification"
-      ]
-    },
     {
       "id": "14",
       "type": "educational_news",
@@ -31,12 +19,12 @@
       "type": "quoted_victim_report",
       "text": "I am submitting a complaint because a user sent me: \"you are...",
       "expected": "low/clean",
-      "actual": "high/harassment (score: 80.0)",
+      "actual": "high/harassment (score: 74.0)",
       "status": "MISMATCH",
       "notes": "Victim reporting received insult - contains quoted abuse",
       "signals": [
-        "Model flagged cyberbullying/harassment (99.0% vs threshold 89.0%)",
-        "Model flagged toxic language (99.7% vs threshold 68.4%)",
+        "Model flagged cyberbullying/harassment (98.6% vs threshold 89.0%)",
+        "Model flagged toxic language (99.5% vs threshold 42.1%)",
         "Hostile, degrading, or abusive personal insult detected"
       ]
     },
@@ -45,11 +33,12 @@
       "type": "quoted_victim_report",
       "text": "The stalker posted a comment saying \"I know where you live a...",
       "expected": "low/clean",
-      "actual": "critical/threat (score: 98.0)",
+      "actual": "critical/threat (score: 100.0)",
       "status": "MISMATCH",
       "notes": "Victim reporting threat - contains quoted threat",
       "signals": [
-        "Model flagged toxic language (69.1% vs threshold 68.4%)",
+        "Model flagged high-confidence threat (99.2% vs threshold 53.3%)",
+        "Model flagged toxic language (98.7% vs threshold 42.1%)",
         "Explicit physical harm or death threat detected"
       ]
     },
@@ -58,25 +47,13 @@
       "type": "obfuscated_insult",
       "text": "Go d!e alone in a ditch loser",
       "expected": "high/abusive_language",
-      "actual": "critical/harassment (score: 100.0)",
+      "actual": "critical/threat (score: 87.0)",
       "status": "MISMATCH",
       "notes": "Obfuscated suicide incitement / insult",
       "signals": [
-        "Model flagged cyberbullying/harassment (99.7% vs threshold 89.0%)",
-        "Model flagged toxic language (99.9% vs threshold 68.4%)",
+        "Model flagged cyberbullying/harassment (92.4% vs threshold 89.0%)",
+        "Model flagged toxic language (99.1% vs threshold 42.1%)",
         "Severe death wish or suicide incitement detected ('kys', 'go die')"
-      ]
-    },
-    {
-      "id": "35",
-      "type": "long_phishing",
-      "text": "Dear Valued Customer, We have detected suspicious unauthoriz...",
-      "expected": "high/phishing",
-      "actual": "high/scam (score: 75.0)",
-      "status": "MISMATCH",
-      "notes": "Long banking security phishing email with urgent ultimatum",
-      "signals": [
-        "High-risk domain ending (.xyz) frequently used in fraudulent campaigns"
       ]
     }
   ],
@@ -86,7 +63,7 @@
       "type": "genuine_bank_otp",
       "text": "Your OTP for transaction of INR 4,500.00 at Amazon with SBI ...",
       "expected": "low/clean",
-      "actual": "low/clean (score: 0.1)",
+      "actual": "low/clean (score: 0.0)",
       "status": "PASS",
       "notes": "Legitimate SBI transaction OTP with warning",
       "signals": []
@@ -116,7 +93,7 @@
       "type": "genuine_bank_otp",
       "text": "739201 is your Amazon OTP. Do not share it with anyone. Amaz...",
       "expected": "low/clean",
-      "actual": "low/clean (score: 0.1)",
+      "actual": "low/clean (score: 0.0)",
       "status": "PASS",
       "notes": "Amazon 2FA OTP",
       "signals": []
@@ -136,7 +113,7 @@
       "type": "friendly_banter",
       "text": "Dude you are literally slaying this presentation, keep killi...",
       "expected": "low/clean",
-      "actual": "low/clean (score: 8.0)",
+      "actual": "low/clean (score: 0.1)",
       "status": "PASS",
       "notes": "Slang compliment using slaying/killing",
       "signals": []
@@ -146,7 +123,7 @@
       "type": "friendly_banter",
       "text": "I am going to murder you in FIFA tonight bro, prepare yourse...",
       "expected": "low/clean",
-      "actual": "low/clean (score: 14.8)",
+      "actual": "low/clean (score: 15.0)",
       "status": "PASS",
       "notes": "Gaming banter with violent words",
       "signals": []
@@ -166,7 +143,7 @@
       "type": "friendly_banter",
       "text": "This spicy chicken curry is killer, my tongue is burning!",
       "expected": "low/clean",
-      "actual": "low/clean (score: 1.7)",
+      "actual": "low/clean (score: 0.1)",
       "status": "PASS",
       "notes": "Food compliment using killer",
       "signals": []
@@ -176,7 +153,7 @@
       "type": "friendly_banter",
       "text": "We totally destroyed that pizza last night haha lol",
       "expected": "low/clean",
-      "actual": "low/clean (score: 5.7)",
+      "actual": "low/clean (score: 1.0)",
       "status": "PASS",
       "notes": "Casual dining statement using destroyed",
       "signals": []
@@ -186,7 +163,7 @@
       "type": "friendly_banter",
       "text": "I am gonna slaughter your team in Valorant this weekend",
       "expected": "low/clean",
-      "actual": "low/clean (score: 10.2)",
+      "actual": "low/clean (score: 14.9)",
       "status": "PASS",
       "notes": "Gaming rivalry banter",
       "signals": []
@@ -196,9 +173,19 @@
       "type": "educational_news",
       "text": "RBI Advisory: Beware of fraudulent SMS claiming your account...",
       "expected": "low/clean",
-      "actual": "low/clean (score: 0.4)",
+      "actual": "low/clean (score: 0.0)",
       "status": "PASS",
       "notes": "RBI official advisory bulletin",
+      "signals": []
+    },
+    {
+      "id": "13",
+      "type": "educational_news",
+      "text": "Cybercrime awareness bulletin: Do not click on links claimin...",
+      "expected": "low/clean",
+      "actual": "low/clean (score: 0.0)",
+      "status": "PASS",
+      "notes": "Awareness bulletin advising citizens",
       "signals": []
     },
     {
@@ -216,7 +203,7 @@
       "type": "educational_news",
       "text": "Tips to stay safe online: Never share your OTP, UPI PIN, or ...",
       "expected": "low/clean",
-      "actual": "low/clean (score: 0.1)",
+      "actual": "low/clean (score: 0.0)",
       "status": "PASS",
       "notes": "Cyber safety tips",
       "signals": []
@@ -260,7 +247,7 @@
       "type": "hinglish_insult",
       "text": "Tu ekdum pagal aur kutta hai chup kar behenchod.",
       "expected": "high/abusive_language",
-      "actual": "high/harassment (score: 77.5)",
+      "actual": "high/harassment (score: 74.0)",
       "status": "PASS",
       "notes": "Hinglish abusive slur and insult",
       "signals": [
@@ -272,7 +259,7 @@
       "type": "hinglish_insult",
       "text": "Abe chutiye apna ganda muh band rakh harami kahin ka.",
       "expected": "high/abusive_language",
-      "actual": "high/harassment (score: 77.5)",
+      "actual": "high/harassment (score: 74.0)",
       "status": "PASS",
       "notes": "Vulgar Hinglish abuse",
       "signals": [
@@ -285,7 +272,7 @@
       "type": "hinglish_scam",
       "text": "Aapka SBI account suspend hone wala hai, turant KYC update k...",
       "expected": "high/scam",
-      "actual": "high/scam (score: 75.0)",
+      "actual": "high/scam (score: 74.0)",
       "status": "PASS",
       "notes": "Hinglish banking KYC suspension scam",
       "signals": [
@@ -297,7 +284,7 @@
       "type": "hinglish_benign",
       "text": "Bhai kya haal hai kal movie dekhne chale kya?",
       "expected": "low/clean",
-      "actual": "low/clean (score: 1.6)",
+      "actual": "low/clean (score: 0.1)",
       "status": "PASS",
       "notes": "Casual Hinglish greeting inviting to a movie",
       "signals": []
@@ -307,7 +294,7 @@
       "type": "hinglish_benign",
       "text": "Bhai tu toh macha diya ekdum aag laga di stage pe!",
       "expected": "low/clean",
-      "actual": "low/clean (score: 8.0)",
+      "actual": "low/clean (score: 0.1)",
       "status": "PASS",
       "notes": "Hinglish compliment praising performance",
       "signals": []
@@ -317,7 +304,7 @@
       "type": "hinglish_benign",
       "text": "Arre yaar train late ho gayi main 15 minute mein pahunchta h...",
       "expected": "low/clean",
-      "actual": "low/clean (score: 0.4)",
+      "actual": "low/clean (score: 0.1)",
       "status": "PASS",
       "notes": "Everyday travel update in Hinglish",
       "signals": []
@@ -331,8 +318,8 @@
       "status": "PASS",
       "notes": "Obfuscated threat with symbols",
       "signals": [
-        "Model flagged high-confidence threat (100.0% vs threshold 98.7%)",
-        "Model flagged toxic language (99.6% vs threshold 68.4%)"
+        "Model flagged high-confidence threat (100.0% vs threshold 53.3%)",
+        "Model flagged toxic language (99.8% vs threshold 42.1%)"
       ]
     },
     {
@@ -340,7 +327,7 @@
       "type": "obfuscated_scam",
       "text": "Click here for fr33 crypto and b!tcoin rewards http://claim-...",
       "expected": "high/scam",
-      "actual": "high/scam (score: 75.0)",
+      "actual": "high/scam (score: 74.0)",
       "status": "PASS",
       "notes": "Obfuscated scam with l33tspeak and .xyz domain",
       "signals": [
@@ -352,13 +339,12 @@
       "type": "obfuscated_insult",
       "text": "Shut up you ugly b!tch nobody likes you",
       "expected": "high/abusive_language",
-      "actual": "high/harassment (score: 80.0)",
+      "actual": "high/harassment (score: 74.0)",
       "status": "PASS",
       "notes": "Obfuscated slur b!tch in harassment context",
       "signals": [
-        "Model flagged cyberbullying/harassment (99.5% vs threshold 89.0%)",
-        "Model flagged toxic language (99.7% vs threshold 68.4%)",
-        "Model flagged profanity (98.5% vs threshold 98.4%)",
+        "Model flagged cyberbullying/harassment (98.6% vs threshold 89.0%)",
+        "Model flagged toxic language (99.8% vs threshold 42.1%)",
         "Hostile, degrading, or abusive personal insult detected"
       ]
     },
@@ -367,7 +353,7 @@
       "type": "obfuscated_scam",
       "text": "Download this free g!ft c@rd now http://win-card.top",
       "expected": "high/scam",
-      "actual": "high/scam (score: 75.0)",
+      "actual": "high/scam (score: 74.0)",
       "status": "PASS",
       "notes": "Obfuscated gift card scam with suspicious TLD",
       "signals": [
@@ -389,12 +375,25 @@
       "type": "long_harassment",
       "text": "You think you are so smart walking around like you own the p...",
       "expected": "high/harassment",
-      "actual": "high/abusive_language (score: 67.5)",
+      "actual": "high/harassment (score: 74.0)",
       "status": "PASS",
       "notes": "Long continuous harassment and workplace/academic bullying",
       "signals": [
-        "Model flagged cyberbullying/harassment (92.3% vs threshold 89.0%)",
-        "Model flagged toxic language (98.3% vs threshold 68.4%)"
+        "Model flagged cyberbullying/harassment (94.3% vs threshold 89.0%)",
+        "Model flagged toxic language (98.7% vs threshold 42.1%)"
+      ]
+    },
+    {
+      "id": "35",
+      "type": "long_phishing",
+      "text": "Dear Valued Customer, We have detected suspicious unauthoriz...",
+      "expected": "high/phishing",
+      "actual": "high/phishing (score: 74.0)",
+      "status": "PASS",
+      "notes": "Long banking security phishing email with urgent ultimatum",
+      "signals": [
+        "Deceptive phishing link on high-risk domain ending (.xyz)",
+        "Urgent account suspension warning paired with link"
       ]
     },
     {
@@ -402,10 +401,11 @@
       "type": "long_sextortion",
       "text": "Greetings. I have installed malware on your system via a com...",
       "expected": "critical/sextortion",
-      "actual": "critical/sextortion (score: 96.0)",
+      "actual": "critical/sextortion (score: 98.5)",
       "status": "PASS",
       "notes": "Long classic webcam sextortion email",
       "signals": [
+        "Cryptocurrency extortion or ransomware payment demand detected",
         "Sextortion blackmail detected: threat to leak private photos/webcam video"
       ]
     },
@@ -454,7 +454,7 @@
       "type": "short_benign",
       "text": "hey",
       "expected": "low/clean",
-      "actual": "low/clean (score: 0.8)",
+      "actual": "low/clean (score: 0.3)",
       "status": "PASS",
       "notes": "Short greeting",
       "signals": []
@@ -518,7 +518,7 @@
       "type": "hinglish_insult",
       "text": "Tu ekdum harami aur kamina kutta hai.",
       "expected": "high/abusive_language",
-      "actual": "high/harassment (score: 77.5)",
+      "actual": "high/harassment (score: 74.0)",
       "status": "PASS",
       "notes": "Common Hinglish abusive slurs",
       "signals": [
@@ -531,7 +531,7 @@
       "type": "hinglish_insult",
       "text": "Chup kar saale suar aur bhadwe, teri aukaat nahi hai.",
       "expected": "high/abusive_language",
-      "actual": "high/harassment (score: 77.5)",
+      "actual": "high/harassment (score: 74.0)",
       "status": "PASS",
       "notes": "Aggressive vulgar Hinglish abuse",
       "signals": [
@@ -543,7 +543,7 @@
       "type": "hinglish_scam",
       "text": "Aapka SBI account suspend hone wala hai, turant kyc update k...",
       "expected": "high/scam",
-      "actual": "high/scam (score: 75.0)",
+      "actual": "high/scam (score: 74.0)",
       "status": "PASS",
       "notes": "Hinglish banking scam notification",
       "signals": [
@@ -568,7 +568,7 @@
       "type": "hinglish_benign",
       "text": "Bhai shaam ko chai peene chalte hain, ready rehna.",
       "expected": "low/clean",
-      "actual": "low/clean (score: 0.3)",
+      "actual": "low/clean (score: 0.1)",
       "status": "PASS",
       "notes": "Casual Hinglish tea invite",
       "signals": []
@@ -578,7 +578,7 @@
       "type": "hinglish_benign",
       "text": "Maine project ka code push kar diya hai github pe dekh lena.",
       "expected": "low/clean",
-      "actual": "low/clean (score: 0.3)",
+      "actual": "low/clean (score: 0.0)",
       "status": "PASS",
       "notes": "Casual Hinglish work coordination update",
       "signals": []

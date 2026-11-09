@@ -42,7 +42,6 @@
 
 #### Attacker Tactics Identified:
 - **Psychological Intimidation & Shaming:** Threatening imminent disclosure of private/compromising media to contacts to induce panic.
-- **Financial Coercion:** Demanding irreversible payment (cryptocurrency, gift cards, or UPI).
 - **Credential Bluff / Fake Malware:** Citing leaked credentials from historical data breaches or fictitious webcam capture without actual compromise.
 
 #### Recommended Escalation Steps:
@@ -60,7 +59,7 @@
 === SEXTORTION VICTIM ===
 I am here to help you navigate this step by step. Remember that **you did nothing wrong**, and there are concrete actions we can take right now.
 
-Regarding the demand for **50000 rupees**, the deadline of **in 24 hours**, contact via **Instagram**: **do not send any money, cryptocurrency, or gift cards**, and do not reply or negotiate.
+Regarding the demand for **50000 rupees**, the deadline of **24 hours**, contact via **Instagram**: **do not send any money, cryptocurrency, or gift cards**, and do not reply or negotiate.
 
 ### Concrete Next Steps:
 1. **DO NOT PAY OR NEGOTIATE:** Paying blackmailers never stops them; it leads to repeated extortion demands.

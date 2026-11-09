@@ -64,6 +64,19 @@
   font-size: 11px;
 }
 
+/* Purple Badge: Unsupported Language / Script */
+.shieldai-badge.badge-purple {
+  background-color: rgba(168, 85, 247, 0.16);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  border-left: 3px solid #A855F7;
+  color: #C084FC;
+}
+
+.shieldai-badge.badge-purple::before {
+  content: "🌐";
+  font-size: 11px;
+}
+
 /* Safe Badge: Clean */
 .shieldai-badge.badge-safe {
   background-color: rgba(16, 185, 129, 0.12);

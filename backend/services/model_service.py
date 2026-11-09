@@ -16,6 +16,12 @@ logger = logging.getLogger("ShieldAI.ModelService")
 if not logger.handlers:
     logging.basicConfig(level=logging.INFO)
 
+# Early pre-initialization of torch runtime libraries on Windows to prevent DLL collision
+try:
+    import torch
+except Exception as _e:
+    pass
+
 # Enforce offline operation for HuggingFace transformers in sandbox
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
@@ -30,17 +36,17 @@ LABEL_ORDER = [
 ]
 
 DEFAULT_THRESHOLDS = {
-    "Hate Speech": 0.6567294597625732,
-    "Cyberbullying / Harassment": 0.8896879553794861,
-    "Threat": 0.9866632223129272,
-    "Toxicity / Offensive Language": 0.6840231418609619,
-    "Profanity": 0.9842190146446228,
-    "Clean": 0.5179439783096313
+    "Hate Speech": 0.807612419128418,
+    "Cyberbullying / Harassment": 0.8904848694801331,
+    "Threat": 0.5331543684005737,
+    "Toxicity / Offensive Language": 0.4209566116333008,
+    "Profanity": 0.9965969920158386,
+    "Clean": 0.6905590891838074
 }
 
-# Configurable severity caps: Plain insults/abuse are capped at High (<85.0)
+# Configurable severity caps: Plain insults/abuse are capped at High band maximum (<75.0)
 DEFAULT_SEVERITY_CAPS = {
-    "plain_abuse_cap": float(os.environ.get("SHIELDAI_PLAIN_ABUSE_CAP", 80.0)),
+    "plain_abuse_cap": float(os.environ.get("SHIELDAI_PLAIN_ABUSE_CAP", 74.0)),
     "unverified_scam_cap": float(os.environ.get("SHIELDAI_UNVERIFIED_SCAM_CAP", 70.0)),
     "educational_cap": float(os.environ.get("SHIELDAI_EDUCATIONAL_CAP", 40.0)),
 }
@@ -61,8 +67,10 @@ RISKY_TLDS = {
 TARGET_BRANDS = [
     "paypal.com", "apple.com", "google.com", "microsoft.com",
     "amazon.com", "netflix.com", "facebook.com", "instagram.com",
-    "sbi.co.in", "hdfcbank.com", "icicibank.com", "axisbank.com",
-    "paytm.com", "phonepe.com"
+    "whatsapp.com", "telegram.org", "chase.com", "wellsfargo.com",
+    "bankofamerica.com", "citibank.com", "binance.com", "coinbase.com",
+    "kraken.com", "sbi.co.in", "hdfcbank.com", "icicibank.com",
+    "axisbank.com", "paytm.com", "phonepe.com"
 ]
 
 SE_URGENCY_PATTERNS = [
@@ -82,9 +90,48 @@ GENUINE_OTP_INDICATORS = [
 ]
 
 SCAM_LOTTERY_PRIZE_PATTERNS = [
-    r"\b(?:congratulations|congrats|you have won|winner|lucky draw|lottery|cash prize|claim your prize|selected for reward|won \$?[\d,]+|jackpot)\b",
-    r"\b(?:claim reward|prize notification|international lottery)\b"
+    # Explicit lottery / prize / sweepstakes winning notices
+    r"\b(?:you have won|you'?ve won|you won|selected for (?:a |the )?reward|awarded with (?:a )?[\$£₹]?\d+|won (?:a )?(?:cash prize|lottery|jackpot|sweepstakes))\b",
+    r"\b(?:lucky draw|international lottery|prize notification|sweepstakes prize)\b",
+    # Congratulations ONLY when paired with prize/winning + claim/call/contact action
+    r"\b(?:congratulations|congrats)\b.{0,80}\b(?:won|winner|prize|reward|lottery|cash|jackpot|awarded)\b.{0,80}\b(?:claim|call|contact|collect|redeem|send|click|reply)\b",
+    r"\b(?:won|winner|prize|reward|lottery|cash|jackpot|awarded)\b.{0,80}\b(?:congratulations|congrats)\b.{0,80}\b(?:claim|call|contact|collect|redeem|send|click|reply)\b",
+    # Standalone prize claim lures
+    r"\b(?:claim your prize|claim (?:your )?reward|claim (?:your )?cash)\b"
 ]
+
+# Phone-call lures combining urgency + disconnection/penalty/threat + phone number
+PHONE_CALL_EXTORTION_LURES = [
+    r"\b(?:disconnected|deactivated|suspended|terminated|cut off)\b.{0,80}\b(?:call|contact|dial)\b.{0,40}\b(?:\+?\d[\d\s-]{8,14}\d)\b",
+    r"\b(?:call|contact|dial)\b.{0,40}\b(?:\+?\d[\d\s-]{8,14}\d)\b.{0,80}\b(?:disconnected|deactivated|suspended|terminated|penalty|bill|arrears)\b",
+    r"\b(?:electricity|power supply|water supply|gas pipeline|sim card|mobile number|account)\b.{0,80}\b(?:disconnected|terminated|suspended)\b.{0,80}\b(?:call|contact|dial)\b"
+]
+
+# Task-based part-time job or work-from-home scam patterns
+TASK_JOB_SCAM_PATTERNS = [
+    r"\b(?:part[- ]?time|work from home|wfh|online job|remote (?:job|work|data entry)|review task|daily task|earn money)\b.{0,150}\b(?:telegram|whatsapp|wa\.me|t\.me|@\w+)\b",
+    r"\b(?:earn|earning|income|payout)\b.{0,60}(?:[\$£₹]|rs\.?|inr)?\s*\d+[\d,]*\s*(?:to\s*[\$£₹]?\s*\d+[\d,]*)?\s*(?:daily|per day|per task|per video|daily payout|every day)\b.{0,150}\b(?:telegram|whatsapp|wa\.me|t\.me|@\w+)\b",
+    r"\b(?:telegram|whatsapp)\b.{0,50}(?:@\w+|t\.me/\w+|wa\.me/\w+|\+?\d{10})\b.{0,150}\b(?:job|earn|part[- ]?time|wfh|income|salary|hiring)\b",
+    r"\b(?:hiring|vacancy)\b.{0,80}\b(?:earn|salary|payout|rs\.?|inr)\b.{0,150}\b(?:telegram|whatsapp|wa\.me|t\.me)\b"
+]
+
+# Cryptocurrency extortion & ransomware payment patterns
+CRYPTO_EXTORTION_PATTERNS = [
+    r"\b(?:encrypted|locked|ransomware|files encrypted|database encrypted)\b.{0,80}\b(?:transfer|send|pay|deposit)\b.{0,60}\b(?:usdt|tether|btc|bitcoin|eth|ethereum|crypto|wallet)\b",
+    r"\b(?:transfer|send|pay|deposit)\b.{0,60}\b(?:\d+[\d,.]*\s*(?:usdt|btc|eth|crypto|bitcoin|usd|dollars?))\b.{0,80}\b(?:within \d+ (?:hours?|hrs?|days?)|or your|or delete|or leak|or destroy)\b",
+    r"\b(?:crypto wallet|wallet address|bitcoin address|usdt wallet|btc address)\b.{0,40}(?:0x[a-fA-F0-9]{4,40}|1[a-km-zA-HJ-NP-Z1-9]{15,34}|3[a-km-zA-HJ-NP-Z1-9]{15,34}|bc1[a-z0-9]{15,59})"
+]
+
+# Regex covering standard crypto wallet address formats
+CRYPTO_WALLET_REGEX = re.compile(
+    r'\b(?:'
+    r'0x[a-fA-F0-9]{40}|'                         # Ethereum / EVM 40 hex
+    r'1[a-km-zA-HJ-NP-Z1-9]{25,34}|'               # Bitcoin Base58 P2PKH (starts with 1)
+    r'3[a-km-zA-HJ-NP-Z1-9]{25,34}|'               # Bitcoin Base58 P2SH (starts with 3)
+    r'bc1[a-z0-9]{38,59}|'                         # Bitcoin Bech32 Native SegWit
+    r'0x[a-fA-F0-9]{3,10}\.{2,4}[a-fA-F0-9]{0,10}' # Elided address in notices
+    r')\b'
+)
 
 SCAM_PAYMENT_PATTERNS = [
     r"\b(?:gift card|apple gift card|steam card|google play voucher|amazon gift card|pay via gift card)\b",
@@ -133,7 +180,8 @@ HINGLISH_ABUSE_PATTERNS = [
     r"\b(?:harami|haraami|haramkhor|haraamkhor)\b",
     r"\b(?:chutiya|chutiye|chutye|choothiya)\b",
     r"\b(?:bhadwa|bhadwe|bhadve|randi|raand|suar|suwar)\b",
-    r"\b(?:madarchod|bhenchod|behenchod|mc|bc|bsdk|bhosdike|bhosadi)\b",
+    r"\b(?:madarchod|bhenchod|behenchod|bsdk|bhosdike|bhosadi)\b",
+    r"\b(?:m\.c\.|b\.c\.)\b",
     r"\b(?:gandu|gaandu|chirkut|chapri)\b",
     r"\b(?:saala|saale|sale)\s+(?:kutta|suar|kutte|pagal|kamina|harami)\b"
 ]
@@ -152,10 +200,12 @@ BENIGN_VIOLENT_IDIOM_PATTERNS = [
 
 # Benign self-directed or self-deprecating remarks (not targeted harassment)
 SELF_DIRECTED_PATTERNS = [
-    r"\b(?:of me|of myself|on my part|stupid me|foolish of me|silly me|how stupid of me)\b",
-    r"\b(?:i(?:'m| am| was)\s+(?:so\s+|such\s+a\s+|really\s+)?(?:stupid|dumb|idiot|fool|loser|freak|mess|clown))\b",
-    r"\b(?:i feel like (?:a\s+)?(?:loser|failure|idiot|fool))\b",
-    r"\b(?:my bad|i messed up|i forgot)\b"
+    r"\b(?:of me|of myself|on my part|stupid me|foolish of me|silly me|clumsy of me|how stupid of me|how dumb of me)\b",
+    r"\bwhat\s+(?:an?\s+)?\w+\s+i\s+(?:am|was)\b",
+    r"\b(?:i(?:'m| am| was)\s+(?:so\s+|such\s+a\s+|really\s+)?(?:stupid|dumb|idiot|fool|loser|freak|mess|clown|clumsy))\b",
+    r"\b(?:i feel like (?:a\s+)?(?:loser|failure|idiot|fool|scumbag|mess|clown))\b",
+    r"\b(?:my bad|i messed up|i forgot|my fault|my blunder)\b",
+    r"\bhow\s+(?:stupid|dumb|foolish|silly|clumsy)\s+of\s+me\b"
 ]
 
 # Benign talent or skill compliment idioms
@@ -276,6 +326,11 @@ class ModelService:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
+
+    @property
+    def model_loaded(self) -> bool:
+        """Returns True if the DistilBERT neural model is loaded, False if rules-only mode."""
+        return self.is_loaded
 
     def _initialize(self):
         """Loads model and tokenizer once at startup from backend/models/shieldai."""
@@ -419,7 +474,7 @@ class ModelService:
         url_pattern = re.compile(
             r'https?://(?:[a-zA-Z0-9$-_@.&+!*(),]|(?:%[0-9a-fA-F]{2}))+|'
             r'(?:www\.[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)|'
-            r'\b[a-zA-Z0-9-]+\.(?:xyz|top|click|buzz|gq|tk|ml|cf|ga|icu|cam|cc|link|work)(?:/[^\s]*)?',
+            r'\b(?=[a-zA-Z0-9-]*[a-zA-Z])[a-zA-Z0-9-]{2,63}\.(?:com|org|net|io|co|in|info|biz|xyz|top|click|buzz|gq|tk|ml|cf|ga|icu|cam|cc|link|work)\b(?:/[^\s]*)?',
             re.IGNORECASE
         )
         return list(set(url_pattern.findall(text)))
@@ -462,15 +517,25 @@ class ModelService:
                     "score": 90.0
                 })
 
-            # 3. Risky TLDs -> Scam (Filed strictly as scam, contributing ONLY to scam)
+            # 3. Risky TLDs -> Phishing vs Scam (Applied strictly to full domain tokens)
             for tld in RISKY_TLDS:
-                if netloc.endswith(tld):
-                    signals.append({
-                        "layer": "rules",
-                        "category": "scam",
-                        "signal": f"High-risk domain ending ({tld}) frequently used in fraudulent campaigns",
-                        "score": 75.0
-                    })
+                tld_clean = tld.lstrip(".")
+                if netloc == tld_clean or netloc.endswith("." + tld_clean):
+                    is_phish_lure = any(w in (netloc + parsed.path).lower() for w in ["login", "verify", "signin", "account", "secure", "portal", "update", "auth", "banking"])
+                    if is_phish_lure:
+                        signals.append({
+                            "layer": "rules",
+                            "category": "phishing",
+                            "signal": f"Deceptive phishing link on high-risk domain ending ({tld})",
+                            "score": 74.0
+                        })
+                    else:
+                        signals.append({
+                            "layer": "rules",
+                            "category": "scam",
+                            "signal": f"High-risk domain ending ({tld}) frequently used in fraudulent campaigns",
+                            "score": 75.0
+                        })
                     break
 
             # 4. Punycode / Look-alike domains -> Phishing
@@ -482,16 +547,27 @@ class ModelService:
                     "score": 88.0
                 })
 
-            # 5. Look-alike brand impersonation in domain -> Phishing
+            # 5. Look-alike brand impersonation in domain (with digit/char substitution canonicalization: 1->l/i, i->l, 0->o, 3->e, 5->s, 8->b) -> Phishing
+            variants = [
+                netloc.replace("1", "l").replace("0", "o").replace("3", "e").replace("5", "s").replace("8", "b"),
+                netloc.replace("1", "i").replace("0", "o").replace("3", "e").replace("5", "s").replace("8", "b"),
+                netloc.replace("i", "l").replace("0", "o").replace("3", "e").replace("5", "s").replace("8", "b"),
+            ]
             for brand in TARGET_BRANDS:
                 brand_base = brand.split(".")[0]
-                if brand_base in netloc and netloc != brand and not netloc.endswith("." + brand):
-                    signals.append({
-                        "layer": "rules",
-                        "category": "phishing",
-                        "signal": f"Look-alike brand impersonation in domain: '{netloc}' mimicking '{brand}'",
-                        "score": 88.0
-                    })
+                matched = False
+                for v in variants:
+                    if brand_base in v and netloc != brand and not netloc.endswith("." + brand):
+                        signals.append({
+                            "layer": "rules",
+                            "category": "phishing",
+                            "signal": f"Look-alike brand impersonation in domain: '{netloc}' mimicking '{brand}'",
+                            "score": 88.0
+                        })
+                        matched = True
+                        break
+                if matched:
+                    break
 
         return signals
 
@@ -559,7 +635,7 @@ class ModelService:
                 "score": score
             })
         elif urgency_hit and has_phish_link:
-            score = 85.0
+            score = 74.0
             category_scores["phishing"] = max(category_scores["phishing"], score)
             signals.append({
                 "layer": "rules",
@@ -601,6 +677,52 @@ class ModelService:
                     "signal": "Courier/Customs or 'Digital Arrest' extortion scheme impersonating law enforcement",
                     "score": score
                 })
+
+        # Phone-call disconnection / penalty scare lures
+        phone_lure_hit = any(re.search(pat, text_deobf) for pat in PHONE_CALL_EXTORTION_LURES)
+        if phone_lure_hit and not educational_hit:
+            score = 85.0
+            category_scores["phishing"] = max(category_scores["phishing"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "phishing",
+                "signal": "Urgent service disconnection or penalty scare tactic directing user to unverified phone number",
+                "score": score
+            })
+
+        # Task-based part-time job or work-from-home scams
+        job_scam_hit = any(re.search(pat, text_deobf) for pat in TASK_JOB_SCAM_PATTERNS)
+        if job_scam_hit and not educational_hit:
+            score = 85.0
+            category_scores["scam"] = max(category_scores["scam"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "scam",
+                "signal": "Task-based part-time job or work-from-home scam directing to messaging app",
+                "score": score
+            })
+
+        # Crypto extortion / ransomware payment demands
+        crypto_extortion_hit = any(re.search(pat, text_deobf) for pat in CRYPTO_EXTORTION_PATTERNS)
+        crypto_wallet_match = CRYPTO_WALLET_REGEX.search(text)
+        if crypto_extortion_hit and not educational_hit:
+            score = 92.0
+            category_scores["threat"] = max(category_scores["threat"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "threat",
+                "signal": "Cryptocurrency extortion or ransomware payment demand detected",
+                "score": score
+            })
+        elif crypto_wallet_match and any(w in text_deobf for w in ["transfer", "send", "pay", "deposit", "wallet", "usdt", "btc", "bitcoin", "crypto"]) and not educational_hit:
+            score = 80.0
+            category_scores["scam"] = max(category_scores["scam"], score)
+            signals.append({
+                "layer": "rules",
+                "category": "scam",
+                "signal": f"Cryptocurrency wallet payment request detected ({crypto_wallet_match.group(0)[:10]}...)",
+                "score": score
+            })
 
         # 4. Sextortion / Photo Blackmail
         sextortion_hit = any(re.search(pat, text_deobf) for pat in SEXTORTION_PATTERNS)
@@ -781,9 +903,111 @@ class ModelService:
 
         return advice
 
+    def _detect_language(self, text: str) -> Tuple[bool, str, str]:
+        """
+        Detects whether the input text is in a supported language/script.
+        Supported: English and Roman-script Hinglish (uses Latin characters).
+        Unsupported: Non-Latin scripts (Devanagari, Tamil, Telugu, Bengali, Arabic, Cyrillic, etc.)
+                     and unsupported Latin-script languages (Spanish, etc.).
+        Returns (is_supported: bool, detected_lang: str, note: str).
+        """
+        if not text or not text.strip():
+            return True, "English", ""
+
+        alpha_chars = [c for c in text if c.isalpha()]
+        if alpha_chars:
+            non_latin = [c for c in alpha_chars if ord(c) > 0x024F]
+            ratio = len(non_latin) / len(alpha_chars)
+            # Require substantial non-Latin script (>= 40% of letters, or at least 8 non-Latin chars and >= 35%)
+            # This prevents a single greeting word like 'namaste' or a loan word from flagging the entire text
+            if (ratio >= 0.40) or (len(non_latin) >= 8 and ratio >= 0.35):
+                if any(0x0900 <= ord(c) <= 0x097F for c in non_latin):
+                    return False, "Hindi (Devanagari)", "Input text contains Devanagari script. ShieldAI models are calibrated for English and Roman-script Hinglish only; analysis results may be unreliable and cannot be verified as safe."
+                elif any(0x0B80 <= ord(c) <= 0x0BFF for c in non_latin):
+                    return False, "Tamil", "Input text contains Tamil script. ShieldAI models are calibrated for English and Roman-script Hinglish only; analysis results may be unreliable and cannot be verified as safe."
+                elif any(0x0C00 <= ord(c) <= 0x0C7F for c in non_latin):
+                    return False, "Telugu", "Input text contains Telugu script. ShieldAI models are calibrated for English and Roman-script Hinglish only; analysis results may be unreliable and cannot be verified as safe."
+                elif any(0x0980 <= ord(c) <= 0x09FF for c in non_latin):
+                    return False, "Bengali", "Input text contains Bengali script. ShieldAI models are calibrated for English and Roman-script Hinglish only; analysis results may be unreliable and cannot be verified as safe."
+                elif any(0x0600 <= ord(c) <= 0x06FF for c in non_latin):
+                    return False, "Arabic", "Input text contains Arabic script. ShieldAI models are calibrated for English and Roman-script Hinglish only; analysis results may be unreliable and cannot be verified as safe."
+                else:
+                    return False, "Non-Latin Script", "Input text contains non-Latin script. ShieldAI models are calibrated for English and Roman-script Hinglish only; analysis results may be unreliable and cannot be verified as safe."
+
+        # Check clean word tokens for short-input safety and Hinglish protection
+        words = re.findall(r'\b[a-zA-Z]+\b', text.lower())
+        if len(words) < 3 or len(alpha_chars) < 15:
+            return True, "English / Hinglish", ""
+
+        # Hinglish Protection Invariant:
+        # Check distinctive Hinglish vocabulary and pattern rules before external language models
+        distinct_hinglish = {
+            "bhai", "yaar", "khelne", "khelo", "khel", "karo", "kare", "karna", "karega", "karegi",
+            "bohot", "bahut", "kutta", "kutti", "kutte", "saale", "saala", "chutiye", "chutiya",
+            "kamina", "kameene", "bhosadike", "harami", "dunga", "denge", "dega", "bolta", "bolte",
+            "bolti", "milte", "milenge", "shaam", "subah", "paise", "rupaye", "bhejo", "bhejna",
+            "samajh", "accha", "theek", "nahin", "nhi", "kaise", "kyun", "kaisa", "kaisi",
+            "mera", "meri", "mere", "tera", "teri", "tere", "apna", "apni", "apne",
+            "humara", "tumhara", "andar", "baahar", "aao", "jaao", "suno", "dekho", "maar", "maarenge"
+        }
+        if any(w in distinct_hinglish for w in words):
+            return True, "English / Hinglish", ""
+        if any(re.search(pat, text.lower()) for pat in (HINGLISH_ABUSE_PATTERNS + HINGLISH_THREAT_PATTERNS + HINGLISH_SCAM_PATTERNS)):
+            return True, "English / Hinglish", ""
+
+        # Check standard English vocabulary to protect English messages with mild obfuscation or colloquial syntax
+        deobf_words = re.findall(r'\b[a-zA-Z]+\b', deobfuscate_text(text.lower()))
+        common_en = {
+            "the", "be", "to", "of", "and", "a", "in", "that", "have", "i", "it", "for", "not", "on", "with",
+            "he", "as", "you", "do", "at", "this", "but", "his", "by", "from", "they", "we", "say", "her",
+            "she", "or", "an", "will", "my", "one", "all", "would", "there", "their", "what", "so", "up",
+            "out", "if", "about", "who", "get", "which", "go", "me", "when", "make", "can", "like", "time",
+            "no", "just", "him", "know", "take", "people", "into", "year", "your", "good", "some", "could",
+            "them", "see", "other", "than", "then", "now", "look", "only", "come", "its", "over", "think",
+            "also", "back", "after", "use", "two", "how", "our", "work", "first", "well", "way", "even",
+            "new", "want", "because", "any", "these", "give", "day", "most", "us", "die", "alone", "ditch",
+            "loser", "kill", "shut", "idiot", "stupid", "freak", "clown", "recipe", "umbrella", "kidding",
+            "send", "leak", "photos", "nudes", "lol", "haha", "rofl", "again", "botched", "dinner", "got",
+            "brother", "chess", "keys", "beat", "round", "match", "team", "sure"
+        }
+        if deobf_words and sum(1 for w in deobf_words if w in common_en) / len(deobf_words) >= 0.40:
+            return True, "English", ""
+
+        # Statistical Language Identification via maintained langdetect library
+        detected_unsupported_languages = {
+            "es": "Spanish",
+            "fr": "French",
+            "de": "German",
+            "it": "Italian",
+            "pt": "Portuguese"
+        }
+
+        try:
+            from langdetect import detect_langs, DetectorFactory
+            DetectorFactory.seed = 42
+
+            # Strip URLs, punctuation, digits to focus on textual language features
+            text_clean = re.sub(r'https?://\S+', '', text)
+            text_clean = re.sub(r'[^\w\s]', ' ', text_clean)
+            text_clean = re.sub(r'\d+', ' ', text_clean).strip()
+
+            if len(text_clean.split()) >= 3:
+                candidates = detect_langs(text_clean)
+                if candidates:
+                    top = candidates[0]
+                    if top.lang == "en":
+                        return True, "English", ""
+                    elif top.prob >= 0.80 and top.lang in detected_unsupported_languages:
+                        lang_name = detected_unsupported_languages[top.lang]
+                        return False, lang_name, f"Input text appears to be in {lang_name}. ShieldAI models are calibrated for English and Roman-script Hinglish only; analysis results may be unreliable and cannot be verified as safe."
+        except Exception as e:
+            logger.debug(f"langdetect evaluation note: {e}")
+
+        return True, "English / Hinglish", ""
+
     # ── Core Analysis Pipeline ─────────────────────────────────────────────────
 
-    def analyze(self, text: str) -> Dict[str, Any]:
+    def analyze(self, text: str, precomputed_model_res: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Main analysis method for single text.
         Returns full schema: score (0-100), level, category_scores, signals,
@@ -806,13 +1030,100 @@ class ModelService:
                 "signals": [],
                 "which_layer": "none",
                 "explanation": "No malicious indicators detected. The analyzed content appears safe and harmless." if clean_text else "No text provided.",
-                "advice": ["The message appears safe, but always verify unfamiliar senders before sharing personal information."] if clean_text else ["Enter text to analyze."]
+                "advice": ["The message appears safe, but always verify unfamiliar senders before sharing personal information."] if clean_text else ["Enter text to analyze."],
+                "language_supported": True,
+                "language_detected": "English",
+                "language_note": ""
             }
 
         # Check in-memory cache
         if clean_text in self.cache:
             self.cache.move_to_end(clean_text)
             return self.cache[clean_text]
+
+        # Check language support (English & Roman Hinglish supported; non-Latin scripts & Spanish unsupported)
+        is_supported, detected_lang, lang_note = self._detect_language(clean_text)
+        if not is_supported:
+            # Language-independent security checks on unsupported text (URLs, shorteners, look-alike domains, phone lures, crypto wallets)
+            link_signals = self._analyze_links(clean_text)
+            unsupp_deobf = deobfuscate_text(clean_text.lower())
+            extra_signals = []
+            unsupp_cats = {
+                "harassment": 0.0, "threat": 0.0, "abusive_language": 0.0,
+                "phishing": 0.0, "scam": 0.0, "sextortion": 0.0
+            }
+            for sig in link_signals:
+                cat = sig["category"]
+                unsupp_cats[cat] = max(unsupp_cats[cat], sig["score"])
+                extra_signals.append(sig)
+
+            # Check crypto extortion / wallet in unsupported text
+            if any(re.search(pat, unsupp_deobf) for pat in CRYPTO_EXTORTION_PATTERNS):
+                unsupp_cats["threat"] = max(unsupp_cats["threat"], 92.0)
+                extra_signals.append({
+                    "layer": "rules",
+                    "category": "threat",
+                    "signal": "Cryptocurrency extortion or ransomware payment demand detected",
+                    "score": 92.0
+                })
+            elif CRYPTO_WALLET_REGEX.search(clean_text) and any(w in unsupp_deobf for w in ["transfer", "send", "pay", "deposit", "wallet", "usdt", "btc", "bitcoin", "crypto"]):
+                unsupp_cats["scam"] = max(unsupp_cats["scam"], 80.0)
+                extra_signals.append({
+                    "layer": "rules",
+                    "category": "scam",
+                    "signal": "Cryptocurrency wallet payment request detected",
+                    "score": 80.0
+                })
+
+            # Check phone lures in unsupported text
+            if any(re.search(pat, unsupp_deobf) for pat in PHONE_CALL_EXTORTION_LURES):
+                unsupp_cats["phishing"] = max(unsupp_cats["phishing"], 85.0)
+                extra_signals.append({
+                    "layer": "rules",
+                    "category": "phishing",
+                    "signal": "Urgent service disconnection or penalty scare tactic directing user to unverified phone number",
+                    "score": 85.0
+                })
+
+            max_sec_score = max(unsupp_cats.values())
+            if max_sec_score >= 50.0:
+                # Real security threat detected despite unsupported language!
+                sec_level = "critical" if max_sec_score >= 75.0 else "high"
+                return {
+                    "score": round(max_sec_score, 1),
+                    "level": sec_level,
+                    "category_scores": unsupp_cats,
+                    "signals": extra_signals,
+                    "which_layer": "rules",
+                    "explanation": f"Actionable threat indicators detected in text ({detected_lang}). Linguistic analysis is unsupported and may be unreliable.",
+                    "advice": ["Actionable cyber threat detected. Do not click links, call numbers, or transfer funds."],
+                    "model_active": self.is_loaded,
+                    "language_supported": False,
+                    "language_detected": detected_lang,
+                    "language_note": lang_note
+                }
+            else:
+                return {
+                    "score": 0.0,
+                    "level": "unsupported",
+                    "category_scores": unsupp_cats,
+                    "signals": [{
+                        "signal": f"Unsupported language/script detected: {detected_lang}. Results may be unreliable.",
+                        "category": "language_unsupported",
+                        "severity": "medium",
+                        "pattern": detected_lang
+                    }],
+                    "which_layer": "language_filter",
+                    "explanation": lang_note,
+                    "advice": [
+                        "ShieldAI is calibrated for English and Roman-script Hinglish.",
+                        "Analysis for this script/language cannot be verified as safe."
+                    ],
+                    "model_active": self.is_loaded,
+                    "language_supported": False,
+                    "language_detected": detected_lang,
+                    "language_note": lang_note
+                }
 
         # Normalize text before model and rules (leetspeak, zero-width chars, mixed spacing, symbols)
         norm_text = normalize_text(clean_text)
@@ -846,7 +1157,10 @@ class ModelService:
             is_benign_insult_context = is_self_directed or is_talent_idiom or is_friendly_banter
 
         # 1. Neural Model Inference (run on normalized text)
-        model_res = self._predict_model_batch([norm_text])[0]
+        if precomputed_model_res is not None:
+            model_res = precomputed_model_res
+        else:
+            model_res = self._predict_model_batch([norm_text])[0]
         model_scores = model_res.get("scores", {})
         model_probs = model_res.get("probs", {})
         model_active = model_res.get("active", False)
@@ -859,7 +1173,7 @@ class ModelService:
         if model_active:
             # Threat
             threat_p = model_probs.get("Threat", 0.0)
-            threat_thresh = self.thresholds.get("Threat", 0.9867)
+            threat_thresh = self.thresholds.get("Threat", 0.5332)
             threat_rel = model_scores.get("Threat", 0.0)
             
             # Neutralize violent words when clearly used in friendly gaming banter
@@ -878,9 +1192,9 @@ class ModelService:
 
             # Harassment (Hate Speech + Cyberbullying)
             hate_p = model_probs.get("Hate Speech", 0.0)
-            hate_thresh = self.thresholds.get("Hate Speech", 0.6567)
+            hate_thresh = self.thresholds.get("Hate Speech", 0.8076)
             cb_p = model_probs.get("Cyberbullying / Harassment", 0.0)
-            cb_thresh = self.thresholds.get("Cyberbullying / Harassment", 0.8897)
+            cb_thresh = self.thresholds.get("Cyberbullying / Harassment", 0.8905)
 
             hate_rel = model_scores.get("Hate Speech", 0.0)
             cb_rel = model_scores.get("Cyberbullying / Harassment", 0.0)
@@ -911,9 +1225,9 @@ class ModelService:
 
             # Abusive language (Toxicity + Profanity)
             tox_p = model_probs.get("Toxicity / Offensive Language", 0.0)
-            tox_thresh = self.thresholds.get("Toxicity / Offensive Language", 0.6840)
+            tox_thresh = self.thresholds.get("Toxicity / Offensive Language", 0.4210)
             prof_p = model_probs.get("Profanity", 0.0)
-            prof_thresh = self.thresholds.get("Profanity", 0.9842)
+            prof_thresh = self.thresholds.get("Profanity", 0.9966)
 
             tox_rel = model_scores.get("Toxicity / Offensive Language", 0.0)
             prof_rel = model_scores.get("Profanity", 0.0)
@@ -950,8 +1264,8 @@ class ModelService:
                     "score": prof_rel
                 })
 
-        # 2. Rules Inference (evaluated on normalized text)
-        rules_res = self.evaluate_rules(norm_text)
+        # 2. Rules Inference (evaluated on original clean text with internal deobfuscation)
+        rules_res = self.evaluate_rules(clean_text)
         rules_cats = rules_res["category_scores"]
         rules_signals = rules_res["signals"]
 
@@ -970,14 +1284,20 @@ class ModelService:
 
         # Harassment: hybrid blend (model and rules assist each other)
         if model_active:
+            # Let the neural model decide English abuse categories;
+            # rules augment for Hinglish abuse, severe death wishes, and sextortion.
+            is_non_model_abuse = (
+                any(re.search(pat, text_deobf) for pat in HINGLISH_ABUSE_PATTERNS) or
+                any(re.search(pat, text_deobf) for pat in SEVERE_DEATH_WISH_PATTERNS)
+            )
             final_harassment = max(
                 model_harassment,
-                rules_cats["harassment"],
+                rules_cats["harassment"] if is_non_model_abuse else 0.0,
                 0.85 * model_harassment + 0.15 * rules_cats["harassment"]
             )
             final_abusive = max(
                 model_abusive,
-                rules_cats["abusive_language"],
+                rules_cats["abusive_language"] if is_non_model_abuse else 0.0,
                 0.80 * model_abusive + 0.20 * rules_cats["abusive_language"]
             )
         else:
@@ -1056,9 +1376,25 @@ class ModelService:
             final_category_scores["harassment"] = min(final_category_scores["harassment"], abuse_cap)
             final_category_scores["abusive_language"] = min(final_category_scores["abusive_language"], abuse_cap)
 
+        # Single-label marginal toxicity calibration:
+        # If the only active category is mild/marginal toxicity (abusive_language score < 65.0)
+        # with zero threat, sextortion, scam, phishing, or harassment, it should be medium risk at most, not high.
+        is_marginal_single_label_tox = (
+            final_category_scores["abusive_language"] >= 50.0 and
+            final_category_scores["abusive_language"] < 65.0 and
+            final_category_scores["harassment"] < 35.0 and
+            final_category_scores["threat"] == 0.0 and
+            final_category_scores["sextortion"] == 0.0 and
+            final_category_scores["phishing"] == 0.0 and
+            final_category_scores["scam"] == 0.0 and
+            not is_critical_eligible
+        )
+
         if not is_critical_eligible:
             overall_score = min(overall_score, abuse_cap)
-            if overall_score >= 50.0:
+            if is_marginal_single_label_tox:
+                level = "medium"
+            elif overall_score >= 50.0:
                 level = "high"
             elif overall_score >= 25.0:
                 level = "medium"
@@ -1097,7 +1433,10 @@ class ModelService:
             "signals": combined_signals,
             "which_layer": which_layer,
             "explanation": explanation,
-            "advice": advice
+            "advice": advice,
+            "language_supported": True,
+            "language_detected": detected_lang,
+            "language_note": ""
         }
 
         # Save to LRU cache
@@ -1141,7 +1480,7 @@ class ModelService:
                     results[idx] = empty_res
                     continue
 
-                item_res = self.analyze(raw_t)
+                item_res = self.analyze(raw_t, precomputed_model_res=m_res)
                 results[idx] = item_res
 
         return results
