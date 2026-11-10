@@ -18,14 +18,20 @@ function getCategoryBadgeClass(category) {
 }
 
 export default function RiskBadge({ safetyStatus, severityTier, category, threatScore }) {
-  const score = Math.round(threatScore ?? 0);
-  const catLabel = (category || 'none').replace(/_/g, ' ').replace(/\//g, ' / ');
+  const isNoText = category === 'no_text_found' || severityTier === 'no_text_found' || safetyStatus === 'no_text_found';
+  const score = threatScore != null ? Math.round(threatScore) : null;
+  const catLabel = isNoText ? 'No Text Detected' : (category || 'none').replace(/_/g, ' ').replace(/\//g, ' / ');
 
   return (
     <div className="flex flex-col gap-4 w-full">
       {/* Status pill */}
       <div className="flex items-center gap-2">
-        {(safetyStatus || severityTier) !== 'Safe' ? (
+        {isNoText ? (
+          <span className="badge badge-muted text-sm text-slate-400">
+            <AlertTriangle size={14} />
+            No Text Found
+          </span>
+        ) : (safetyStatus || severityTier) !== 'Safe' ? (
           <span className="badge badge-danger text-sm">
             <ShieldAlert size={14} />
             {safetyStatus || 'Threat Detected'}
@@ -36,13 +42,24 @@ export default function RiskBadge({ safetyStatus, severityTier, category, threat
             No Threat Detected
           </span>
         )}
-        <span className={`badge ${getCategoryBadgeClass(category)} capitalize text-xs`}>
+        <span className={`badge ${isNoText ? 'badge-muted' : getCategoryBadgeClass(category)} capitalize text-xs`}>
           {catLabel}
         </span>
       </div>
 
       {/* Large score display */}
-      {threatScore != null && (
+      {isNoText ? (
+        <div className="flex items-end gap-3">
+          <span className="text-5xl font-extrabold tabular-nums font-mono tracking-tight text-slate-500">
+            —
+          </span>
+          <div className="mb-2">
+            <span className="score-pill bg-slate-800 text-slate-400 border border-slate-700">
+              Unverified
+            </span>
+          </div>
+        </div>
+      ) : threatScore != null ? (
         <div className="flex items-end gap-3">
           <span 
             className="text-5xl font-extrabold tabular-nums font-mono tracking-tight"
@@ -59,7 +76,7 @@ export default function RiskBadge({ safetyStatus, severityTier, category, threat
             </span>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Score bar */}
       {threatScore != null && (

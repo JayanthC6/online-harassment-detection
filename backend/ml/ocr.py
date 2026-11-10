@@ -1,79 +1,87 @@
 """
-Extracts text from an image (screenshot) using EasyOCR, then hands the
-extracted text to the existing text classifier (predict.py or predict_transformer.py).
-
-First run downloads the EasyOCR models (~20MB for detection, ~10MB for English recognition).
-These will be cached locally.
-
-Usage:
-    python ocr.py path/to/image.png
+ShieldAI OCR Module
+Extracts text from images (screenshots) using OCRService (RapidOCR offline primary,
+with Tesseract fallback), then performs threat classification.
 """
 import os
 import sys
+from typing import Dict, Any, Callable, Union
 
 sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-_reader = None
-
-def _load_reader():
-    global _reader
-    if _reader is None:
-        try:
-            import easyocr
-            print("Loading EasyOCR model (first call only, may download weights)...")
-            # Initialize the reader for English
-            _reader = easyocr.Reader(['en'], gpu=False)
-        except Exception as e:
-            print(f"Warning: EasyOCR failed to initialize: {e}")
-            return None
-    return _reader
 
 def extract_text(file_path: str) -> str:
     """
-    Extracts text from an image using EasyOCR.
+    Extracts text from an image using OCRService.
     """
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(file_path)
+    from services.ocr_service import OCRService
+    return OCRService.extract_text(file_path)
 
-    reader = _load_reader()
-    if not reader:
-        return "OCR temporarily unavailable due to system library limitation."
-    results = reader.readtext(file_path)
-    
-    # results is a list of tuples: (bbox, text, prob)
-    # Join the extracted text blocks with spaces
-    extracted = " ".join([res[1] for res in results])
-    return extracted.strip()
 
-def extract_and_classify(file_path: str, classifier="baseline") -> dict:
+def extract_text_and_meta(file_path: str) -> Dict[str, Any]:
     """
-    Full pipeline: image file -> OCR text -> harassment classification.
+    Extracts text and extraction metadata (confidence, engine, warnings).
     """
-    extracted = extract_text(file_path)
+    from services.ocr_service import OCRService
+    return OCRService.extract_text_and_confidence(file_path)
 
-    if not extracted:
+
+def extract_and_classify(file_path: str, classifier: Union[str, Callable] = "baseline") -> Dict[str, Any]:
+    """
+    Full pipeline: image file -> OCR text -> threat classification.
+    """
+    ocr_meta = extract_text_and_meta(file_path)
+    extracted = ocr_meta.get("text", "")
+    ocr_conf = ocr_meta.get("confidence", 0.0)
+    ocr_warning = ocr_meta.get("warning")
+
+    if not extracted or not extracted.strip():
         return {
-            "label": "non_harassing",
-            "category": "none",
-            "confidence": 1.0,
+            "label": "no_text_found",
+            "primary_label": "no_text_found",
+            "category": "no_text_found",
+            "level": "no_text_found",
+            "safety_status": "unverified",
+            "severity_tier": "info",
+            "threat_score": None,
+            "risk_score": None,
+            "confidence": 0.0,
             "extracted_text": "",
+            "explanation": "No readable text detected in image.",
+            "warning": "No readable text detected in screenshot. Ensure the image is upright, legible, and not blank.",
+            "ocr_warning": "No text detected by OCR engine (confidence 0.0).",
             "note": "No readable text detected in image.",
+            "which_layer": "ocr",
+            "model": ocr_meta.get("engine", "rapidocr-onnxruntime")
         }
 
-    if classifier == "distilbert":
+    if callable(classifier):
+        result = classifier(extracted)
+    elif classifier == "distilbert":
         from predict_transformer import predict_message
+        result = predict_message(extracted)
     else:
-        from predict import predict_message
+        try:
+            from services.prediction_service import PredictionService
+            result = PredictionService.classify_text(extracted)
+        except Exception:
+            from predict import predict_message
+            result = predict_message(extracted)
 
-    result = predict_message(extracted)
     result["extracted_text"] = extracted
+    result["ocr_confidence"] = ocr_conf
+    if ocr_warning:
+        result["ocr_warning"] = ocr_warning
+
     return result
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python ocr.py path/to/image.png")
         sys.exit(1)
 
-    result = extract_and_classify(sys.argv[1])
-    print(f"Extracted text: {result['extracted_text']}")
-    print(f"Label: {result['label']}  Category: {result['category']}  Confidence: {result['confidence']}")
+    res = extract_and_classify(sys.argv[1])
+    print(f"Extracted text: {res.get('extracted_text')}")
+    print(f"Level: {res.get('level')} Category: {res.get('category')} Confidence: {res.get('confidence')}")

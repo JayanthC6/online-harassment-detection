@@ -31,7 +31,7 @@ export const apiClient = async (endpoint, options = {}) => {
     if (response.status === 401) {
       window.dispatchEvent(new Event('auth:unauthorized'));
     }
-    const message = data?.error || data?.message || 'Request failed';
+    const message = data?.message || data?.error || 'Request failed';
     throw new Error(message);
   }
 

@@ -450,7 +450,10 @@ def predict_screenshot(token_data):
     os.remove(tmp.name)
     extracted_text = result.get("extracted_text", "")
     if not extracted_text:
-        return jsonify({"error": "No text detected in screenshot."}), 400
+        result["timestamp"] = datetime.utcnow().isoformat()
+        result["actor_id"] = request.form.get("actor_id", "Anonymous")
+        result["platform"] = request.form.get("platform", "generic")
+        return jsonify(result), 200
 
     result["pii_categories"] = extract_pii(extracted_text)
     result["timestamp"] = datetime.utcnow().isoformat()

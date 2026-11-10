@@ -39,13 +39,53 @@ export default function ResultDisplay({ result }) {
   if (result.messages) return <ConversationResultDisplay result={result} />;
 
   const isHarassing = result.label === 'harassing';
+  const isNoText = result.level === 'no_text_found' || result.label === 'no_text_found' || result.category === 'no_text_found';
   const isUnsupported = result.language_supported === false && (result.level === 'unsupported' || !result.level || result.level === 'low');
   const score = Math.round(result.threat_score ?? result.risk_score ?? 0);
   const signals = result.signals || [];
   const flaggingReasons = result.flagging_reasons || [];
+  const isRulesOnly = result.which_layer === 'rules' || result.source_layer === 'rules' || (result.model && result.model.toLowerCase().includes('rule')) || (!result.confidence && result.confidence !== 0);
 
   return (
     <div className="space-y-5 animate-slide-up mt-6">
+      {/* ── Blank Image / No Text Detected Warning Banner ── */}
+      {isNoText && (
+        <div className="p-4 rounded-xl border border-amber-500/50 bg-amber-500/10 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
+          <div>
+            <h4 className="font-semibold text-sm text-amber-200">
+              No Text Detected in Image (OCR Confidence: 0%)
+            </h4>
+            <p className="text-xs text-amber-200/90 mt-1">
+              {result.ocr_warning || result.message || "The OCR engine detected no readable text in the uploaded screenshot. Please check that the image is upright, legible, and not blank."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── OCR Low-Confidence Warning Banner ── */}
+      {!isNoText && result.ocr_warning && (
+        <div className="p-4 rounded-xl border border-amber-500/50 bg-amber-500/10 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
+          <div>
+            <h4 className="font-semibold text-sm text-amber-200">
+              OCR Warning
+            </h4>
+            <p className="text-xs text-amber-200/90 mt-1">
+              {result.ocr_warning}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Backend Message Field Banner ── */}
+      {!isNoText && result.message && (
+        <div className="p-3 rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-xs font-mono text-cyan-200 flex items-center gap-2">
+          <Sparkles size={14} className="text-cyan-400 shrink-0" />
+          <span>{result.message}</span>
+        </div>
+      )}
+
       {/* ── Unsupported Language Warning Banner ── */}
       {result.language_supported === false && (
         <div className="p-4 rounded-xl border border-amber-500/50 bg-amber-500/10 flex items-start gap-3">
@@ -65,7 +105,7 @@ export default function ResultDisplay({ result }) {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Risk Gauge */}
         <Card className="md:col-span-4 flex items-center justify-center p-3 bg-surface/90 border border-border">
-          <RiskGauge score={score} isUnsupported={isUnsupported} size={220} label="Threat Severity Gauge" />
+          <RiskGauge score={score} isUnsupported={isUnsupported} isNoText={isNoText} size={220} label="Threat Severity Gauge" />
         </Card>
 
         {/* Risk Classification & Level */}
@@ -76,7 +116,7 @@ export default function ResultDisplay({ result }) {
               safetyStatus={result.safety_status}
               severityTier={result.severity_tier}
               category={result.category || result.primary_label || 'none'}
-              threatScore={score}
+              threatScore={isNoText ? null : score}
             />
           </div>
           <div className="mt-4 pt-3 border-t border-border/50 text-xs font-mono text-text-muted flex items-center justify-between">
@@ -96,15 +136,24 @@ export default function ResultDisplay({ result }) {
                 <Cpu size={14} className="text-cyan-400" />
                 <span>Engine:</span>
                 <span className="font-mono font-semibold text-cyan-300">
-                  {result.model || 'DistilBERT Multi-Label + Rules'}
+                  {result.model || (isRulesOnly ? 'Heuristic Rule Engine' : 'DistilBERT Multi-Label + Rules')}
                 </span>
               </div>
               <div className="mt-3">
-                <p className="text-xs text-text-muted mb-1 font-mono">Neural Model Confidence:</p>
-                <ConfidenceBar
-                  confidence={result.confidence}
-                  isHarassing={isHarassing}
-                />
+                {isRulesOnly ? (
+                  <div className="p-2 rounded bg-black/40 border border-amber-500/30 text-xs font-mono text-amber-300 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span>Detected by: rules</span>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-text-muted mb-1 font-mono">Model confidence:</p>
+                    <ConfidenceBar
+                      confidence={result.confidence}
+                      isHarassing={isHarassing}
+                    />
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -126,7 +175,11 @@ export default function ResultDisplay({ result }) {
         </div>
 
         <div className="text-sm text-text-primary leading-relaxed space-y-2">
-          {isUnsupported ? (
+          {isNoText ? (
+            <p className="text-slate-300">
+              <strong className="text-slate-400">No Readable Text Detected:</strong> The OCR engine found no legible text in this image. Ensure the image is clear, right side up, and not blank.
+            </p>
+          ) : isUnsupported ? (
             <p className="text-purple-200">
               <strong className="text-purple-400">Analysis Unverified (Unsupported Language):</strong> This message is in a language or script not calibrated for automated evaluation by ShieldAI models. It cannot be verified as safe. Rely on human moderation or verified translation.
             </p>
