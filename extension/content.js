@@ -1,10 +1,23 @@
 // ShieldAI Content Script — Message Scanner & Threat Badging (Manifest V3)
 (() => {
+  const currentHostname = window.location.hostname;
+  const currentPort = window.location.port;
+  const currentHost = window.location.host;
+
+  // Requirement: Never scan ShieldAI's own web app (localhost:5173 or 127.0.0.1:5173)
+  if (
+    currentHost === 'localhost:5173' ||
+    currentHost === '127.0.0.1:5173' ||
+    (currentHostname === 'localhost' && currentPort === '5173') ||
+    (currentHostname === '127.0.0.1' && currentPort === '5173')
+  ) {
+    return;
+  }
+
   let isEnabled = true;
   let showSafeBadges = false;
   let showUnsupportedBadges = false;
   let isSiteDisabled = false;
-  const currentHostname = window.location.hostname;
 
   const pendingBatch = [];
   let batchTimeout = null;
@@ -29,12 +42,12 @@
         hideAllBadges();
       } else {
         showAllBadges();
-        debouncedScanDOM();
+        if (typeof debouncedScanDOM === 'function') {
+          debouncedScanDOM();
+        }
       }
     });
   }
-
-  loadConfig();
 
   // Listen for configuration updates from popup
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
@@ -102,40 +115,77 @@
     return '.chat-message, .message-content, .msg-text, [data-message], .message-bubble, .message-body';
   }
 
-  // Generic fallback validator: p, li, blockquote, div/span of 15-600 chars with no block children
-  const BLOCK_CHILDREN_SELECTOR = 'p, div, ul, ol, li, blockquote, pre, table, section, article, header, footer, h1, h2, h3, h4, h5, h6, form';
-  const EXCLUDED_TAGS = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'KBD', 'SAMP', 'INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'BUTTON', 'NOSCRIPT']);
+  // Requirement: Never scan UI elements on any site:
+  // nav, header, footer, button, label, select, menu, tab, headings, short ALL-CAPS labels, anything under 4 words.
+  const UI_EXCLUDED_TAGS = new Set([
+    'NAV', 'HEADER', 'FOOTER', 'BUTTON', 'LABEL', 'SELECT', 'MENU',
+    'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+    'SCRIPT', 'STYLE', 'CODE', 'PRE', 'KBD', 'SAMP',
+    'INPUT', 'TEXTAREA', 'OPTION', 'NOSCRIPT', 'SVG', 'CANVAS'
+  ]);
 
-  function isEligibleGenericNode(el) {
+  const UI_ANCESTOR_SELECTOR = 'nav, header, footer, button, label, select, menu, h1, h2, h3, h4, h5, h6, [role="navigation"], [role="banner"], [role="contentinfo"], [role="button"], [role="tab"], [role="tablist"], [role="menu"], [role="menuitem"], [role="heading"]';
+
+  const BLOCK_CHILDREN_SELECTOR = 'p, div, ul, ol, li, blockquote, pre, table, section, article, header, footer, nav, h1, h2, h3, h4, h5, h6, form';
+
+  function isEligibleTextNode(el) {
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
-    if (EXCLUDED_TAGS.has(el.tagName)) return false;
+    if (UI_EXCLUDED_TAGS.has(el.tagName)) return false;
     if (el.isContentEditable || el.closest('[contenteditable="true"]')) return false;
     if (el.closest('pre, code, kbd, samp, .shieldai-badge')) return false;
 
-    const tag = el.tagName.toLowerCase();
-    if (!['p', 'li', 'blockquote', 'div', 'span'].includes(tag)) return false;
+    // Never scan UI elements: nav, header, footer, button, label, select, menu, tab, headings
+    if (el.closest(UI_ANCESTOR_SELECTOR)) return false;
 
     // Must have no block children
     if (el.querySelector(BLOCK_CHILDREN_SELECTOR)) return false;
 
     const text = (el.innerText || el.textContent || '').trim();
-    return text.length >= 15 && text.length <= 600;
+    if (!text) return false;
+
+    // Requirement: Anything under 4 words must NEVER be scanned
+    const words = text.split(/\s+/).filter(Boolean);
+    if (words.length < 4) return false;
+
+    // Requirement: Short ALL-CAPS labels (up to 8 words consisting entirely of uppercase letters and symbols)
+    if (words.length <= 8 && text === text.toUpperCase() && /[A-Z]/.test(text)) {
+      return false;
+    }
+
+    // Minimum text character length guard
+    if (text.length < 15 || text.length > 2000) return false;
+
+    return true;
   }
 
   // Queue an element for batch scanning
   function queueElementForScan(el) {
     if (!isEnabled || isSiteDisabled) return;
-    if (!el || el.getAttribute('data-shieldai-checked') === 'true') return;
+    if (!el) return;
+
+    // Requirement: Skip elements that already have a badge or are already checked/badged
+    if (
+      el.getAttribute('data-shieldai-badged') === 'true' ||
+      el.querySelector('.shieldai-badge') ||
+      el.getAttribute('data-shieldai-checked') === 'true'
+    ) {
+      return;
+    }
+
+    if (!isEligibleTextNode(el)) return;
+
+    // Assign unique stable element id for result matching
+    let elId = el.getAttribute('data-shieldai-id');
+    if (!elId) {
+      elId = 'shieldai-el-' + Math.random().toString(36).substring(2, 10);
+      el.setAttribute('data-shieldai-id', elId);
+    }
 
     // Immediately mark to prevent redundant scans across SPA transitions and scroll events
     el.setAttribute('data-shieldai-checked', 'true');
 
     const text = (el.innerText || el.textContent || '').trim();
-    if (!text || text.length < 5 || text.length > 2000) {
-      return;
-    }
-
-    pendingBatch.push({ element: el, text: text });
+    pendingBatch.push({ id: elId, element: el, text: text });
 
     if (pendingBatch.length >= MAX_BATCH_SIZE) {
       scheduleBatchFlush(0);
@@ -164,6 +214,7 @@
 
     lastBatchDispatchTime = now;
     const currentBatch = pendingBatch.splice(0, MAX_BATCH_SIZE);
+    const batchPayload = currentBatch.map(item => ({ id: item.id, text: item.text }));
     const texts = currentBatch.map(item => item.text);
 
     if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
@@ -171,8 +222,8 @@
     }
 
     try {
-      // Content script sends batch to background worker (NEVER calls localhost directly)
-      chrome.runtime.sendMessage({ type: 'CHECK_BATCH', texts: texts }, (response) => {
+      // Content script sends batch to background worker
+      chrome.runtime.sendMessage({ type: 'CHECK_BATCH', items: batchPayload, texts: texts }, (response) => {
         if (chrome.runtime.lastError) {
           // Extension or backend offline: silently handle without breaking host page
           return;
@@ -182,12 +233,26 @@
           return;
         }
 
-        const results = response.results;
-        currentBatch.forEach((item, idx) => {
-          const res = results[idx];
-          if (res && !res.error) {
-            injectBadge(item.element, res);
+        // Requirement: Match results to elements by id, not array position, and skip elements that already have a badge
+        response.results.forEach((entry) => {
+          const elId = entry.id;
+          const res = entry.result || entry;
+          if (!elId || !res || res.error) return;
+
+          // Lookup element strictly by data-shieldai-id
+          const targetEl = document.querySelector(`[data-shieldai-id="${elId}"]`);
+          if (!targetEl) return;
+
+          // Skip elements that already have a badge
+          if (
+            targetEl.getAttribute('data-shieldai-badged') === 'true' ||
+            targetEl.querySelector('.shieldai-badge') ||
+            targetEl.parentElement?.querySelector(`.shieldai-badge[data-target-id="${elId}"]`)
+          ) {
+            return;
           }
+
+          injectBadge(targetEl, res, elId);
         });
       });
     } catch (err) {
@@ -196,8 +261,15 @@
   }
 
   // Inject colour-coded threat badge
-  function injectBadge(element, result) {
-    if (!element || element.querySelector('.shieldai-badge')) return;
+  function injectBadge(element, result, elId) {
+    if (!element) return;
+    if (
+      element.getAttribute('data-shieldai-badged') === 'true' ||
+      element.querySelector('.shieldai-badge') ||
+      element.parentElement?.querySelector(`.shieldai-badge[data-target-id="${elId}"]`)
+    ) {
+      return;
+    }
 
     const score = parseFloat(result.score || (result.confidence ? result.confidence * 100 : 0)) || 0.0;
     const level = (result.level || result.severity_tier || '').toLowerCase();
@@ -244,38 +316,73 @@
       return;
     }
 
+    // Mark element as badged
+    element.setAttribute('data-shieldai-badged', 'true');
+
     // Construct explanatory tooltip
     let tooltipReason = '';
     if (isUnsupported) {
       tooltipReason = result.language_note || `Unsupported language/script (${result.language_detected || 'Non-English'}). Results may be unreliable; cannot be verified as safe.`;
-    } else if (result.signals && Array.isArray(result.signals) && result.signals.length > 0) {
-      const firstSig = result.signals[0];
-      tooltipReason = typeof firstSig === 'string' ? firstSig : (firstSig.signal || '');
+    } else if (result.flagging_reasons && result.flagging_reasons.length > 0) {
+      tooltipReason = result.flagging_reasons.slice(0, 3).join(' • ');
     } else if (result.explanation) {
       tooltipReason = result.explanation;
-    } else if (badgeClass !== 'badge-safe') {
-      tooltipReason = `Elevated risk indicators detected for ${category}`;
+    } else if (badgeClass === 'badge-safe') {
+      tooltipReason = 'Analysis indicates content appears safe with no threats detected.';
     } else {
-      tooltipReason = 'No malicious or abusive patterns detected.';
+      tooltipReason = `Threat activity detected (${badgeLabel}).`;
     }
 
-    const tooltip = isUnsupported
-      ? `[UNVERIFIED - Unsupported Language (${result.language_detected || 'Unknown'})]\nReason: ${tooltipReason}`
-      : `[${badgeLabel} - Risk Score: ${score.toFixed(0)}/100]\nReason: ${tooltipReason}`;
-
+    // Create badge container
     const badge = document.createElement('span');
     badge.className = `shieldai-badge ${badgeClass}`;
-    badge.textContent = badgeLabel;
-    badge.title = tooltip;
+    if (elId) badge.setAttribute('data-target-id', elId);
 
-    try {
+    // Indicator dot
+    const dot = document.createElement('span');
+    dot.className = 'shieldai-badge-dot';
+    badge.appendChild(dot);
+
+    // Category label text
+    const label = document.createElement('span');
+    label.className = 'shieldai-badge-label';
+    label.textContent = badgeLabel;
+    badge.appendChild(label);
+
+    // Tooltip popup
+    const tooltip = document.createElement('div');
+    tooltip.className = 'shieldai-tooltip';
+
+    const header = document.createElement('div');
+    header.className = 'shieldai-tooltip-header';
+    header.textContent = `ShieldAI • ${badgeLabel}`;
+    tooltip.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'shieldai-tooltip-body';
+    body.textContent = tooltipReason;
+    tooltip.appendChild(body);
+
+    const scoreFooter = document.createElement('div');
+    scoreFooter.className = 'shieldai-tooltip-footer';
+    if (isUnsupported && score < 50.0) {
+      scoreFooter.textContent = 'Confidence: Unverified Language';
+    } else {
+      scoreFooter.textContent = `Confidence: ${Math.round(score)}% • Risk: ${level.toUpperCase()}`;
+    }
+    tooltip.appendChild(scoreFooter);
+
+    badge.appendChild(tooltip);
+
+    // Append badge inline at the end of element or immediately after
+    if (['div', 'p', 'li', 'blockquote'].includes(element.tagName.toLowerCase())) {
       element.appendChild(badge);
-    } catch (e) {
-      element.parentElement && element.parentElement.appendChild(badge);
+    } else if (element.parentNode) {
+      element.parentNode.insertBefore(badge, element.nextSibling);
     }
 
-    // Report flagged threat to background worker
-    if (badgeClass !== 'badge-safe' && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+    // Report flagged items to background worker
+    if (badgeClass !== 'badge-safe' && typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
       try {
         chrome.runtime.sendMessage({
           type: 'REPORT_FLAGGED',
@@ -308,7 +415,11 @@
     if (siteSelector) {
       const siteElements = document.querySelectorAll(siteSelector);
       siteElements.forEach(el => {
-        if (el.getAttribute('data-shieldai-checked') !== 'true') {
+        if (
+          el.getAttribute('data-shieldai-checked') !== 'true' &&
+          el.getAttribute('data-shieldai-badged') !== 'true' &&
+          isEligibleTextNode(el)
+        ) {
           visibleObserver.observe(el);
         }
       });
@@ -317,7 +428,11 @@
     // 2. Generic fallback scanner for any page (p, li, blockquote, div, span)
     const candidates = document.querySelectorAll('p, li, blockquote, div, span');
     candidates.forEach(el => {
-      if (el.getAttribute('data-shieldai-checked') !== 'true' && isEligibleGenericNode(el)) {
+      if (
+        el.getAttribute('data-shieldai-checked') !== 'true' &&
+        el.getAttribute('data-shieldai-badged') !== 'true' &&
+        isEligibleTextNode(el)
+      ) {
         visibleObserver.observe(el);
       }
     });
@@ -365,7 +480,13 @@
     debouncedScanDOM();
   });
 
-  // Initial trigger
+  // Expose scanDOM and flushBatch for test harnesses
+  window.__shieldai_scanDOM = scanDOM;
+  window.__shieldai_flushBatch = flushBatch;
+
+  // Initial config load and trigger
+  loadConfig();
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       debouncedScanDOM();

@@ -47,11 +47,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
 
-    const texts = request.texts || [];
-    if (!Array.isArray(texts) || texts.length === 0) {
+    const items = request.items || (request.texts ? request.texts.map((t, idx) => ({ id: `idx-${idx}`, text: t })) : []);
+    if (!Array.isArray(items) || items.length === 0) {
       sendResponse({ status: 'empty', results: [] });
       return true;
     }
+
+    const texts = items.map(i => (typeof i === 'string' ? i : (i.text || '')));
 
     chrome.storage.local.get(['serverUrl', 'apiKey'], async (cfg) => {
       const baseUrl = (cfg.serverUrl || serverUrl || DEFAULT_SERVER_URL).replace(/\/+$/, '');
@@ -72,8 +74,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
         const data = await response.json();
-        const results = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
-        sendResponse({ status: 'success', results: results });
+        const apiResults = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+        const mappedResults = items.map((item, idx) => ({
+          id: (typeof item === 'object' && item.id) ? item.id : `idx-${idx}`,
+          result: apiResults[idx] || null
+        }));
+
+        sendResponse({ status: 'success', results: mappedResults });
       } catch (error) {
         // Backend offline or unreachable: handle gracefully without throwing
         console.warn('[ShieldAI] Batch scan connection warning:', error.message);
