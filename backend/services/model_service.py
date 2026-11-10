@@ -489,6 +489,34 @@ class ModelService:
         """
         urls = self._extract_urls(text)
         signals: List[Dict[str, Any]] = []
+        text_lower = (text or "").lower()
+
+        # Context indicators for URL shorteners (Item 3)
+        has_urgency = any(w in text_lower for w in [
+            "urgent", "urgently", "immediate", "immediately", "expire", "expires", "expired",
+            "suspended", "suspend", "suspension", "blocked", "block", "deactivated", "deactivate",
+            "locked", "action required", "alert", "notice", "last chance", "hurry",
+            "24 hour", "24hr", "48 hour", "penalty", "disconnection",
+            "due today", "pay today", "act today", "ends today", "expires today", "valid today"
+        ])
+        has_login_kyc = any(w in text_lower for w in [
+            "login", "log in", "signin", "sign in", "kyc", "verify", "verification",
+            "update", "pan", "aadhaar", "otp", "pin", "password", "credential",
+            "account", "profile", "banking", "authenticate", "portal", "security", "unblock"
+        ])
+        has_brand = (
+            any(b.split(".")[0] in text_lower for b in TARGET_BRANDS) or
+            any(w in text_lower for w in [
+                "sbi", "hdfc", "icici", "axis", "pnb", "bob", "paytm", "phonepe", "gpay",
+                "paypal", "amazon", "netflix", "apple", "google", "microsoft", "trai",
+                "rbi", "customs", "police", "income tax", "fedex", "dhl", "india post"
+            ])
+        )
+        has_prize_payment = any(w in text_lower for w in [
+            "prize", "winner", "reward", "lottery", "claim", "gift", "cash", "rupees",
+            "dollars", "inr", "usdt", "btc", "bitcoin", "crypto", "payment", "refund",
+            "deposit", "bonus", "earnings", "demanding", "transfer money", "won"
+        ])
 
         for url in urls:
             full_url = url if url.startswith("http") else "http://" + url
@@ -497,15 +525,38 @@ class ModelService:
             if ":" in netloc:
                 netloc = netloc.split(":")[0]
 
+            has_suspicious_domain_or_path = (
+                any(w in (netloc + parsed.path).lower() for w in ["kyc", "login", "verify", "sbi", "bank", "update", "secure", "auth", "pan", "otp"]) or
+                any(tld.lstrip(".") in netloc for tld in RISKY_TLDS)
+            )
+
+            is_malicious_shortener = (
+                has_brand or 
+                (has_urgency and (has_login_kyc or has_prize_payment or has_suspicious_domain_or_path)) or
+                (has_login_kyc and (has_suspicious_domain_or_path or any(w in text_lower for w in ["bank", "sbi", "hdfc", "icici", "axis", "account", "card", "pan", "aadhaar", "telecom"]))) or
+                (has_prize_payment and has_suspicious_domain_or_path)
+            )
+
             # 1. URL Shorteners -> Phishing
             for shortener in URL_SHORTENERS:
                 if netloc == shortener or netloc.endswith("." + shortener):
-                    signals.append({
-                        "layer": "rules",
-                        "category": "phishing",
-                        "signal": f"Suspicious URL shortener detected ({shortener}) hiding actual destination",
-                        "score": 82.0
-                    })
+                    if is_malicious_shortener:
+                        # High or Critical severity when accompanied by urgency, login/KYC, brand, prize/payment, or suspicious domain
+                        score = 85.0 if (has_brand or (has_urgency and has_login_kyc)) else 78.0
+                        signals.append({
+                            "layer": "rules",
+                            "category": "phishing",
+                            "signal": f"Deceptive shortened link ({shortener}) used in phishing/social engineering context",
+                            "score": score
+                        })
+                    else:
+                        # Item 3: A shortened link alone is Medium at most
+                        signals.append({
+                            "layer": "rules",
+                            "category": "phishing",
+                            "signal": f"URL shortener detected ({shortener}) concealing destination; verify destination domain before clicking",
+                            "score": 35.0
+                        })
                     break
 
             # 2. Raw IP address links -> Phishing
@@ -1110,9 +1161,9 @@ class ModelService:
                 })
 
             max_sec_score = max(unsupp_cats.values())
-            if max_sec_score >= 50.0:
-                # Real security threat detected despite unsupported language!
-                sec_level = "critical" if max_sec_score >= 75.0 else "high"
+            if max_sec_score >= 35.0:
+                # Real security threat/indicator detected despite unsupported language!
+                sec_level = "critical" if max_sec_score >= 75.0 else ("high" if max_sec_score >= 50.0 else "medium")
                 return {
                     "score": round(max_sec_score, 1),
                     "level": sec_level,

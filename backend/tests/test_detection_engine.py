@@ -365,9 +365,9 @@ def test_short_non_english_threats_unsupported(model_service):
 
 def test_language_independent_indicators_three_cases(model_service):
     """
-    Verify three specific test cases:
+    Verify language-independent indicators:
     (a) Hindi threat with phishing link: real risk score >= 75, category=phishing, lang_supported=False
-    (b) French message with shortener: real risk score >= 75, lang_supported=False
+    (b) French message with shortener: real risk score (medium if isolated, high/critical if phishing context), lang_supported=False
     (c) Hindi threat alone: level='unsupported', score=0.0, lang_supported=False
     """
     # (a)
@@ -378,12 +378,19 @@ def test_language_independent_indicators_three_cases(model_service):
     assert res_a["score"] >= 75.0
     assert res_a["category_scores"].get("phishing", 0) >= 75.0
 
-    # (b)
+    # (b) Isolated shortened link returns medium severity, not masked as unsupported/safe
     text_b = "Bonjour voici un message http://bit.ly/abc"
     res_b = model_service.analyze(text_b)
     assert res_b["language_supported"] is False
-    assert res_b["level"] in ["high", "critical"]
-    assert res_b["score"] >= 75.0
+    assert res_b["level"] == "medium"
+    assert res_b["score"] == 35.0
+
+    # (b2) Shortened link with urgency/phishing context returns high/critical
+    text_b2 = "Alerte urgente vérifiez votre compte bancaire immédiatement http://bit.ly/sbi-verify"
+    res_b2 = model_service.analyze(text_b2)
+    assert res_b2["language_supported"] is False
+    assert res_b2["level"] in ["high", "critical"]
+    assert res_b2["score"] >= 75.0
 
     # (c)
     text_c = "मैं तुम्हें मार दूँगा"
@@ -391,6 +398,28 @@ def test_language_independent_indicators_three_cases(model_service):
     assert res_c["language_supported"] is False
     assert res_c["level"] == "unsupported"
     assert res_c["score"] == 0.0
+
+
+def test_url_shortener_severity(model_service):
+    """
+    Item 3: A shortened link alone is medium at most.
+    High/critical only with urgency, login/KYC wording, brand impersonation, prize or payment demand, or a suspicious domain.
+    """
+    notes = "Here are the class notes from today: http://bit.ly/notes-cs101"
+    res_notes = model_service.analyze(notes)
+    assert res_notes["level"] in ["low", "medium"], f"Expected low/medium, got {res_notes['level']}"
+    assert res_notes["score"] <= 45.0, f"Expected score <= 45.0, got {res_notes['score']}"
+
+    portfolio = "my portfolio http://tinyurl.com/abc"
+    res_portfolio = model_service.analyze(portfolio)
+    assert res_portfolio["level"] in ["low", "medium"], f"Expected low/medium, got {res_portfolio['level']}"
+    assert res_portfolio["score"] <= 45.0, f"Expected score <= 45.0, got {res_portfolio['score']}"
+
+    sbi = "Dear SBI user, your account has been suspended due to pending KYC update. Click http://bit.ly/sbi-kyc to verify immediately."
+    res_sbi = model_service.analyze(sbi)
+    assert res_sbi["level"] == "critical", f"Expected critical, got {res_sbi['level']}"
+    assert res_sbi["score"] >= 75.0, f"Expected score >= 75.0, got {res_sbi['score']}"
+
 
 
 
