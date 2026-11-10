@@ -1179,7 +1179,7 @@ class ModelService:
                 }
             else:
                 return {
-                    "score": 0.0,
+                    "score": None,
                     "level": "unsupported",
                     "category_scores": unsupp_cats,
                     "signals": [{
@@ -1192,7 +1192,10 @@ class ModelService:
                     "explanation": lang_note,
                     "advice": [
                         "ShieldAI is calibrated for English and Roman-script Hinglish.",
-                        "Analysis for this script/language cannot be verified as safe."
+                        "Analysis for this script/language cannot be verified as safe.",
+                        "If in immediate physical danger, call Emergency 112 immediately.",
+                        "Preserve original messages, sender handles, and full screenshot evidence.",
+                        "Report online abuse or cyber threats to National Cyber Crime Portal at cybercrime.gov.in or call 1930."
                     ],
                     "model_active": self.is_loaded,
                     "language_supported": False,

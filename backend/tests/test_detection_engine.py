@@ -360,7 +360,7 @@ def test_short_non_english_threats_unsupported(model_service):
         res = model_service.analyze(text)
         assert res["language_supported"] is False, f"Expected language_supported=False for {lang}: '{text}'"
         assert res["level"] == "unsupported", f"Expected level='unsupported' (not low/safe) for {lang}: '{text}', got {res['level']}"
-        assert res["score"] == 0.0, f"Expected score=0.0 for unverified language: '{text}', got {res['score']}"
+        assert res["score"] is None, f"Expected score=None (null in API) for unverified language: '{text}', got {res['score']}"
 
 
 def test_language_independent_indicators_three_cases(model_service):
@@ -397,7 +397,7 @@ def test_language_independent_indicators_three_cases(model_service):
     res_c = model_service.analyze(text_c)
     assert res_c["language_supported"] is False
     assert res_c["level"] == "unsupported"
-    assert res_c["score"] == 0.0
+    assert res_c["score"] is None
 
 
 def test_url_shortener_severity(model_service):

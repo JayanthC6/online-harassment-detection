@@ -120,8 +120,8 @@ class PredictionService:
         if not analysis.get("language_supported", True):
             signals = analysis.get("signals", [])
             reasons = [s["signal"] for s in signals] if signals else []
-            sec_score = analysis.get("score", 0.0)
-            if sec_score >= 50.0:
+            sec_score = analysis.get("score")
+            if sec_score is not None and sec_score >= 35.0:
                 # Actionable threat indicators fired on unsupported text (links, phone lures, crypto extortion, etc.)
                 cat_scores = analysis.get("category_scores", {})
                 sorted_cats = sorted(cat_scores.items(), key=lambda x: x[1], reverse=True)
@@ -163,17 +163,22 @@ class PredictionService:
                 }
 
             return {
-                "score": 0.0,
+                "score": None,
                 "level": "unsupported",
-                "risk_score": 0.0,
-                "threat_score": 0.0,
+                "risk_score": None,
+                "threat_score": None,
                 "safety_status": "Unverified",
                 "severity_tier": "Unsupported",
                 "category_scores": analysis.get("category_scores", {}),
                 "signals": signals,
                 "which_layer": analysis.get("which_layer", "language_filter"),
                 "explanation": analysis.get("explanation", ""),
-                "advice": analysis.get("advice", []),
+                "advice": [
+                    "ShieldAI automated analysis is unsupported for this language or script.",
+                    "If you are in immediate physical danger, call Emergency 112 immediately.",
+                    "Preserve original messages, timestamps, and full screenshot evidence.",
+                    "Report online harassment or cyber threats to cybercrime.gov.in (National Cyber Crime Portal) or helpline 1930."
+                ],
                 "flagging_reasons": reasons,
                 "primary_label": "Unsupported Language",
                 "category": "unsupported",
@@ -185,7 +190,11 @@ class PredictionService:
                 "language_note": analysis.get("language_note", "Unsupported language or script."),
                 "model": "distilbert" if model_service.is_loaded else "rules_only",
                 "evidence_plan": {
-                    "actions": ["Language or script is unsupported. Manual human review is recommended."],
+                    "actions": [
+                        "In immediate danger: Call 112.",
+                        "Preserve the original message without replying or deleting.",
+                        "Report incident to cybercrime.gov.in."
+                    ],
                     "retention_policy": "standard",
                     "escalation_level": "none"
                 }
