@@ -344,5 +344,55 @@ def test_unsupported_language_with_security_indicators(model_service):
     assert res_crypto["level"] in ["high", "critical"]
 
 
+def test_short_non_english_threats_unsupported(model_service):
+    """
+    Short non-English threats must return level 'unsupported' with language_supported=False
+    and NEVER 'low' or 'safe'.
+    """
+    short_threats = [
+        ("Je vais te tuer", "French"),
+        ("Ich werde dich töten", "German"),
+        ("Ti uccido stanotte", "Italian"),
+        ("Eu vou te matar", "Portuguese"),
+        ("Te voy a matar", "Spanish")
+    ]
+    for text, lang in short_threats:
+        res = model_service.analyze(text)
+        assert res["language_supported"] is False, f"Expected language_supported=False for {lang}: '{text}'"
+        assert res["level"] == "unsupported", f"Expected level='unsupported' (not low/safe) for {lang}: '{text}', got {res['level']}"
+        assert res["score"] == 0.0, f"Expected score=0.0 for unverified language: '{text}', got {res['score']}"
+
+
+def test_language_independent_indicators_three_cases(model_service):
+    """
+    Verify three specific test cases:
+    (a) Hindi threat with phishing link: real risk score >= 75, category=phishing, lang_supported=False
+    (b) French message with shortener: real risk score >= 75, lang_supported=False
+    (c) Hindi threat alone: level='unsupported', score=0.0, lang_supported=False
+    """
+    # (a)
+    text_a = "मैं तुम्हें मार दूँगा http://sbi-kyc-update.xyz"
+    res_a = model_service.analyze(text_a)
+    assert res_a["language_supported"] is False
+    assert res_a["level"] in ["high", "critical"]
+    assert res_a["score"] >= 75.0
+    assert res_a["category_scores"].get("phishing", 0) >= 75.0
+
+    # (b)
+    text_b = "Bonjour voici un message http://bit.ly/abc"
+    res_b = model_service.analyze(text_b)
+    assert res_b["language_supported"] is False
+    assert res_b["level"] in ["high", "critical"]
+    assert res_b["score"] >= 75.0
+
+    # (c)
+    text_c = "मैं तुम्हें मार दूँगा"
+    res_c = model_service.analyze(text_c)
+    assert res_c["language_supported"] is False
+    assert res_c["level"] == "unsupported"
+    assert res_c["score"] == 0.0
+
+
+
 
 

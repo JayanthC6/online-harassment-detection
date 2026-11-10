@@ -1,11 +1,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-export default function RiskGauge({ score = 0, size = 200, label = 'Risk Score' }) {
+export default function RiskGauge({ score = 0, size = 200, label = 'Risk Score', isUnsupported = false }) {
   const safeScore = Math.min(100, Math.max(0, Math.round(score)));
 
   // Risk color mapping
   const getColor = (s) => {
+    if (isUnsupported) return { hex: '#A855F7', name: 'Unsupported', bg: 'rgba(168, 85, 247, 0.15)' };
     if (s >= 80) return { hex: '#EF4444', name: 'Critical', bg: 'rgba(239, 68, 68, 0.15)' };
     if (s >= 55) return { hex: '#F97316', name: 'High', bg: 'rgba(249, 115, 22, 0.15)' };
     if (s >= 30) return { hex: '#F59E0B', name: 'Medium', bg: 'rgba(245, 158, 11, 0.15)' };
@@ -15,11 +16,10 @@ export default function RiskGauge({ score = 0, size = 200, label = 'Risk Score' 
   const riskInfo = getColor(safeScore);
 
   // SVG Gauge calculations
-  // Semi-circle arc: from 180 degrees (left) to 0 degrees (right)
   const radius = 70;
   const strokeWidth = 14;
   const arcLength = Math.PI * radius; // Half circumference
-  const strokeDashoffset = arcLength - (arcLength * safeScore) / 100;
+  const strokeDashoffset = isUnsupported ? arcLength : (arcLength - (arcLength * safeScore) / 100);
 
   return (
     <div className="flex flex-col items-center justify-center relative p-3">
@@ -93,17 +93,17 @@ export default function RiskGauge({ score = 0, size = 200, label = 'Risk Score' 
             className="text-4xl font-extrabold font-mono tracking-tight leading-none"
             style={{ color: riskInfo.hex, textShadow: `0 0 15px ${riskInfo.hex}66` }}
           >
-            {safeScore}
+            {isUnsupported ? '—' : safeScore}
           </div>
           <span
             className="mt-1 text-[11px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded"
             style={{ color: riskInfo.hex, backgroundColor: riskInfo.bg, border: `1px solid ${riskInfo.hex}55` }}
           >
-            {riskInfo.name} Risk
+            {isUnsupported ? 'UNVERIFIED' : `${riskInfo.name} Risk`}
           </span>
         </div>
       </div>
-      <p className="text-[11px] font-mono text-text-muted mt-2 tracking-wide uppercase">{label}</p>
+      <p className="text-[11px] font-mono text-text-muted mt-2 tracking-wide uppercase">{isUnsupported ? 'Language Unverified' : label}</p>
     </div>
   );
 }
@@ -112,5 +112,6 @@ RiskGauge.propTypes = {
   score: PropTypes.number,
   size: PropTypes.number,
   label: PropTypes.string,
+  isUnsupported: PropTypes.bool,
 };
 

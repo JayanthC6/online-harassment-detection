@@ -226,3 +226,39 @@ def test_unsupported_language_admin_flow(client, auth_headers):
     assert "offenders" in offenders_res.get_json()
 
 
+def test_admin_stats_canonical_categories_no_case_duplicates(client, auth_headers):
+    """
+    Verify:
+    1. All category names in /api/admin/stats and /api/admin/analytics belong to the canonical set
+    2. No duplicate names differing only by case
+    3. The sum invariant holds: high_risk + medium_risk + safe_messages + unsupported == total_reports
+    """
+    from core.database import CANONICAL_CATEGORIES
+
+    stats_res = client.get("/api/admin/stats", headers=auth_headers)
+    assert stats_res.status_code == 200
+    stats = stats_res.get_json()
+
+    # Sum invariant check
+    assert (
+        stats["high_risk"] + stats["medium_risk"] + stats["safe_messages"] + stats["unsupported"]
+        == stats["total_reports"]
+    ), f"Stats sum invariant violated: {stats}"
+
+    # Category breakdown check
+    breakdown = stats.get("category_breakdown", {})
+    keys = list(breakdown.keys())
+    assert len(keys) == len(set(k.lower() for k in keys)), f"Duplicate categories differing only by case: {keys}"
+    for k in keys:
+        assert k in CANONICAL_CATEGORIES, f"Non-canonical category found: {k}"
+
+    analytics_res = client.get("/api/admin/analytics", headers=auth_headers)
+    assert analytics_res.status_code == 200
+    analytics = analytics_res.get_json()
+    cats = list(analytics.get("categories", {}).keys())
+    assert len(cats) == len(set(c.lower() for c in cats)), f"Duplicate categories in analytics: {cats}"
+    for c in cats:
+        assert c in CANONICAL_CATEGORIES, f"Non-canonical category in analytics: {c}"
+
+
+

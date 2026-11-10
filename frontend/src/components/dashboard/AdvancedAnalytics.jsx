@@ -17,12 +17,17 @@ export default function AdvancedAnalytics({ analytics }) {
   const { risk_distribution, label_frequency, top_combinations } = analytics;
 
   // Risk Chart
-  const riskLabels = ['High Risk', 'Medium Risk', 'Low Risk'];
+  const riskLabels = ['High Risk', 'Medium Risk', 'Low Risk', 'Unsupported'];
   const riskData = {
     labels: riskLabels,
     datasets: [{
-      data: [risk_distribution?.high || 0, risk_distribution?.medium || 0, risk_distribution?.low || 0],
-      backgroundColor: ['#F43F5E', '#F59E0B', '#10B981'],
+      data: [
+        risk_distribution?.high || 0,
+        risk_distribution?.medium || 0,
+        risk_distribution?.low || 0,
+        risk_distribution?.unsupported || analytics?.unsupported || 0
+      ],
+      backgroundColor: ['#F43F5E', '#F59E0B', '#10B981', '#A855F7'],
       borderRadius: 0,
       barThickness: 24,
     }]

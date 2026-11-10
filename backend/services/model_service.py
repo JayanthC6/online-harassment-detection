@@ -908,19 +908,22 @@ class ModelService:
         Detects whether the input text is in a supported language/script.
         Supported: English and Roman-script Hinglish (uses Latin characters).
         Unsupported: Non-Latin scripts (Devanagari, Tamil, Telugu, Bengali, Arabic, Cyrillic, etc.)
-                     and unsupported Latin-script languages (Spanish, etc.).
+                     and unsupported Latin-script languages (Spanish, French, German, Italian, Portuguese).
         Returns (is_supported: bool, detected_lang: str, note: str).
         """
         if not text or not text.strip():
             return True, "English", ""
 
-        alpha_chars = [c for c in text if c.isalpha()]
-        if alpha_chars:
-            non_latin = [c for c in alpha_chars if ord(c) > 0x024F]
-            ratio = len(non_latin) / len(alpha_chars)
-            # Require substantial non-Latin script (>= 40% of letters, or at least 8 non-Latin chars and >= 35%)
-            # This prevents a single greeting word like 'namaste' or a loan word from flagging the entire text
-            if (ratio >= 0.40) or (len(non_latin) >= 8 and ratio >= 0.35):
+        # Strip URLs and link tokens before script detection so web domains don't dilute non-Latin script density
+        text_no_url = re.sub(r'https?://\S+|www\.\S+|\b[a-zA-Z0-9.-]+\.(?:com|org|net|xyz|top|site|online|io|in|co|gov|edu)\b', '', text).strip()
+        target_script_text = text_no_url if text_no_url else text
+
+        alpha_chars = [c for c in target_script_text if c.isalpha()]
+        non_latin = [c for c in target_script_text if ord(c) > 0x024F]
+
+        if non_latin and len(non_latin) >= 4:
+            ratio = len(non_latin) / len(alpha_chars) if alpha_chars else 1.0
+            if ratio >= 0.25 or len(non_latin) >= 15:
                 if any(0x0900 <= ord(c) <= 0x097F for c in non_latin):
                     return False, "Hindi (Devanagari)", "Input text contains Devanagari script. ShieldAI models are calibrated for English and Roman-script Hinglish only; analysis results may be unreliable and cannot be verified as safe."
                 elif any(0x0B80 <= ord(c) <= 0x0BFF for c in non_latin):
@@ -934,17 +937,13 @@ class ModelService:
                 else:
                     return False, "Non-Latin Script", "Input text contains non-Latin script. ShieldAI models are calibrated for English and Roman-script Hinglish only; analysis results may be unreliable and cannot be verified as safe."
 
-        # Check clean word tokens for short-input safety and Hinglish protection
-        words = re.findall(r'\b[a-zA-Z]+\b', text.lower())
-        if len(words) < 3 or len(alpha_chars) < 15:
-            return True, "English / Hinglish", ""
-
         # Hinglish Protection Invariant:
         # Check distinctive Hinglish vocabulary and pattern rules before external language models
+        words = re.findall(r'\b[a-zA-Z]+\b', text.lower())
         distinct_hinglish = {
             "bhai", "yaar", "khelne", "khelo", "khel", "karo", "kare", "karna", "karega", "karegi",
             "bohot", "bahut", "kutta", "kutti", "kutte", "saale", "saala", "chutiye", "chutiya",
-            "kamina", "kameene", "bhosadike", "harami", "dunga", "denge", "dega", "bolta", "bolte",
+            "kamina", "kameene", "bhosadike", "bhosdike", "harami", "dunga", "denge", "dega", "bolta", "bolte",
             "bolti", "milte", "milenge", "shaam", "subah", "paise", "rupaye", "bhejo", "bhejna",
             "samajh", "accha", "theek", "nahin", "nhi", "kaise", "kyun", "kaisa", "kaisi",
             "mera", "meri", "mere", "tera", "teri", "tere", "apna", "apni", "apne",
@@ -955,7 +954,7 @@ class ModelService:
         if any(re.search(pat, text.lower()) for pat in (HINGLISH_ABUSE_PATTERNS + HINGLISH_THREAT_PATTERNS + HINGLISH_SCAM_PATTERNS)):
             return True, "English / Hinglish", ""
 
-        # Check standard English vocabulary to protect English messages with mild obfuscation or colloquial syntax
+        # Comprehensive English vocabulary covering conversational and security tokens
         deobf_words = re.findall(r'\b[a-zA-Z]+\b', deobfuscate_text(text.lower()))
         common_en = {
             "the", "be", "to", "of", "and", "a", "in", "that", "have", "i", "it", "for", "not", "on", "with",
@@ -968,10 +967,31 @@ class ModelService:
             "new", "want", "because", "any", "these", "give", "day", "most", "us", "die", "alone", "ditch",
             "loser", "kill", "shut", "idiot", "stupid", "freak", "clown", "recipe", "umbrella", "kidding",
             "send", "leak", "photos", "nudes", "lol", "haha", "rofl", "again", "botched", "dinner", "got",
-            "brother", "chess", "keys", "beat", "round", "match", "team", "sure"
+            "brother", "chess", "keys", "beat", "round", "match", "team", "sure", "ok", "okay", "thanks",
+            "thank", "hello", "hi", "hey", "bye", "yes", "yeah", "yep", "fine", "great", "cool", "morning",
+            "night", "tomorrow", "tonight", "later", "please", "help", "here", "there", "where", "why",
+            "what", "who", "how", "when", "call", "text", "meet", "lunch", "coffee", "tea", "food", "movie",
+            "check", "test", "ready", "done", "am", "is", "are", "was", "were", "been", "has", "had", "did",
+            "does", "doing", "having", "going", "went", "came", "seen", "let", "tell", "said", "talk", "chat",
+            "speak", "wait", "soon", "late", "today", "yesterday", "man", "bro", "dude", "guy", "guys",
+            "friend", "friends", "job", "home", "house", "car", "phone", "email", "link", "page", "code",
+            "slides", "presentation", "project", "forgot", "keys", "wallet", "money", "door", "room"
         }
-        if deobf_words and sum(1 for w in deobf_words if w in common_en) / len(deobf_words) >= 0.40:
-            return True, "English", ""
+
+        # Short input check: single/two common English tokens (e.g. "ok", "thanks!", "hey", "hello there")
+        if len(words) <= 2:
+            if words and all(w in common_en for w in words):
+                return True, "English", ""
+            elif not words:
+                return True, "English", ""
+
+        # English token density check (requiring words of length >= 2 to avoid 'a' or 'i' masking foreign text)
+        en_sub_words = [w for w in deobf_words if len(w) >= 2 and w in common_en]
+        en_sub_count = len(en_sub_words)
+        if deobf_words:
+            en_ratio = en_sub_count / len(deobf_words)
+            if en_ratio >= 0.40 or (len(deobf_words) <= 4 and en_sub_count >= 2):
+                return True, "English", ""
 
         # Statistical Language Identification via maintained langdetect library
         detected_unsupported_languages = {
@@ -991,17 +1011,21 @@ class ModelService:
             text_clean = re.sub(r'[^\w\s]', ' ', text_clean)
             text_clean = re.sub(r'\d+', ' ', text_clean).strip()
 
-            if len(text_clean.split()) >= 3:
+            if len(text_clean.split()) >= 2:
                 candidates = detect_langs(text_clean)
                 if candidates:
                     top = candidates[0]
-                    if top.lang == "en":
+                    if top.lang == "en" and top.prob >= 0.85:
                         return True, "English", ""
-                    elif top.prob >= 0.80 and top.lang in detected_unsupported_languages:
-                        lang_name = detected_unsupported_languages[top.lang]
-                        return False, lang_name, f"Input text appears to be in {lang_name}. ShieldAI models are calibrated for English and Roman-script Hinglish only; analysis results may be unreliable and cannot be verified as safe."
+                    elif top.prob >= 0.60:
+                        lang_name = detected_unsupported_languages.get(top.lang, "Unsupported Language")
+                        return False, lang_name, f"Input text appears to be in an unsupported language ({lang_name}). ShieldAI models are calibrated for English and Roman-script Hinglish only; analysis results may be unreliable and cannot be verified as safe."
         except Exception as e:
             logger.debug(f"langdetect evaluation note: {e}")
+
+        # If text has no substantial common English words or Hinglish markers, treat as unverified language
+        if en_sub_count == 0 and len(words) >= 2:
+            return False, "Unverified Language", "Language unverified. Text contains unknown or non-English vocabulary that cannot be verified as safe."
 
         return True, "English / Hinglish", ""
 

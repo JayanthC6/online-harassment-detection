@@ -111,19 +111,25 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                         </div>
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`badge ${r.category === 'hate_speech' || r.category === 'threat' ? 'badge-danger' :
+                        <span className={`badge ${
+                            r.category === 'unsupported' || r.severity_tier === 'Unsupported' || r.risk_level === 'unsupported' ? 'bg-purple-900/40 text-purple-300 border border-purple-500/40' :
+                            r.category === 'threat' || r.category === 'sextortion' ? 'badge-danger' :
                             r.category === 'scam' || r.category === 'phishing' ? 'badge-critical' :
-                              r.category === 'offensive_language' ? 'badge-warning' :
-                                r.category === 'none' || r.category === 'clean' ? 'badge-success' : 'badge-muted'
+                            r.category === 'abusive_language' || r.category === 'harassment' ? 'badge-warning' :
+                            r.category === 'none' || r.category === 'clean' ? 'badge-success' : 'badge-muted'
                           } capitalize`}>
-                          {(r.category || 'unknown').replace(/_/g, ' ')}
+                          {r.category === 'unsupported' || r.severity_tier === 'Unsupported' ? 'Unsupported' : (r.category || 'unknown').replace(/_/g, ' ')}
                         </span>
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`${r.risk_score >= 80 ? 'score-critical' :
-                            r.risk_score >= 55 ? 'score-high' :
-                              r.risk_score >= 30 ? 'score-medium' : 'score-low'
-                          }`}>{Math.round(r.risk_score)}</span>
+                        {r.category === 'unsupported' || r.severity_tier === 'Unsupported' || r.risk_level === 'unsupported' ? (
+                          <span className="text-purple-400 font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">UNVERIFIED</span>
+                        ) : (
+                          <span className={`${r.risk_score >= 80 ? 'score-critical' :
+                              r.risk_score >= 55 ? 'score-high' :
+                                r.risk_score >= 30 ? 'score-medium' : 'score-low'
+                            }`}>{Math.round(r.risk_score)}</span>
+                        )}
                       </td>
                       <td className="px-5 py-3">
                         <span className="text-text-muted text-xs tabular-nums font-mono">{(r.confidence * 100).toFixed(1)}%</span>

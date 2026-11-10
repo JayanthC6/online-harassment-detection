@@ -22,6 +22,52 @@ except Exception:
     def mask_pii(t):
         return t
 
+# ── Canonical Taxonomy & Normalization ───────────────────────────────────────
+CANONICAL_CATEGORIES = [
+    "clean", "harassment", "threat", "sextortion",
+    "phishing", "scam", "abusive_language", "unsupported"
+]
+
+CATEGORY_NORMALIZATION_MAP = {
+    "clean": "clean",
+    "none": "clean",
+    "safe": "clean",
+    "harassment": "harassment",
+    "cyberbullying": "harassment",
+    "cyberbullying_harassment": "harassment",
+    "cyberbullying / harassment": "harassment",
+    "threat": "threat",
+    "physical_threat": "threat",
+    "threat / stalking": "threat",
+    "sextortion": "sextortion",
+    "blackmail": "sextortion",
+    "extortion": "sextortion",
+    "extortion / blackmail": "sextortion",
+    "phishing": "phishing",
+    "credential_phishing": "phishing",
+    "phishing / cybercrime": "phishing",
+    "scam": "scam",
+    "fraud": "scam",
+    "abusive_language": "abusive_language",
+    "offensive_language": "abusive_language",
+    "abusive": "abusive_language",
+    "hate_speech": "abusive_language",
+    "hate speech": "abusive_language",
+    "toxicity": "abusive_language",
+    "toxicity / offensive language": "abusive_language",
+    "profanity": "abusive_language",
+    "unsupported": "unsupported",
+    "unsupported_language": "unsupported",
+    "unsupported language": "unsupported"
+}
+
+def normalize_category(cat: str) -> str:
+    """Normalize any raw category, label, or legacy alias to the canonical set."""
+    if not cat:
+        return "clean"
+    key = str(cat).strip().lower()
+    return CATEGORY_NORMALIZATION_MAP.get(key, key if key in CANONICAL_CATEGORIES else "harassment")
+
 Base = declarative_base()
 
 
@@ -318,6 +364,9 @@ class Database:
         # Seed initial demo data if empty
         self.seed_mock_data_if_empty()
 
+        # Run category migrations on existing rows
+        self.run_category_migrations()
+
     def get_session(self):
         return self._session_factory()
 
@@ -337,13 +386,19 @@ class Database:
             raw_preview = entry.get("text_preview") or (text[:120] if text else "")
             preview = mask_pii(raw_preview)
             
+            raw_cat = entry.get("category") or entry.get("primary_label") or "clean"
+            norm_cat = normalize_category(raw_cat)
+            prim_label = entry.get("primary_label")
+            if not prim_label or prim_label.lower() in CATEGORY_NORMALIZATION_MAP:
+                prim_label = norm_cat.replace("_", " ").title()
+
             report = ReportModel(
                 id=str(report_id),
                 text=text,
                 text_preview=preview,
                 text_full=entry.get("text_full") or text,
-                primary_label=entry.get("primary_label") or entry.get("category") or "Unknown",
-                category=entry.get("category") or entry.get("primary_label") or "Unknown",
+                primary_label=prim_label,
+                category=norm_cat,
                 threat_score=float(entry.get("threat_score") or entry.get("risk_score") or 0.0),
                 risk_score=float(entry.get("risk_score") or entry.get("threat_score") or 0.0),
                 confidence=float(entry.get("confidence") or 0.0),
@@ -403,7 +458,8 @@ class Database:
             if user_id:
                 q = q.filter(ReportModel.user_id == user_id)
             if category:
-                q = q.filter(func.lower(ReportModel.category) == category.lower())
+                norm_cat = normalize_category(category)
+                q = q.filter(func.lower(ReportModel.category) == norm_cat)
             if search:
                 term = f"%{search}%"
                 q = q.filter(or_(ReportModel.text.ilike(term), ReportModel.text_preview.ilike(term), ReportModel.actor_id.ilike(term)))
@@ -971,12 +1027,32 @@ class Database:
         try:
             q = session.query(ReportModel).filter(ReportModel.source != "self_serve")
             total = q.count()
-            safe = q.filter(ReportModel.label == "non_harassing").count()
-            high_risk = q.filter(ReportModel.risk_score >= 75).count()
-            medium_risk = q.filter(and_(ReportModel.risk_score >= 40, ReportModel.risk_score < 75)).count()
+            unsupported = q.filter(or_(
+                ReportModel.label == "unsupported",
+                ReportModel.category == "unsupported",
+                ReportModel.severity_tier == "Unsupported"
+            )).count()
+            high_risk = q.filter(and_(
+                ReportModel.risk_score >= 75,
+                ReportModel.category != "unsupported",
+                ReportModel.severity_tier != "Unsupported"
+            )).count()
+            medium_risk = q.filter(and_(
+                ReportModel.risk_score >= 40,
+                ReportModel.risk_score < 75,
+                ReportModel.category != "unsupported",
+                ReportModel.severity_tier != "Unsupported"
+            )).count()
+            safe = q.filter(and_(
+                ReportModel.risk_score < 40,
+                ReportModel.label != "unsupported",
+                ReportModel.category != "unsupported",
+                ReportModel.severity_tier != "Unsupported"
+            )).count()
             evidence_plans = q.filter(ReportModel.evidence_plan != {}).count()
 
-            categories = [r.category for r in q.with_entities(ReportModel.category).all() if r[0]]
+            # Normalize all categories into the canonical lowercase taxonomy
+            categories = [normalize_category(r[0]) for r in q.with_entities(ReportModel.category).all() if r[0]]
             breakdown = dict(Counter(categories))
 
             all_conf = [r[0] for r in q.with_entities(ReportModel.confidence).all() if r[0] is not None]
@@ -997,6 +1073,7 @@ class Database:
                 "safe_messages": safe,
                 "high_risk": high_risk,
                 "medium_risk": medium_risk,
+                "unsupported": unsupported,
                 "evidence_plans_generated": evidence_plans,
                 "avg_confidence": round(avg_conf, 3),
                 "avg_risk_score": round(avg_risk, 1),
@@ -1044,7 +1121,14 @@ class Database:
             "total": stats.get("total_reports", 0),
             "high_risk": stats.get("high_risk", 0),
             "medium_risk": stats.get("medium_risk", 0),
-            "safe": stats.get("safe_messages", 0)
+            "safe": stats.get("safe_messages", 0),
+            "unsupported": stats.get("unsupported", 0),
+            "risk_distribution": {
+                "high": stats.get("high_risk", 0),
+                "medium": stats.get("medium_risk", 0),
+                "low": stats.get("safe_messages", 0),
+                "unsupported": stats.get("unsupported", 0)
+            }
         }
 
     def purge_expired_data(self, retention_days: int = None) -> dict:
@@ -1122,8 +1206,8 @@ class Database:
 
             samples = [
                 {"text": "I will kill you and your family, I know where you live", "actor_id": "angry_user_99", "category": "threat", "primary_label": "Threat", "risk_score": 95.0, "severity_tier": "Critical", "label": "harassing"},
-                {"text": "You are a stupid idiot and nobody likes you", "actor_id": "troll_master", "category": "cyberbullying_harassment", "primary_label": "Cyberbullying / Harassment", "risk_score": 65.0, "severity_tier": "High", "label": "harassing"},
-                {"text": "I am going to release those private photos of you if you don't pay me $1000 in Bitcoin", "actor_id": "anon_blackmail", "category": "blackmail", "primary_label": "Extortion", "risk_score": 92.0, "severity_tier": "Critical", "label": "harassing"},
+                {"text": "You are a stupid idiot and nobody likes you", "actor_id": "troll_master", "category": "harassment", "primary_label": "Harassment", "risk_score": 65.0, "severity_tier": "High", "label": "harassing"},
+                {"text": "I am going to release those private photos of you if you don't pay me $1000 in Bitcoin", "actor_id": "anon_blackmail", "category": "sextortion", "primary_label": "Sextortion", "risk_score": 92.0, "severity_tier": "Critical", "label": "harassing"},
                 {"text": "Your bank account has been suspended. Please click here to verify your identity: http://paypa1-update.xyz", "actor_id": "phisher_bank", "category": "phishing", "primary_label": "Phishing", "risk_score": 88.0, "severity_tier": "Critical", "label": "harassing"},
                 {"text": "Congratulations! You won the International Lottery of $1,000,000. Send $200 processing fee to claim.", "actor_id": "lottery_scammer", "category": "scam", "primary_label": "Scam", "risk_score": 82.0, "severity_tier": "High", "label": "harassing"},
                 {"text": "Hey, are we still meeting for lunch tomorrow at 12? Let me know!", "actor_id": "friend_alice", "category": "clean", "primary_label": "Clean", "risk_score": 5.0, "severity_tier": "Low", "label": "non_harassing"}
@@ -1157,6 +1241,29 @@ class Database:
         except Exception as e:
             session.rollback()
             logger.warning(f"Could not auto-seed database: {e}")
+        finally:
+            session.close()
+
+    def run_category_migrations(self):
+        """Migrate any existing reports and complaints to the canonical lowercase category set."""
+        session = self.get_session()
+        try:
+            reports = session.query(ReportModel).all()
+            changed = 0
+            for r in reports:
+                norm = normalize_category(r.category)
+                if r.category != norm:
+                    r.category = norm
+                    changed += 1
+                if r.primary_label:
+                    if r.primary_label.lower() in CATEGORY_NORMALIZATION_MAP:
+                        r.primary_label = norm.replace("_", " ").title()
+            if changed > 0:
+                session.commit()
+                logger.info(f"Canonical category migration updated {changed} reports in database.")
+        except Exception as e:
+            session.rollback()
+            logger.warning(f"Error during category migration: {e}")
         finally:
             session.close()
 

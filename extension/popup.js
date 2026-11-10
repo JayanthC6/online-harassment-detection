@@ -195,9 +195,10 @@ document.addEventListener('DOMContentLoaded', () => {
       cat.className = 'item-category';
       cat.textContent = item.category;
       
+      const isUnsupp = item.category === 'UNVERIFIED' || item.level === 'unsupported';
       const score = document.createElement('span');
       score.className = 'item-score';
-      score.textContent = (item.confidence * 100).toFixed(0) + '%';
+      score.textContent = isUnsupp ? 'UNVERIFIED' : (item.confidence * 100).toFixed(0) + '%';
       
       header.appendChild(cat);
       header.appendChild(score);

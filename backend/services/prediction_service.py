@@ -114,6 +114,7 @@ class PredictionService:
     @staticmethod
     def classify_text(text: str) -> dict:
         from services.model_service import model_service
+        from core.database import normalize_category
         analysis = model_service.analyze(text)
 
         if not analysis.get("language_supported", True):
@@ -125,7 +126,8 @@ class PredictionService:
                 cat_scores = analysis.get("category_scores", {})
                 sorted_cats = sorted(cat_scores.items(), key=lambda x: x[1], reverse=True)
                 top_cat, top_score = sorted_cats[0] if sorted_cats else ("threat", sec_score)
-                primary_label = top_cat.replace("_", " ").title() if top_score >= 25.0 else "Threat"
+                norm_top_cat = normalize_category(top_cat)
+                primary_label = norm_top_cat.replace("_", " ").title() if top_score >= 25.0 else "Threat"
                 sec_level = analysis.get("level", "critical" if sec_score >= 75.0 else "high")
                 return {
                     "score": sec_score,
@@ -141,7 +143,7 @@ class PredictionService:
                     "advice": analysis.get("advice", []),
                     "flagging_reasons": reasons,
                     "primary_label": primary_label,
-                    "category": top_cat,
+                    "category": norm_top_cat,
                     "label": "harassing",
                     "confidence": round(top_score / 100.0, 3) if top_score > 0 else 0.85,
                     "secondary_labels": {
@@ -192,10 +194,11 @@ class PredictionService:
         cat_scores = analysis.get("category_scores", {})
         sorted_cats = sorted(cat_scores.items(), key=lambda x: x[1], reverse=True)
         top_cat, top_score = sorted_cats[0] if sorted_cats else ("clean", 0.0)
+        norm_cat = normalize_category(top_cat if top_score >= 25.0 else "clean")
 
-        primary_label = top_cat.replace("_", " ").title() if top_score >= 25.0 else "Clean"
+        primary_label = norm_cat.replace("_", " ").title()
         secondary_labels = {
-            k.replace("_", " ").title(): round(v / 100.0, 3)
+            normalize_category(k).replace("_", " ").title(): round(v / 100.0, 3)
             for k, v in cat_scores.items()
             if k != top_cat and v >= 25.0
         }
@@ -216,7 +219,7 @@ class PredictionService:
             "advice": analysis["advice"],
             "flagging_reasons": reasons,
             "primary_label": primary_label,
-            "category": top_cat if top_score >= 25.0 else "clean",
+            "category": norm_cat,
             "label": "harassing" if analysis["score"] >= 40.0 else "non_harassing",
             "confidence": round(top_score / 100.0, 3) if top_score > 0 else 0.95,
             "secondary_labels": secondary_labels,
@@ -225,7 +228,7 @@ class PredictionService:
             "language_note": "",
             "model": "distilbert" if model_service.is_loaded else "rules_only",
             "evidence_plan": EvidenceService.get_action_plan({
-                "category": top_cat,
+                "category": norm_cat,
                 "primary_label": primary_label,
                 "risk_score": analysis["score"]
             })

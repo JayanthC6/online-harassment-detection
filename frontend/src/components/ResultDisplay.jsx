@@ -39,6 +39,7 @@ export default function ResultDisplay({ result }) {
   if (result.messages) return <ConversationResultDisplay result={result} />;
 
   const isHarassing = result.label === 'harassing';
+  const isUnsupported = result.language_supported === false && (result.level === 'unsupported' || !result.level || result.level === 'low');
   const score = Math.round(result.threat_score ?? result.risk_score ?? 0);
   const signals = result.signals || [];
   const flaggingReasons = result.flagging_reasons || [];
@@ -64,7 +65,7 @@ export default function ResultDisplay({ result }) {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Risk Gauge */}
         <Card className="md:col-span-4 flex items-center justify-center p-3 bg-surface/90 border border-border">
-          <RiskGauge score={score} size={220} label="Threat Severity Gauge" />
+          <RiskGauge score={score} isUnsupported={isUnsupported} size={220} label="Threat Severity Gauge" />
         </Card>
 
         {/* Risk Classification & Level */}
@@ -125,7 +126,11 @@ export default function ResultDisplay({ result }) {
         </div>
 
         <div className="text-sm text-text-primary leading-relaxed space-y-2">
-          {score >= 80 ? (
+          {isUnsupported ? (
+            <p className="text-purple-200">
+              <strong className="text-purple-400">Analysis Unverified (Unsupported Language):</strong> This message is in a language or script not calibrated for automated evaluation by ShieldAI models. It cannot be verified as safe. Rely on human moderation or verified translation.
+            </p>
+          ) : score >= 80 ? (
             <p className="text-red-200">
               <strong className="text-red-400">Critical Threat Identified:</strong> This content contains severe risk markers such as direct physical threats, criminal extortion/blackmail, or malicious phishing links designed to compromise credentials or funds. Immediate defensive measures should be taken.
             </p>

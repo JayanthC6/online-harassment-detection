@@ -49,12 +49,14 @@ export default function SearchFilters({ filters }) {
           style={{ appearance: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2300F2FE' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center', paddingRight: '30px' }}
         >
           <option value="">All Categories</option>
-          <option value="hate_speech">Hate Speech</option>
-          <option value="offensive_language">Offensive Language</option>
+          <option value="clean">Clean / Safe</option>
+          <option value="harassment">Harassment</option>
           <option value="threat">Threat</option>
-          <option value="scam">Scam</option>
+          <option value="sextortion">Sextortion</option>
           <option value="phishing">Phishing</option>
-          <option value="none">Safe</option>
+          <option value="scam">Scam</option>
+          <option value="abusive_language">Abusive Language</option>
+          <option value="unsupported">Unsupported Language</option>
         </select>
       </div>
     </div>
