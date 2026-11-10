@@ -27,23 +27,54 @@ $env:PYTHONPATH="backend"
 ```
 
 #### 3. Launch Platform in One Command
-- **Windows (PowerShell):** `.\start.ps1`
-- **Windows (CMD):** `start.bat`
-- **Linux / macOS:** `chmod +x start.sh && ./start.sh`
+### 1. Automated Setup & Installation (One Command)
+- **Windows:** Run `setup.bat`
+- **Linux / macOS:** Run `chmod +x setup.sh && ./setup.sh`
+
+The automated setup script:
+1. Validates Python (>= 3.10) and Node.js.
+2. Creates and activates virtual environment `venv`.
+3. Installs all backend dependencies from `backend/requirements.txt` (pinned torch, transformers, rapidocr).
+4. Installs frontend npm packages (`npm install`).
+5. Initializes and seeds the demo database with 40 incidents, 7 repeat offenders, and 3 complaints.
+6. Executes `scripts/doctor.py` to confirm all components are operational.
 
 ---
 
-### Option B: Docker Compose (One-Step Container Launch)
-
+### 2. System Verification (Doctor)
+Run the diagnostic doctor anytime to verify dependencies, models, and port availability:
 ```bash
-# Build and run backend and frontend containers
-docker-compose up --build -d
+# Windows
+venv\Scripts\python.exe scripts\doctor.py
 
-# View live logs
-docker-compose logs -f
+# Linux / macOS
+python scripts/doctor.py
 ```
 
-- **Frontend SOC Dashboard:** [http://localhost:5173](http://localhost:5173) (or [http://localhost:80](http://localhost:80) via Docker)
+---
+
+### 3. Launch ShieldAI Services
+
+- **Option A: One-Click Startup:**
+  - **Windows (PowerShell):** `.\start.ps1`
+  - **Windows (CMD):** `start.bat`
+  - **Linux / macOS:** `chmod +x start.sh && ./start.sh`
+
+- **Option B: Manual Terminal Launch:**
+  - **Terminal 1 — Backend (Port 5000):**
+    ```bash
+    # Windows
+    venv\Scripts\python.exe backend\app.py
+
+    # Linux / macOS
+    source venv/bin/activate && python backend/app.py
+    ```
+  - **Terminal 2 — Frontend (Port 5173):**
+    ```bash
+    cd frontend && npm run dev
+    ```
+
+- **Frontend SOC Dashboard:** [http://localhost:5173](http://localhost:5173)
 - **Backend API Server:** [http://127.0.0.1:5000](http://127.0.0.1:5000)
 - **API Health Check:** [http://127.0.0.1:5000/api/health](http://127.0.0.1:5000/api/health)
 - **Default Admin Credentials:**
@@ -206,7 +237,7 @@ We provide two ready-to-test verification pages:
 
 | Issue / Symptom | Root Cause | Resolution |
 | :--- | :--- | :--- |
-| **Popup shows "Backend Offline" (Red Indicator)** | Backend Flask server is not running on port 5000. | Run `.\start.ps1` or `docker-compose up -d`. Verify [http://127.0.0.1:5000/api/health](http://127.0.0.1:5000/api/health) returns HTTP 200. |
+| **Popup shows "Backend Offline" (Red Indicator)** | Backend Flask server is not running on port 5000. | Run `.\start.ps1` or `start.bat`. Verify [http://127.0.0.1:5000/api/health](http://127.0.0.1:5000/api/health) returns HTTP 200. |
 | **Badges not appearing on local HTML files** | Chrome blocks extensions from accessing local `file:///` URLs by default. | Open `chrome://extensions/` $\to$ click **Details** on ShieldAI $\to$ turn **Allow access to file URLs** ON. |
 | **Clean messages have no badges** | Safe badge suppression is active by default to prevent visual clutter. | Click the ShieldAI extension icon and check the **"Show Safe Badges"** toggle. |
 | **Custom Server URL fails to connect** | Missing browser permission for custom host/port. | In the popup, enter your custom URL (e.g., `http://192.168.1.100:5000`) and click **Save Server**. Approve Chrome's dynamic origin permission prompt. |

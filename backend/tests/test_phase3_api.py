@@ -106,7 +106,8 @@ def test_missing_ocr_guidance_message(client):
     # If tesseract binary is missing on system, returns 422 with clear install advice
     if res.status_code == 422:
         data = res.get_json()
-        assert "install tesseract" in data.get("message", "").lower()
+        msg = data.get("message", "").lower()
+        assert "tesseract" in msg or "rapidocr" in msg
     else:
         assert res.status_code in [200, 400]
 
@@ -184,7 +185,7 @@ def test_unsupported_language_admin_flow(client, auth_headers):
     assert item["level"] == "unsupported"
     assert item["language_supported"] is False
     assert item["primary_label"] == "Unsupported Language"
-    assert item["score"] == 0.0
+    assert item["score"] is None
 
     # 2. Analyze & persist an unsupported Hindi incident
     analyze_res = client.post("/api/analyze", json={

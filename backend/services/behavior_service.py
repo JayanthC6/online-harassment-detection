@@ -47,7 +47,8 @@ class BehaviorService:
             profile = BehaviorService._create_initial_profile(actor_id)
             
         # Extract stats from prediction
-        risk_score = message_prediction.get("risk_score", 0)
+        risk_score = message_prediction.get("risk_score")
+        effective_score = float(risk_score) if risk_score is not None else 0.0
         is_harmful = message_prediction.get("label") == "harassing"
         primary_cat = message_prediction.get("category", "clean")
         
@@ -60,10 +61,10 @@ class BehaviorService:
         else:
             profile["safe_messages"] += 1
             
-        profile["highest_risk"] = max(profile["highest_risk"], risk_score)
+        profile["highest_risk"] = max(profile["highest_risk"], effective_score)
         
         # Incremental average risk
-        total_risk = (profile["avg_risk"] * (profile["total_reports"] - 1)) + risk_score
+        total_risk = (profile["avg_risk"] * (profile["total_reports"] - 1)) + effective_score
         profile["avg_risk"] = total_risk / profile["total_reports"]
         
         # Update category distribution

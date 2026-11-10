@@ -76,7 +76,8 @@ def log_engine_status():
             print("="*72 + "\n")
         else:
             print("\n" + "="*72)
-            print(">>> [SHIELDAI] DETECTION ENGINE STATUS: RULES-ONLY FALLBACK MODE ACTIVE")
+            print(">>> [SHIELDAI] DETECTION ENGINE STATUS: RULES-ONLY MODE ACTIVE")
+            print(">>> [SHIELDAI] Model files missing or uninitialized; running in rules-only mode.")
             print(">>> [SHIELDAI] All heuristics, regex, and pattern rules operational.")
             print("="*72 + "\n")
     except Exception as e:

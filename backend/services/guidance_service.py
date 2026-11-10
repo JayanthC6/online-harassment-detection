@@ -48,12 +48,12 @@ class GuidanceService:
                 show_critical_resources = True
                 break
             if label in confidence_gated:
-                if conf >= 0.7 or risk_score >= 80:
+                if (conf is not None and conf >= 0.7) or (risk_score is not None and risk_score >= 80):
                     show_critical_resources = True
                     break
                     
         # Also trigger if risk_score is intrinsically very high
-        if risk_score >= 80:
+        if risk_score is not None and risk_score >= 80:
             show_critical_resources = True
             
         return {
