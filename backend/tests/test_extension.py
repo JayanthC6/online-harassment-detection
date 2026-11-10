@@ -15,3 +15,4 @@ def test_extension_test_page_automated_browser():
     res = subprocess.run(["node", script_path], capture_output=True, text=True)
     assert res.returncode == 0, f"Automated browser test failed:\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     assert "only the 3 risky paragraphs received badges and nothing else" in res.stdout
+

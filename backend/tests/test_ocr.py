@@ -138,3 +138,4 @@ def test_predict_screenshot_endpoint_blank_and_text(client):
     finally:
         if os.path.exists(phish_path):
             os.remove(phish_path)
+

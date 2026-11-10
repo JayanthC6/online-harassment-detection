@@ -61,3 +61,4 @@ echo ""
 echo "  To run test suite:"
 echo "    source venv/bin/activate && pytest -q"
 echo "============================================================================"
+

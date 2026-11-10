@@ -138,3 +138,4 @@ class OCRService:
     def extract_text(cls, file_path: str) -> str:
         res = cls.extract_text_and_confidence(file_path)
         return res.get("text", "")
+

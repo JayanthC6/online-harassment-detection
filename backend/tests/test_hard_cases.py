@@ -80,3 +80,4 @@ def test_hard_cases_benchmark_audit():
     r31 = results_by_id["31"]
     assert r31["expected_level"] == "high" and r31["expected_cat"] == "abusive_language"
     assert r31["actual_level"] == "critical" and r31["actual_cat"] == "threat"
+

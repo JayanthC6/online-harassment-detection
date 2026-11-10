@@ -114,3 +114,4 @@ if __name__ == "__main__":
     parser.add_argument("--out", type=str, default=None, help="Destination zip path")
     args = parser.parse_args()
     make_release(args.out)
+
