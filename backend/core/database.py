@@ -10,7 +10,7 @@ from collections import Counter
 import math
 
 from sqlalchemy import (
-    create_engine, Column, Integer, String, Text, Float, DateTime, JSON,
+    create_engine, Column, Integer, String, Text, Float, DateTime, JSON, Boolean, text,
     desc, asc, or_, and_, func
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, scoped_session
@@ -100,6 +100,7 @@ class ReportModel(Base):
     evidence = Column(JSON, default=list)
     evidence_plan = Column(JSON, default=dict)
     model_used = Column(String(128), nullable=True)
+    is_synthetic = Column(Boolean, default=False, index=True)
     logged_at = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -130,6 +131,7 @@ class ReportModel(Base):
             "evidence": self.evidence or [],
             "evidence_plan": self.evidence_plan or {},
             "model_used": self.model_used,
+            "is_synthetic": bool(self.is_synthetic),
             "which_layer": (self.threat_intel or {}).get("which_layer") if isinstance(self.threat_intel, dict) else ("rules" if (self.model_used and "rules" in self.model_used.lower()) else None),
             "logged_at": self.logged_at or (self.created_at.isoformat() if self.created_at else ""),
             "created_at": self.created_at.isoformat() if self.created_at else None
@@ -192,6 +194,7 @@ class OffenderModel(Base):
     status = Column(String(32), default="active")  # active, flagged, banned, monitored
     timeline = Column(JSON, default=list)  # list of {timestamp, risk_score, report_id, snippet}
     notes = Column(Text, nullable=True)
+    is_synthetic = Column(Boolean, default=False, index=True)
 
     def to_dict(self):
         return {
@@ -207,7 +210,8 @@ class OffenderModel(Base):
             "related_reports": self.related_reports or [],
             "status": self.status,
             "timeline": self.timeline or [],
-            "notes": self.notes or ""
+            "notes": self.notes or "",
+            "is_synthetic": bool(self.is_synthetic)
         }
 
 
@@ -223,6 +227,7 @@ class ComplaintModel(Base):
     status = Column(String(32), default="open")  # open, reviewing, resolved, dismissed
     evidence_file = Column(String(256), nullable=True)
     result_json = Column(JSON, default=dict)
+    is_synthetic = Column(Boolean, default=False, index=True)
     logged_at = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -238,6 +243,7 @@ class ComplaintModel(Base):
             "status": self.status,
             "evidence_file": self.evidence_file,
             "result_json": self.result_json or {},
+            "is_synthetic": bool(self.is_synthetic),
             "logged_at": self.logged_at or (self.created_at.isoformat() if self.created_at else ""),
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
@@ -258,6 +264,7 @@ class ConversationModel(Base):
     messages = Column(JSON, default=list)
     actor_attribution = Column(JSON, default=dict)
     source = Column(String(32), default="platform")
+    is_synthetic = Column(Boolean, default=False, index=True)
     logged_at = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -276,6 +283,7 @@ class ConversationModel(Base):
             "messages": self.messages or [],
             "actor_attribution": self.actor_attribution or {},
             "source": self.source,
+            "is_synthetic": bool(self.is_synthetic),
             "logged_at": self.logged_at or (self.created_at.isoformat() if self.created_at else ""),
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
@@ -364,6 +372,9 @@ class Database:
         Base.metadata.create_all(self._engine)
         logger.info(f"Connected to persistent database: {db_url}")
 
+        # Run synthetic flag migration first so new columns exist (Item 7)
+        self.migrate_synthetic_flag()
+
         # Seed initial demo data if empty
         self.seed_mock_data_if_empty()
 
@@ -423,6 +434,7 @@ class Database:
                 evidence=entry.get("evidence") or [],
                 evidence_plan=entry.get("evidence_plan") or {},
                 model_used=entry.get("model") or entry.get("model_used"),
+                is_synthetic=bool(entry.get("is_synthetic", False)),
                 logged_at=logged_at
             )
             session.merge(report)
@@ -559,6 +571,7 @@ class Database:
                 messages=entry.get("messages") or [],
                 actor_attribution=entry.get("actor_attribution") or {},
                 source=entry.get("source") or "platform",
+                is_synthetic=bool(entry.get("is_synthetic", False)),
                 logged_at=logged_at
             )
             session.merge(conv)
@@ -688,7 +701,7 @@ class Database:
 
     # ── Repeat Offenders ─────────────────────────────────────────────────────
 
-    def record_offender_hit(self, entity_type: str, entity_value: str, risk_score: float, report_id: str = None, category: str = None, snippet: str = None, raw_value: str = None) -> dict:
+    def record_offender_hit(self, entity_type: str, entity_value: str, risk_score: float, report_id: str = None, category: str = None, snippet: str = None, raw_value: str = None, is_synthetic: bool = False) -> dict:
         if not entity_value or not str(entity_value).strip():
             return None
         entity_value = str(entity_value).strip()
@@ -718,6 +731,7 @@ class Database:
                     categories=[category] if category else [],
                     related_reports=[report_id] if report_id else [],
                     status="flagged" if risk_score >= 70.0 else "active",
+                    is_synthetic=is_synthetic,
                     timeline=[{
                         "timestamp": now_iso,
                         "risk_score": risk_score,
@@ -730,6 +744,8 @@ class Database:
                 )
                 session.add(offender)
             else:
+                if is_synthetic:
+                    offender.is_synthetic = True
                 offender.hit_count = (offender.hit_count or 0) + 1
                 offender.peak_risk = max(float(offender.peak_risk or 0.0), risk_score)
                 total_risk = (float(offender.avg_risk or 0.0) * (offender.hit_count - 1)) + risk_score
@@ -912,6 +928,7 @@ class Database:
                 status=complaint.get("status") or "open",
                 evidence_file=complaint.get("evidence_file"),
                 result_json=complaint.get("result") or complaint.get("result_json") or {},
+                is_synthetic=bool(complaint.get("is_synthetic", False)),
                 logged_at=logged_at
             )
             session.merge(comp)
@@ -1096,6 +1113,11 @@ class Database:
             conv_risks = [c[0] for c in cq.with_entities(ConversationModel.conversation_risk).all() if c[0] is not None]
             conv_avg_risk = sum(conv_risks) / len(conv_risks) if conv_risks else 0.0
 
+            has_synthetic = (
+                session.query(ReportModel).filter_by(is_synthetic=True).first() is not None or
+                session.query(ConversationModel).filter_by(is_synthetic=True).first() is not None
+            )
+
             return {
                 "total_flagged": total,
                 "total_reports": total,
@@ -1107,6 +1129,7 @@ class Database:
                 "avg_confidence": round(avg_conf, 3),
                 "avg_risk_score": round(avg_risk, 1),
                 "category_breakdown": breakdown,
+                "has_synthetic_data": bool(has_synthetic),
                 "conversation_stats": {
                     "total": conv_total,
                     "escalated": conv_escalated,
@@ -1260,6 +1283,7 @@ class Database:
                     actor_id=s["actor_id"],
                     sender=s["actor_id"],
                     source="platform",
+                    is_synthetic=True,
                     status="open",
                     logged_at=now_iso
                 )
@@ -1376,6 +1400,31 @@ class Database:
         except Exception as e:
             session.rollback()
             logger.warning(f"Error during URL offender migration: {e}")
+        finally:
+            session.close()
+
+    def migrate_synthetic_flag(self):
+        """
+        Data hygiene migration (Item 7):
+        Ensures is_synthetic column exists on reports, conversations, complaints, and offenders.
+        Marks demo seed rows (source='demo_seed') as is_synthetic=1.
+        """
+        session = self.get_session()
+        try:
+            for table in ["reports", "conversations", "complaints", "offenders"]:
+                res = session.execute(text(f"PRAGMA table_info({table})")).fetchall()
+                col_names = [r[1] for r in res]
+                if "is_synthetic" not in col_names:
+                    session.execute(text(f"ALTER TABLE {table} ADD COLUMN is_synthetic BOOLEAN DEFAULT 0"))
+
+            # Mark existing demo_seed records in reports as synthetic
+            session.execute(text("UPDATE reports SET is_synthetic = 1 WHERE source = 'demo_seed'"))
+            # Mark demo seed complaints as synthetic
+            session.execute(text("UPDATE complaints SET is_synthetic = 1 WHERE user_id LIKE 'citizen_%' OR user_id LIKE 'demo_%'"))
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.warning(f"Error during synthetic flag migration: {e}")
         finally:
             session.close()
 

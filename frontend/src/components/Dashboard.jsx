@@ -60,35 +60,46 @@ export default function Dashboard({ refreshKey, activeTab: sidebarTab, setActive
     <div className="space-y-8 animate-fade-in pb-12">
       {/* ── Sub-tab navigation (shown on all SOC command views) ── */}
       {sidebarTab !== 'incidents' && (
-        <div className="flex flex-wrap border-b border-border mb-6 pb-0 gap-1">
-          <button
-            onClick={() => handleSubTabClick('overview', 'dashboard')}
-            className={`tab-btn ${currentActive === 'overview' || currentActive === 'dashboard' ? 'active' : ''}`}
-          >
-            <Shield size={14} />
-            Operations Overview
-          </button>
-          <button
-            onClick={() => handleSubTabClick('offenders', 'offenders')}
-            className={`tab-btn ${currentActive === 'offenders' ? 'active' : ''}`}
-          >
-            <Users size={14} />
-            Repeat Offenders
-          </button>
-          <button
-            onClick={() => handleSubTabClick('behavior', 'behavioral')}
-            className={`tab-btn ${currentActive === 'behavior' || currentActive === 'behavioral' ? 'active' : ''}`}
-          >
-            <Sparkles size={14} />
-            Behavioral Intel
-          </button>
-          <button
-            onClick={() => handleSubTabClick('retention', 'retention')}
-            className={`tab-btn ${currentActive === 'retention' ? 'active' : ''}`}
-          >
-            <Trash2 size={14} />
-            Retention & Purge
-          </button>
+        <div className="flex flex-wrap items-center justify-between border-b border-border mb-6 pb-0 gap-2">
+          <div className="flex flex-wrap gap-1">
+            <button
+              onClick={() => handleSubTabClick('overview', 'dashboard')}
+              className={`tab-btn ${currentActive === 'overview' || currentActive === 'dashboard' ? 'active' : ''}`}
+            >
+              <Shield size={14} />
+              Operations Overview
+            </button>
+            <button
+              onClick={() => handleSubTabClick('offenders', 'offenders')}
+              className={`tab-btn ${currentActive === 'offenders' ? 'active' : ''}`}
+            >
+              <Users size={14} />
+              Repeat Offenders
+            </button>
+            <button
+              onClick={() => handleSubTabClick('behavior', 'behavioral')}
+              className={`tab-btn ${currentActive === 'behavior' || currentActive === 'behavioral' ? 'active' : ''}`}
+            >
+              <Sparkles size={14} />
+              Behavioral Intel
+            </button>
+            <button
+              onClick={() => handleSubTabClick('retention', 'retention')}
+              className={`tab-btn ${currentActive === 'retention' ? 'active' : ''}`}
+            >
+              <Trash2 size={14} />
+              Retention & Purge
+            </button>
+          </div>
+          {stats && stats.has_synthetic_data && (
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 uppercase tracking-wider mb-2 shadow-sm"
+              title="Database contains synthetic / simulated demonstration incidents"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+              Demo data
+            </span>
+          )}
         </div>
       )}
 
@@ -129,6 +140,11 @@ export default function Dashboard({ refreshKey, activeTab: sidebarTab, setActive
               <div className="flex items-center gap-2">
                 <span className="text-text-secondary">Detection Engine:</span>
                 <span className="font-semibold text-text-primary">{stats.model || 'ShieldAI DistilBERT Multi-Label'}</span>
+                {stats.has_synthetic_data && (
+                  <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wide uppercase">
+                    Demo data
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${stats.model_loaded ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.7)]'}`} />

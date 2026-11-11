@@ -883,6 +883,7 @@ def seed(force: bool = False):
             "language_supported": inc.get("language_supported", True),
             "language_detected": inc.get("language_detected", "English"),
             "language_note": inc.get("language_note", ""),
+            "is_synthetic": True,
             "created_at": created_time,
             "logged_at": created_time.isoformat()
         }
@@ -902,7 +903,8 @@ def seed(force: bool = False):
                 risk_score=off["peak_risk"] - (i * 1.5),
                 report_id=seeded_report_ids[0] if seeded_report_ids else None,
                 category=off["categories"][0],
-                snippet=f"Observed malicious {off['categories'][0]} activity indicator ({off['entity_value']})"
+                snippet=f"Observed malicious {off['categories'][0]} activity indicator ({off['entity_value']})",
+                is_synthetic=True
             )
         print(f"  + [{off['entity_type'].upper():<13}] {off['entity_value']:<36} | Hits: {off['hit_count']} | Peak: {off['peak_risk']}%")
 
@@ -918,6 +920,7 @@ def seed(force: bool = False):
             "threat_score": comp["threat_score"],
             "severity_tier": comp["severity_tier"],
             "status": comp["status"],
+            "is_synthetic": True,
             "created_at": comp_time,
             "logged_at": comp_time.isoformat()
         }
