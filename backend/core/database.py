@@ -128,6 +128,7 @@ class ReportModel(Base):
             "evidence": self.evidence or [],
             "evidence_plan": self.evidence_plan or {},
             "model_used": self.model_used,
+            "which_layer": (self.threat_intel or {}).get("which_layer") if isinstance(self.threat_intel, dict) else ("rules" if (self.model_used and "rules" in self.model_used.lower()) else None),
             "logged_at": self.logged_at or (self.created_at.isoformat() if self.created_at else ""),
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
@@ -415,7 +416,7 @@ class Database:
                 user_id=entry.get("user_id"),
                 flagging_reasons=entry.get("flagging_reasons") or [],
                 secondary_labels=entry.get("secondary_labels") or {},
-                threat_intel=entry.get("threat_intel") or {},
+                threat_intel=dict(entry.get("threat_intel") or {}, which_layer=entry.get("which_layer") or (entry.get("threat_intel") or {}).get("which_layer")),
                 guidance=entry.get("guidance") or {},
                 evidence=entry.get("evidence") or [],
                 evidence_plan=entry.get("evidence_plan") or {},

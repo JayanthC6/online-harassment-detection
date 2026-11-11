@@ -6,6 +6,24 @@ import IncidentIntelligencePanel from './IncidentIntelligencePanel';
 import ConversationDetailsDrawer from './ConversationDetailsDrawer';
 import RedactionBar from '../common/RedactionBar';
 
+function renderConfidence(r) {
+  const isUnsupported = r.category === 'unsupported' || r.severity_tier === 'Unsupported' || r.risk_level === 'unsupported' || r.language_supported === false;
+  if (isUnsupported) {
+    return <span className="text-text-muted text-xs font-mono">N/A</span>;
+  }
+  
+  const whichLayer = (r.which_layer || (r.threat_intel && r.threat_intel.which_layer) || '').toLowerCase();
+  const modelUsed = (r.model_used || r.model || '').toLowerCase();
+  const isNeural = (whichLayer === 'model' || whichLayer === 'hybrid') ||
+                   ((modelUsed.includes('distilbert') || modelUsed.includes('neural')) && !modelUsed.includes('rules-only') && whichLayer !== 'rules');
+
+  if (whichLayer === 'rules' || !isNeural || r.confidence == null || r.confidence === 0) {
+    return <span className="text-amber-400/90 text-xs font-mono font-medium">Rules</span>;
+  }
+
+  return <span className="text-text-muted text-xs tabular-nums font-mono">{(r.confidence * 100).toFixed(1)}%</span>;
+}
+
 export default function ModeratorQueue({ reportsData, conversationsData, complaintsData, filters, loading }) {
   const [queueType, setQueueType] = useState('messages'); // 'messages' | 'conversations'
 
@@ -132,7 +150,7 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                         )}
                       </td>
                       <td className="px-5 py-3">
-                        <span className="text-text-muted text-xs tabular-nums font-mono">{(r.confidence * 100).toFixed(1)}%</span>
+                        {renderConfidence(r)}
                       </td>
                       <td className="px-5 py-3 text-right">
                         <button
