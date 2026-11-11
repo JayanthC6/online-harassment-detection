@@ -50,6 +50,19 @@ def run():
     # ── 1. Python Environment ──
     py_ver = sys.version_info
     py_str = f"{py_ver.major}.{py_ver.minor}.{py_ver.micro}"
+    root_venv = os.path.join(ROOT_DIR, "venv")
+    is_root_venv = False
+    try:
+        if os.path.exists(root_venv):
+            is_root_venv = os.path.samefile(sys.prefix, root_venv)
+    except Exception:
+        pass
+
+    if is_root_venv:
+        print(f"  [OK]   Virtual Environment:   Root venv ({os.path.relpath(root_venv, ROOT_DIR)})")
+    else:
+        print(f"  [INFO] Virtual Environment:   {sys.prefix}")
+
     if py_ver >= (3, 10):
         print(f"  [OK]   Python Version:        {py_str} (>= 3.10 required)")
     else:

@@ -1126,11 +1126,11 @@ class ModelService:
             extra_signals = []
             unsupp_cats = {
                 "harassment": 0.0, "threat": 0.0, "abusive_language": 0.0,
-                "phishing": 0.0, "scam": 0.0, "sextortion": 0.0
+                "phishing": 0.0, "scam": 0.0, "sextortion": 0.0, "suspicious_link": 0.0
             }
             for sig in link_signals:
                 cat = sig["category"]
-                unsupp_cats[cat] = max(unsupp_cats[cat], sig["score"])
+                unsupp_cats[cat] = max(unsupp_cats.get(cat, 0.0), sig["score"])
                 extra_signals.append(sig)
 
             # Check crypto extortion / wallet in unsupported text
