@@ -384,6 +384,9 @@ class Database:
         # Run URL entity normalisation migration on existing rows (Item 2)
         self.migrate_normalize_offender_urls()
 
+        # Spread offender timelines over several days and hours (Item 4)
+        self.migrate_spread_offender_timelines()
+
     def get_session(self):
         return self._session_factory()
 
@@ -709,7 +712,7 @@ class Database:
 
     # ── Repeat Offenders ─────────────────────────────────────────────────────
 
-    def record_offender_hit(self, entity_type: str, entity_value: str, risk_score: float, report_id: str = None, category: str = None, snippet: str = None, raw_value: str = None, is_synthetic: bool = False) -> dict:
+    def record_offender_hit(self, entity_type: str, entity_value: str, risk_score: float, report_id: str = None, category: str = None, snippet: str = None, raw_value: str = None, is_synthetic: bool = False, timestamp: str = None) -> dict:
         if not entity_value or not str(entity_value).strip():
             return None
         entity_value = str(entity_value).strip()
@@ -724,7 +727,7 @@ class Database:
         session = self.get_session()
         try:
             offender = session.query(OffenderModel).filter_by(entity_value=entity_value).first()
-            now_iso = datetime.now(timezone.utc).isoformat()
+            now_iso = timestamp or datetime.now(timezone.utc).isoformat()
             risk_score = float(risk_score or 0.0)
             
             if not offender:
@@ -758,7 +761,12 @@ class Database:
                 offender.peak_risk = max(float(offender.peak_risk or 0.0), risk_score)
                 total_risk = (float(offender.avg_risk or 0.0) * (offender.hit_count - 1)) + risk_score
                 offender.avg_risk = total_risk / offender.hit_count
-                offender.last_seen = now_iso
+                
+                # Update first_seen and last_seen based on chronological timestamps
+                if not offender.first_seen or now_iso < offender.first_seen:
+                    offender.first_seen = now_iso
+                if not offender.last_seen or now_iso > offender.last_seen:
+                    offender.last_seen = now_iso
                 
                 # Update categories
                 cats = list(offender.categories or [])
@@ -783,7 +791,8 @@ class Database:
                     "raw_value": raw_example,
                     "example_url": raw_example if entity_type == "url" else None
                 })
-                # Keep most recent 50 events in timeline
+                # Sort timeline chronologically and keep most recent 50 events
+                tl.sort(key=lambda x: x.get("timestamp", ""))
                 offender.timeline = tl[-50:]
                 
                 if offender.peak_risk >= 70.0 and offender.status == "active":
@@ -1458,6 +1467,44 @@ class Database:
         except Exception as e:
             session.rollback()
             logger.warning(f"Error during synthetic flag migration: {e}")
+        finally:
+            session.close()
+
+    def migrate_spread_offender_timelines(self):
+        """
+        Seed data realism migration (Item 4):
+        Spreads offender timeline events across several days and hours
+        if events were recorded at the exact same second/minute.
+        """
+        session = self.get_session()
+        try:
+            offenders = session.query(OffenderModel).all()
+            now = datetime.now(timezone.utc)
+            modified = False
+            for off in offenders:
+                tl = list(off.timeline or [])
+                if len(tl) > 1:
+                    timestamps = [t.get("timestamp", "") for t in tl if t.get("timestamp")]
+                    # Check if all events share identical/near-identical timestamps (within same minute)
+                    if len(set(ts[:16] for ts in timestamps if ts)) <= 1:
+                        # Spread backwards from now across multiple days and hours
+                        for idx, entry in enumerate(tl):
+                            # Entry 0 is earliest, last entry is most recent
+                            days_back = (len(tl) - 1 - idx) * 2 + 1
+                            hours_back = ((len(tl) - 1 - idx) * 3 + (idx * 5)) % 24
+                            entry_time = now - timedelta(days=days_back, hours=hours_back, minutes=(idx * 17) % 60)
+                            entry["timestamp"] = entry_time.isoformat()
+                        tl.sort(key=lambda x: x.get("timestamp", ""))
+                        off.timeline = tl
+                        off.first_seen = tl[0]["timestamp"]
+                        off.last_seen = tl[-1]["timestamp"]
+                        modified = True
+            if modified:
+                session.commit()
+                logger.info("Migrated offender timelines: spread timestamps over several days and hours.")
+        except Exception as e:
+            session.rollback()
+            logger.warning(f"Error during offender timeline spreading migration: {e}")
         finally:
             session.close()
 

@@ -115,3 +115,65 @@ def test_migration_merges_existing_duplicate_offenders():
     finally:
         session2.close()
 
+
+def test_offender_timeline_timestamps_spread_across_days_and_hours():
+    """
+    Seed data realism test (Item 4):
+    Verifies that offender timeline events are spread across distinct days and hours,
+    and first_seen != last_seen for offenders with multiple hits.
+    """
+    from datetime import datetime, timezone, timedelta
+
+    test_val = "test-serial-scammer.xyz"
+    session = db_instance.get_session()
+    try:
+        session.query(OffenderModel).filter_by(entity_value=test_val).delete()
+        session.commit()
+    finally:
+        session.close()
+
+    now = datetime.now(timezone.utc)
+    t1 = (now - timedelta(days=5, hours=4)).isoformat()
+    t2 = (now - timedelta(days=3, hours=2)).isoformat()
+    t3 = (now - timedelta(days=1, hours=1)).isoformat()
+
+    db_instance.record_offender_hit(
+        entity_type="url",
+        entity_value=test_val,
+        risk_score=75.0,
+        category="phishing",
+        timestamp=t1
+    )
+    db_instance.record_offender_hit(
+        entity_type="url",
+        entity_value=test_val,
+        risk_score=85.0,
+        category="phishing",
+        timestamp=t2
+    )
+    off = db_instance.record_offender_hit(
+        entity_type="url",
+        entity_value=test_val,
+        risk_score=90.0,
+        category="phishing",
+        timestamp=t3
+    )
+
+    assert off["hit_count"] == 3
+    assert len(off["timeline"]) == 3
+    timestamps = [e["timestamp"] for e in off["timeline"]]
+    # All timestamps must be distinct
+    assert len(set(timestamps)) == 3
+    # Timestamps must span multiple days
+    assert off["first_seen"] == t1
+    assert off["last_seen"] == t3
+    assert off["first_seen"] != off["last_seen"]
+
+    # Test migration spreads any existing offenders that had identical timestamps
+    db_instance.migrate_spread_offender_timelines()
+    off_migrated = db_instance.get_offender_by_value(test_val)
+    assert off_migrated["hit_count"] == 3
+    migrated_ts = [e["timestamp"] for e in off_migrated["timeline"]]
+    assert len(set(migrated_ts)) == 3
+
+

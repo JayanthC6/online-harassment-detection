@@ -318,14 +318,15 @@ def seed(force: bool = False):
     print(f"\n[2/4] Registering {len(DEMO_OFFENDERS)} repeat offender threat actors...")
     for off in DEMO_OFFENDERS:
         for i in range(off["hit_count"]):
-            hit_time = (now - timedelta(days=i + 1)).isoformat()
+            hit_time = (now - timedelta(days=i * 2 + 1, hours=i * 3 + 2, minutes=i * 15)).isoformat()
             db_instance.record_offender_hit(
                 entity_type=off["entity_type"],
                 entity_value=off["entity_value"],
                 risk_score=off["peak_risk"] - (i * 2.0),
                 report_id=seeded_report_ids[0] if seeded_report_ids else None,
                 category=off["categories"][0],
-                snippet=f"Observed malicious {off['categories'][0]} activity indicator"
+                snippet=f"Observed malicious {off['categories'][0]} activity indicator",
+                timestamp=hit_time
             )
         print(f"  + [{off['entity_type'].upper():<6}] {off['entity_value']:<28} | Hits: {off['hit_count']} | Peak: {off['peak_risk']}%")
 

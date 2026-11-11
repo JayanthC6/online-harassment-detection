@@ -896,7 +896,7 @@ def seed(force: bool = False):
     print(f"\n[2/4] Registering {len(DEMO_OFFENDERS)} repeat offender threat actors...")
     for off in DEMO_OFFENDERS:
         for i in range(off["hit_count"]):
-            hit_time = (now - timedelta(days=i * 2 + 1, hours=i * 3)).isoformat()
+            hit_time = (now - timedelta(days=i * 2 + 1, hours=i * 3 + 2, minutes=i * 15)).isoformat()
             db_instance.record_offender_hit(
                 entity_type=off["entity_type"],
                 entity_value=off["entity_value"],
@@ -904,7 +904,8 @@ def seed(force: bool = False):
                 report_id=seeded_report_ids[0] if seeded_report_ids else None,
                 category=off["categories"][0],
                 snippet=f"Observed malicious {off['categories'][0]} activity indicator ({off['entity_value']})",
-                is_synthetic=True
+                is_synthetic=True,
+                timestamp=hit_time
             )
         print(f"  + [{off['entity_type'].upper():<13}] {off['entity_value']:<36} | Hits: {off['hit_count']} | Peak: {off['peak_risk']}%")
 
