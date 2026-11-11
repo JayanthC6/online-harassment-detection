@@ -45,6 +45,7 @@ export default function ResultDisplay({ result }) {
   const score = Math.round(result.threat_score ?? result.risk_score ?? 0);
   const signals = result.signals || [];
   const flaggingReasons = result.flagging_reasons || [];
+  const isClean = !isHarassing || result.category === 'clean' || (result.safety_status && result.safety_status.toLowerCase() === 'safe') || score < 30;
   const isRulesOnly = result.which_layer === 'rules' || result.source_layer === 'rules' || (result.model && result.model.toLowerCase().includes('rule')) || (!result.confidence && result.confidence !== 0);
 
   return (
@@ -153,7 +154,12 @@ export default function ResultDisplay({ result }) {
                 </span>
               </div>
               <div className="mt-3">
-                {isRulesOnly ? (
+                {isClean ? (
+                  <div className="p-2 rounded bg-black/40 border border-emerald-500/30 text-xs font-mono text-emerald-300 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span>No threat signals detected</span>
+                  </div>
+                ) : isRulesOnly ? (
                   <div className="p-2 rounded bg-black/40 border border-amber-500/30 text-xs font-mono text-amber-300 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-400"></span>
                     <span>Detected by: rules</span>
