@@ -114,3 +114,4 @@ def test_migration_merges_existing_duplicate_offenders():
         assert len(dups) == 0, f"Expected 0 duplicates, found {len(dups)}"
     finally:
         session2.close()
+
