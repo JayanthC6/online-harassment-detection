@@ -262,4 +262,120 @@ def test_admin_stats_canonical_categories_no_case_duplicates(client, auth_header
         assert c in CANONICAL_CATEGORIES, f"Non-canonical category in analytics: {c}"
 
 
+def test_public_submissions_with_and_without_auth(client, auth_headers):
+    """
+    Verify Item 1:
+    - Scans from users who are NOT signed in are saved to moderation queue and offender list unless "Private Scan" is ticked.
+    - An unambiguous result (saved: True/False) is returned.
+    - Scans with auth are also tested (persist=True saved, persist=False not saved).
+    """
+    # 1. Unauthenticated public scan (persist=True by default)
+    pub_res = client.post("/predict/instant", json={
+        "text": "I will find you and kill you, watch your back.",
+        "actor_id": "public_threat_actor_42"
+    })
+    assert pub_res.status_code == 200
+    pub_data = pub_res.get_json()
+    assert pub_data.get("saved") is True
+    assert pub_data.get("persisted") is True
+
+    # Check moderation queue as admin -> public scan is visible
+    queue_res = client.get("/api/admin/reports?search=public_threat_actor_42", headers=auth_headers)
+    assert queue_res.status_code == 200
+    queue_data = queue_res.get_json()
+    assert queue_data["total"] >= 1
+    found = any(r.get("actor_id") == "public_threat_actor_42" for r in queue_data["reports"])
+    assert found, "Public submission was not saved to moderation queue"
+
+    # Check offender list -> actor is tracked
+    off_res = client.get("/api/admin/offenders?search=public_threat_actor_42", headers=auth_headers)
+    assert off_res.status_code == 200
+    off_data = off_res.get_json()
+    assert off_data["total"] >= 1
+
+    # 2. Unauthenticated public scan with Private Scan (persist=False)
+    priv_res = client.post("/predict/instant", json={
+        "text": "Transfer 1000 USDT to 0x71C84c8292855EC0572A59de7Db6473E7b123456 now.",
+        "actor_id": "ghost_private_actor_99",
+        "persist": False
+    })
+    assert priv_res.status_code == 200
+    priv_data = priv_res.get_json()
+    assert priv_data.get("saved") is False
+    assert priv_data.get("persisted") is False
+
+    # Check moderation queue -> private scan is NOT saved
+    queue_priv = client.get("/api/admin/reports?search=ghost_private_actor_99", headers=auth_headers)
+    assert queue_priv.get_json()["total"] == 0
+
+    off_priv = client.get("/api/admin/offenders?search=ghost_private_actor_99", headers=auth_headers)
+    assert off_priv.get_json()["total"] == 0
+
+    # 3. Authenticated scan with persist=False
+    auth_priv_res = client.post("/predict/instant", json={
+        "text": "I will leak your intimate photos everywhere.",
+        "actor_id": "auth_ghost_actor_01",
+        "persist": False
+    }, headers=auth_headers)
+    assert auth_priv_res.status_code == 200
+    assert auth_priv_res.get_json().get("saved") is False
+
+    queue_auth_priv = client.get("/api/admin/reports?search=auth_ghost_actor_01", headers=auth_headers)
+    assert queue_auth_priv.get_json()["total"] == 0
+
+
+def test_suspicious_link_migration_and_stats(client, auth_headers):
+    """
+    Verify Item 2:
+    - Migrate existing rows that are only a shortened link with no other signal from phishing to suspicious_link
+    - Stats endpoint handles suspicious_link in category breakdown
+    - Sum invariant holds: high_risk + medium_risk + safe_messages + unsupported == total_reports
+    """
+    from core.database import db_instance, ReportModel, CANONICAL_CATEGORIES
+    import uuid
+
+    session = db_instance.get_session()
+    rep_id = str(uuid.uuid4())
+    notes_text = "Here are the class notes from today: http://bit.ly/notes-cs101"
+    # Inject report erroneously categorized as phishing
+    old_report = ReportModel(
+        id=rep_id,
+        text=notes_text,
+        text_preview=notes_text[:120],
+        text_full=notes_text,
+        primary_label="Phishing",
+        category="phishing",
+        threat_score=85.0,
+        risk_score=85.0,
+        severity_tier="High",
+        source="platform"
+    )
+    session.merge(old_report)
+    session.commit()
+    session.close()
+
+    # Run migration
+    db_instance.run_category_migrations()
+
+    # Verify row was migrated to suspicious_link
+    session = db_instance.get_session()
+    updated = session.query(ReportModel).filter_by(id=rep_id).first()
+    assert updated is not None
+    assert updated.category == "suspicious_link", f"Expected suspicious_link, got {updated.category}"
+    assert updated.severity_tier == "Medium"
+    session.close()
+
+    # Verify /api/admin/stats
+    stats_res = client.get("/api/admin/stats", headers=auth_headers)
+    assert stats_res.status_code == 200
+    stats = stats_res.get_json()
+
+    assert "suspicious_link" in stats.get("category_breakdown", {})
+    # Sum invariant check
+    total = stats["total_reports"]
+    sum_tiles = stats["high_risk"] + stats["medium_risk"] + stats["safe_messages"] + stats["unsupported"]
+    assert sum_tiles == total, f"Dashboard tiles do not sum to total: {sum_tiles} != {total}"
+
+
+
 

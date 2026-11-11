@@ -300,7 +300,7 @@
       badgeLabel = category === 'CLEAN' ? 'HIGH RISK' : category;
     } else if (level === 'medium' || score >= 25) {
       badgeClass = 'badge-amber';
-      badgeLabel = category === 'CLEAN' ? 'SUSPICIOUS' : category;
+      badgeLabel = category === 'CLEAN' ? 'SUSPICIOUS' : (category === 'SUSPICIOUS_LINK' ? 'SUSPICIOUS LINK' : category);
     } else {
       badgeClass = 'badge-safe';
       badgeLabel = 'SAFE';

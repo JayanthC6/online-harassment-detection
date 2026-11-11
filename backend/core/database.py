@@ -1084,13 +1084,19 @@ class Database:
                 ReportModel.severity_tier != "Unsupported"
             )).count()
             medium_risk = q.filter(and_(
-                ReportModel.risk_score >= 40,
+                or_(
+                    and_(ReportModel.risk_score >= 40, ReportModel.risk_score < 75),
+                    ReportModel.category == "suspicious_link",
+                    ReportModel.severity_tier == "Medium"
+                ),
                 ReportModel.risk_score < 75,
                 ReportModel.category != "unsupported",
                 ReportModel.severity_tier != "Unsupported"
             )).count()
             safe = q.filter(and_(
                 ReportModel.risk_score < 40,
+                ReportModel.category != "suspicious_link",
+                ReportModel.severity_tier != "Medium",
                 ReportModel.label != "unsupported",
                 ReportModel.category != "unsupported",
                 ReportModel.severity_tier != "Unsupported"
@@ -1311,6 +1317,25 @@ class Database:
                 if r.primary_label:
                     if r.primary_label.lower() in CATEGORY_NORMALIZATION_MAP:
                         r.primary_label = norm.replace("_", " ").title()
+
+            # Migrate existing rows that are only a shortened link with no other signal from phishing to suspicious_link
+            try:
+                from services.model_service import model_service
+                for r in reports:
+                    if r.category == "phishing" and r.text:
+                        res = model_service.analyze(r.text)
+                        cat_scores = res.get("category_scores", {})
+                        if cat_scores.get("suspicious_link", 0.0) >= 30.0 and cat_scores.get("phishing", 0.0) == 0.0:
+                            r.category = "suspicious_link"
+                            r.primary_label = "Suspicious Link"
+                            score_val = float(res.get("score", 35.0))
+                            r.threat_score = score_val
+                            r.risk_score = score_val
+                            r.severity_tier = "Medium"
+                            changed += 1
+            except Exception as e:
+                logger.warning(f"Error checking shortened link migration: {e}")
+
             if changed > 0:
                 session.commit()
                 logger.info(f"Canonical category migration updated {changed} reports in database.")

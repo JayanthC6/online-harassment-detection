@@ -55,6 +55,7 @@ export default function SearchFilters({ filters }) {
           <option value="sextortion">Sextortion</option>
           <option value="phishing">Phishing</option>
           <option value="scam">Scam</option>
+          <option value="suspicious_link">Suspicious Link</option>
           <option value="abusive_language">Abusive Language</option>
           <option value="unsupported">Unsupported Language</option>
         </select>

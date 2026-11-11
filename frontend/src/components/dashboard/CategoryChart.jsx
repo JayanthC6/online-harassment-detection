@@ -21,6 +21,7 @@ const CATEGORY_COLORS = {
   scam: '#F59E0B',              // Medium Amber
   abusive_language: '#F59E0B',  // Amber
   harassment: '#F97316',        // Orange
+  suspicious_link: '#38BDF8',   // Sky Blue for Suspicious Link
   clean: '#10B981',             // Low Green
   none: '#10B981',
   unsupported: '#A855F7',       // Purple for Unsupported Language
@@ -35,6 +36,7 @@ const CATEGORY_LABELS = {
   scam: 'Scam',
   abusive_language: 'Abusive',
   harassment: 'Harassment',
+  suspicious_link: 'Suspicious Link',
   clean: 'Clean',
   none: 'Clean',
   unsupported: 'Unsupported',

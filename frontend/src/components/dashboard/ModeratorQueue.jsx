@@ -134,9 +134,10 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                             r.category === 'threat' || r.category === 'sextortion' ? 'badge-danger' :
                             r.category === 'scam' || r.category === 'phishing' ? 'badge-critical' :
                             r.category === 'abusive_language' || r.category === 'harassment' ? 'badge-warning' :
+                            r.category === 'suspicious_link' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30' :
                             r.category === 'none' || r.category === 'clean' ? 'badge-success' : 'badge-muted'
                           } capitalize`}>
-                          {r.category === 'unsupported' || r.severity_tier === 'Unsupported' ? 'Unsupported' : (r.category || 'unknown').replace(/_/g, ' ')}
+                          {r.category === 'unsupported' || r.severity_tier === 'Unsupported' ? 'Unsupported' : (r.category === 'suspicious_link' ? 'Suspicious link' : (r.category || 'unknown').replace(/_/g, ' '))}
                         </span>
                       </td>
                       <td className="px-5 py-3">
