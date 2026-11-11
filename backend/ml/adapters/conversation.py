@@ -182,11 +182,19 @@ class ConversationAdapter:
         temporal_intelligence["time_basis"] = "timestamp" if has_real_timestamps else "sequence"
         
         for msg in analyzed_messages:
+            msg_risk = msg.get("risk_score", 0.0)
+            msg_sender = msg.get("sender", "Unknown")
+            msg_level = msg.get("level")
+            if not msg_level:
+                msg_level = "critical" if msg_risk >= 75.0 else ("high" if msg_risk >= 50.0 else ("medium" if msg_risk >= 25.0 else "low"))
             temporal_intelligence["risk_timeline"].append({
                 "sequence": msg["sequence_id"],
                 "timestamp": msg["timestamp"],
-                "risk_score": msg["risk_score"],
-                "is_high_risk": msg["risk_score"] >= 70
+                "sender": msg_sender,
+                "risk_score": msg_risk,
+                "level": msg_level,
+                "is_high_risk": msg_risk >= 70,
+                "text_snippet": (msg.get("text") or "")[:60]
             })
             
         clusters = []
@@ -232,58 +240,56 @@ class ConversationAdapter:
         escalation_score = 0
         escalation_level = "None"
         escalation_reason = []
-        
-        if temporal_intelligence["risk_trend"] == "escalating":
-            escalation_score = 40
-            escalation_level = "High"
-            escalation_reason.append("Macro escalation detected in risk trend.")
-        else:
-            max_prev_risk = 0.0
-            max_jump = 0.0
-            jump_start = 0.0
-            jump_end = 0.0
 
-            for msg in analyzed_messages:
-                msg_risk = msg["risk_score"]
-                if msg_risk > max_prev_risk and max_prev_risk > 0 and msg_risk > 40:
-                    diff = msg_risk - max_prev_risk
-                    if diff > max_jump:
-                        max_jump = diff
-                        jump_start = max_prev_risk
-                        jump_end = msg_risk
-                max_prev_risk = max(max_prev_risk, msg_risk)
-            
+        max_prev_risk = 0.0
+        max_jump = 0.0
+        jump_start = 0.0
+        jump_end = 0.0
+
+        for msg in analyzed_messages:
+            msg_risk = msg["risk_score"]
+            if msg_risk > max_prev_risk and max_prev_risk > 0 and msg_risk > 40:
+                diff = msg_risk - max_prev_risk
+                if diff > max_jump:
+                    max_jump = diff
+                    jump_start = max_prev_risk
+                    jump_end = msg_risk
+            max_prev_risk = max(max_prev_risk, msg_risk)
+
+        if temporal_intelligence["risk_trend"] == "escalating":
+            macro_jump = round(avg_2 - avg_1) if ('avg_2' in locals() and 'avg_1' in locals()) else (round(max_jump) if max_jump > 0 else 25)
+            escalation_score = max(round(max_jump), macro_jump)
+            escalation_level = "High" if escalation_score >= 20 else ("Medium" if escalation_score >= 12 else "Low")
+            baseline_val = round(avg_1) if 'avg_1' in locals() else round(jump_start)
+            escalated_val = round(avg_2) if 'avg_2' in locals() else round(jump_end)
+            escalation_reason.append(
+                f"Macro escalation detected (+{escalation_score} risk points): Conversation escalated sharply from baseline messages ({baseline_val}/100) to acute high-risk messages ({escalated_val}/100)."
+            )
+        elif max_jump > 0:
+            escalation_score = round(max_jump)
             if max_jump > 20:
-                escalation_score = 40
                 escalation_level = "High"
                 escalation_reason.append(
-                    f"High risk escalation detected (+{round(max_jump)} risk points): Conversation escalated sharply from baseline messages ({round(jump_start)}/100) to acute high-risk messages ({round(jump_end)}/100)."
+                    f"High risk escalation detected (+{escalation_score} risk points): Conversation escalated sharply from baseline messages ({round(jump_start)}/100) to acute high-risk messages ({round(jump_end)}/100)."
                 )
             elif max_jump > 12:
-                escalation_score = 20
                 escalation_level = "Medium"
                 escalation_reason.append(
-                    f"Moderate risk escalation detected (+{round(max_jump)} risk points): Message risk increased from {round(jump_start)}/100 to {round(jump_end)}/100."
+                    f"Moderate risk escalation detected (+{escalation_score} risk points): Message risk increased from {round(jump_start)}/100 to {round(jump_end)}/100."
                 )
-            elif max_jump > 0:
-                escalation_score = 10
+            else:
                 escalation_level = "Low"
                 escalation_reason.append(
-                    f"Low risk escalation detected (+{round(max_jump)} risk points): Message risk increased from {round(jump_start)}/100 to {round(jump_end)}/100."
+                    f"Low risk escalation detected (+{escalation_score} risk points): Message risk increased from {round(jump_start)}/100 to {round(jump_end)}/100."
                 )
-            
-            if escalation_score >= 40:
-                escalation_level = "High"
-            elif escalation_score >= 15:
-                escalation_level = "Medium"
-            elif escalation_score > 0:
-                escalation_level = "Low"
+        else:
+            escalation_score = 0
+            escalation_level = "None"
+            escalation_reason.append("No significant risk escalation detected across messages.")
 
-        conversation_risk += (escalation_score * 0.5)
-        conversation_risk = min(100.0, round(conversation_risk, 1))
-        
-        if not escalation_reason:
-            escalation_reason = ["No significant escalation detected."]
+        # Cap conversation risk at the highest message score (so 98 does not become 100)
+        peak_message_risk = max((msg.get("risk_score", 0.0) for msg in analyzed_messages), default=0.0)
+        conversation_risk = round(peak_message_risk, 1)
 
         # --- PHASE 3: CONVERSATION EXPLANATION ---
         conversation_signals = []

@@ -47,7 +47,7 @@ export default function ConversationDetailsDrawer({ conversation, onClose }) {
                     {conversation.escalation_level} Escalation
                   </span>
                 </div>
-                <span className="text-sm font-bold text-white">Score: +{conversation.escalation_score}</span>
+                <span className="text-sm font-bold text-white">+{conversation.escalation_score} risk points</span>
               </div>
               <ul className="text-sm text-text-secondary space-y-2 font-mono">
                 {conversation.escalation_reason && conversation.escalation_reason.map((reason, idx) => (

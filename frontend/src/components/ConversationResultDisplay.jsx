@@ -54,7 +54,7 @@ export default function ConversationResultDisplay({ result }) {
                   }`}>
                     {result.escalation_level} Escalation
                   </span>
-                  <span className="text-xs text-slate-300 font-mono">Score: +{result.escalation_score}</span>
+                  <span className="text-xs text-slate-300 font-mono">+{result.escalation_score} risk points</span>
                 </div>
                 <ul className="text-sm text-slate-300 space-y-1.5 mt-2">
                   {result.escalation_reason.map((r, i) => (
