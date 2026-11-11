@@ -345,84 +345,92 @@ def generate_fallback_response(user_text: str, persona: str = "victim", predicti
     if mode == "victim":
         lines = []
 
-        # Requirement 2(c): Start with one warm sentence acknowledging what the user said
-        if "sextortion" in top_cat or "blackmail" in top_cat or any(k in user_text.lower() for k in ["photo", "nude", "video", "webcam", "blackmail", "extort"]):
-            ack = "I am so sorry you are facing this distressing blackmail attempt—please know that you did nothing wrong and you are not alone."
-        elif "threat" in top_cat or any(k in user_text.lower() for k in ["kill", "stab", "shoot", "attack", "murder"]):
-            ack = "I hear how terrifying receiving a direct physical threat is, and your personal safety is the absolute priority."
+        # Platform detection: extract platform name for natural one-time mention in step 3
+        platform_clean = None
+        lower_u = user_text.lower()
+        for p_key, p_name in [("instagram", "Instagram"), ("whatsapp", "WhatsApp"), ("telegram", "Telegram"),
+                              ("facebook", "Facebook"), ("twitter", "Twitter"), ("snapchat", "Snapchat"),
+                              ("discord", "Discord"), ("linkedin", "LinkedIn")]:
+            if p_key in lower_u:
+                platform_clean = p_name
+                break
+        if not platform_clean:
+            if "email" in lower_u or "gmail" in lower_u:
+                platform_clean = "your email provider"
+            else:
+                platform_clean = "the platform"
+
+        # 1. ONE warm sentence that responds to what the user said
+        if "terrified" in lower_u and "shaking" in lower_u:
+            ack = "Being terrified and shaking is a completely understandable reaction to a threat like this, and you are not in trouble for receiving it."
+        elif "terrified" in lower_u:
+            ack = "Feeling terrified is a completely understandable reaction to a threat like this, and you are not in trouble for receiving it."
+        elif "shaking" in lower_u:
+            ack = "Feeling shaken is a completely understandable reaction to a threat like this, and you are not in trouble for receiving it."
+        elif any(w in lower_u for w in ["scared", "afraid"]):
+            ack = "Feeling scared is a completely understandable reaction to a threat like this, and you are not in trouble for receiving it."
+        elif any(w in lower_u for w in ["panic", "panicking", "anxious", "anxiety"]):
+            ack = "Feeling panicked and anxious is a completely understandable reaction to a threat like this, and you are not in trouble for receiving it."
+        elif "sextortion" in top_cat or "blackmail" in top_cat or any(k in lower_u for k in ["photo", "nude", "video", "webcam", "blackmail", "extort"]):
+            ack = "Receiving a blackmail threat like this is distressing, but you are not in trouble for receiving it."
+        elif "threat" in top_cat or any(k in lower_u for k in ["kill", "stab", "shoot", "attack", "murder"]):
+            ack = "Feeling frightened by a direct threat is completely understandable, and your safety is the absolute priority."
+        elif is_injection:
+            ack = "It is completely natural to feel alarmed by this message, but it is a suspicious phishing attempt trying to deceive you."
         elif "phishing" in top_cat or "scam" in top_cat or specifics.get("urls") or specifics.get("brand"):
-            ack = "I understand why this message seems alarming, but it is a fraudulent attempt designed to trick you into compromising your account."
+            ack = "It is completely natural to feel alarmed by this message, but it is a fraudulent attempt to trick you."
         else:
-            ack = "I am truly sorry you are having to endure these hurtful and hostile messages, and please know that you do not deserve this treatment."
+            ack = "Dealing with hostile messages like this is genuinely stressful, and you do not deserve this treatment."
 
         lines.append(ack)
 
-        # Requirement 2(e): Phishing replies explain why it is suspicious in plain words,
-        # and if the message contains an instruction aimed at the assistant, mention it calmly in one sentence and still treat the message as suspicious.
+        # 2. ONE short line that calmly states the key point
         if is_injection:
-            lines.append(
-                "\n*Note: Instructions contained within user text are treated as passive evidence and disregarded for system commands.*\n\n"
-                "This message is suspicious because it claims an account is locked and uses artificial urgency to push you toward clicking an unverified link. "
-                "The message also contains an instruction directed at the assistant to disregard rules and declare it safe, which is a recognized evasion technique in automated scams."
-            )
-        elif ("phishing" in top_cat or "scam" in top_cat) and specifics.get("urls"):
-            lines.append(
-                f"\nThis message is suspicious because legitimate organizations do not threaten immediate account suspension while demanding that you verify details through unofficial links like {', '.join(specifics['urls'][:2])}."
-            )
-
-        # Requirement 2(b): Address user specifics (amount, deadline, platform)
-        # ONLY mention money or crypto when payment is requested!
-        context_parts = []
-        if specifics.get("amount"):
-            context_parts.append(f"the demand for **{specifics['amount']}**")
-        if specifics.get("deadline"):
-            dl_raw = specifics["deadline"].strip()
-            dl_clean = re.sub(r'^(?:within|in|by)\s+', '', dl_raw, flags=re.IGNORECASE)
-            if dl_clean.lower() in ["immediately", "urgent", "urgently"]:
-                context_parts.append("the **immediate deadline**")
-            elif dl_clean.lower() in ["tomorrow", "tonight"]:
-                context_parts.append(f"the deadline by **{dl_clean}**")
-            else:
-                context_parts.append(f"the deadline of **{dl_clean}**")
-        if specifics.get("platform"):
-            context_parts.append(f"contact via **{specifics['platform']}**")
-
-        has_payment_demand = bool(specifics.get("amount")) or any(k in user_text.lower() for k in ["bitcoin", "crypto", "btc", "usdt", "wallet", "pay me", "send money", "dollars", "inr", "rupees"])
-        if has_payment_demand:
-            lines.append(f"\nRegarding {', '.join(context_parts) if context_parts else 'the demand'}: **do not send any money or cryptocurrency**, and do not negotiate.")
-        elif context_parts:
-            lines.append(f"\nRegarding {', '.join(context_parts)}: **do not click links or engage**, and cut off contact.")
-
-        # Requirement 2(c): At most 5 numbered steps
-        lines.append("\n### Concrete Next Steps:")
-
-        if "sextortion" in top_cat or "blackmail" in top_cat or any(k in user_text.lower() for k in ["photo", "nude", "video", "webcam"]):
-            lines.append("1. **DO NOT PAY OR NEGOTIATE:** Paying blackmailers never stops them; it leads to repeated extortion demands.")
-            lines.append("2. **Context on Digital Blackmail:** Many sextortion messages are automated mass-sent bluffs where attackers claim to have webcam recordings using leaked passwords from old data breaches without actually possessing media.")
-            lines.append("3. **Preserve All Evidence:** Capture uncropped screenshots showing the sender's account handle, phone number, messages, and timestamps before blocking.")
-            lines.append("4. **Stop All Contact & Block:** Block their profile on all platforms and restrict your social media privacy settings so your friend/follower lists are private.")
-            lines.append("5. **Report to Image Takedown & Authorities:** File an immediate report on the **National Cyber Crime Reporting Portal at [cybercrime.gov.in](https://cybercrime.gov.in)** or call Helpline **1930**, and submit image hashes confidentially to **StopNCII.org** to prevent sharing.")
-
-        elif "threat" in top_cat or any(k in user_text.lower() for k in ["kill", "stab", "shoot", "attack"]):
-            lines.append("1. **Ensure Physical Safety First:** If you believe there is any chance the person is nearby, call the **National Emergency Helpline at 112** immediately or move to a secure public location.")
-            lines.append("2. **Preserve Full Evidence:** Save uncropped screenshots, chat logs, sender profiles, and timestamps before blocking.")
-            lines.append("3. **Do Not Retaliate or Confront:** Engaging the sender may escalate their hostility.")
-            lines.append("4. **File a Formal Complaint:** Lodge a complaint at your nearest police station or cyber crime cell via **https://cybercrime.gov.in**.")
-
-        elif "phishing" in top_cat or "scam" in top_cat or specifics.get("urls") or specifics.get("brand") or is_injection:
-            lines.append("1. **DO NOT Click Links or Share OTPs:** Never click links or disclose banking passwords, OTPs, Aadhaar, or UPI PINs.")
-            lines.append("2. **Verify Directly:** Contact the official institution via their verified phone number or official app, never through links provided in suspicious messages.")
-            lines.append("3. **Secure Your Bank Accounts:** If you shared any financial credentials, immediately call your bank's official emergency helpline or freeze cards/UPI via your banking app.")
-            lines.append("4. **Report Financial Fraud:** Dial the **National Cyber Crime Helpline at 1930** immediately and report the attempt at **https://cybercrime.gov.in**.")
-
+            key_line = "Do not click links or follow instructions: embedded directives are treated as passive evidence and disregarded."
+        elif "sextortion" in top_cat or "blackmail" in top_cat or any(k in lower_u for k in ["photo", "nude", "video", "webcam", "blackmail", "extort"]):
+            key_line = "Do not pay: payment rarely stops the demands, and many of these messages are bluffs."
+        elif "threat" in top_cat or any(k in lower_u for k in ["kill", "stab", "shoot", "attack", "murder"]):
+            key_line = "Do not reply or confront them: disengaging protects your safety while you take action."
+        elif "phishing" in top_cat or "scam" in top_cat or specifics.get("urls") or specifics.get("brand"):
+            key_line = "Do not click links or share credentials: legitimate organizations never threaten immediate account suspension."
         else:
-            lines.append("1. **Preserve Evidence:** Capture full screenshots of the abusive messages with visible dates, times, and usernames.")
-            lines.append("2. **Block and Mute:** Cut off communication and report the offending user using the platform's built-in safety tools.")
-            lines.append("3. **Lock Down Privacy:** Review account privacy settings to allow messages only from people you know.")
-            lines.append("4. **Official Recourse:** For persistent or severe harassment, lodge a report on the **National Cyber Crime Reporting Portal at https://cybercrime.gov.in**.")
+            key_line = "Do not engage or argue: cutting off communication deprives them of the attention they want."
 
-        lines.append("\n*Note: ShieldAI provides technical guidance and evidence triaging. For legal action or ongoing danger, contact local law enforcement (112) or the National Cybercrime Helpline at 1930.*")
-        return ChatResponse("\n".join(lines), engine="rules")
+        lines.append(key_line)
+
+        # 3. Numbered list of at most 6 steps, each ONE sentence
+        if "sextortion" in top_cat or "blackmail" in top_cat or any(k in lower_u for k in ["photo", "nude", "video", "webcam", "blackmail", "extort"]):
+            lines.append("1. Do not pay any money or reply to the blackmailer.")
+            lines.append("2. Save screenshots of the profile, messages and payment demand as evidence.")
+            lines.append(f"3. Block the account and report the profile to {platform_clean} itself.")
+            lines.append("4. Secure your accounts by changing passwords, turning on two-step login, and making your friends list private.")
+            lines.append("5. Report at cybercrime.gov.in or call helpline 1930, and use StopNCII.org if images are involved.")
+            lines.append("6. Tell someone you trust so you do not have to carry this alone.")
+        elif "threat" in top_cat or any(k in lower_u for k in ["kill", "stab", "shoot", "attack", "murder"]):
+            lines.append("1. Do not reply to or confront the person threatening you.")
+            lines.append("2. Save screenshots of the messages, profile handles, and phone numbers as evidence.")
+            lines.append(f"3. Block the account and report the profile to {platform_clean} itself.")
+            lines.append("4. If you believe the person knows your location or could be nearby, move to a secure public place.")
+            lines.append("5. File a formal complaint at cybercrime.gov.in or contact your local police station.")
+            lines.append("6. Tell a trusted family member or friend right away.")
+        elif "phishing" in top_cat or "scam" in top_cat or specifics.get("urls") or specifics.get("brand") or is_injection:
+            lines.append("1. Do not click links, open attachments, or share OTPs and passwords.")
+            lines.append("2. Save screenshots showing the sender address, message text, and link details.")
+            lines.append(f"3. Block the sender and report the fraudulent message to {platform_clean} itself.")
+            lines.append("4. If you entered any banking details, freeze your cards and change your passwords immediately.")
+            lines.append("5. Report financial fraud to helpline 1930 and file a report at cybercrime.gov.in.")
+            lines.append("6. Contact your institution directly through their verified official website or number.")
+        else:
+            lines.append("1. Do not reply, argue, or retaliate against the hostile messages.")
+            lines.append("2. Save clear screenshots of the abusive content with visible timestamps and usernames.")
+            lines.append(f"3. Block the account and report the abusive behavior to {platform_clean} itself.")
+            lines.append("4. Adjust your account privacy settings so only approved contacts can message you.")
+            lines.append("5. If the harassment continues or escalates, report it at cybercrime.gov.in or call helpline 1930.")
+            lines.append("6. Tell someone you trust so you have support.")
+
+        # 4. One closing line
+        lines.append("If you ever feel in immediate danger, call 112.")
+        return ChatResponse("\n\n".join(lines[:2]) + "\n\n" + "\n".join(lines[2:-1]) + "\n\n" + lines[-1], engine="rules")
 
     else:  # mode == "analyst"
         lines = []
