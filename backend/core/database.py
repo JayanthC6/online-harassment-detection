@@ -462,7 +462,7 @@ class Database:
             session.close()
 
     def get_reports(self, page=1, page_size=20, sort_by="logged_at", sort_order="desc",
-                    search="", category="", risk_level="", source=None, user_id=None):
+                    search="", category="", risk_level="", source=None, user_id=None, include_clean=False):
         session = self.get_session()
         try:
             q = session.query(ReportModel)
@@ -492,6 +492,14 @@ class Database:
                     q = q.filter(ReportModel.severity_tier.in_(["Low", "Safe"]))
                 elif risk_level.lower() == "unsupported":
                     q = q.filter(ReportModel.severity_tier == "Unsupported")
+            elif not include_clean and (not category or normalize_category(category) != "clean"):
+                # Default filter: show flagged items (medium and above, plus unsupported), hide harmless clean messages
+                q = q.filter(
+                    or_(
+                        ReportModel.severity_tier.in_(["Critical", "High", "Medium", "Unsupported"]),
+                        and_(func.lower(ReportModel.category) != "clean", ReportModel.risk_score >= 30)
+                    )
+                )
 
             total = q.count()
             total_pages = max(1, math.ceil(total / page_size))

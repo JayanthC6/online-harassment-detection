@@ -23,6 +23,7 @@ export function useAdminData(refreshKey) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [riskLevel, setRiskLevel] = useState('');
+  const [includeClean, setIncludeClean] = useState(false);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -45,7 +46,7 @@ export function useAdminData(refreshKey) {
   const fetchReports = useCallback(async () => {
     setReportsLoading(true);
     try {
-      const query = new URLSearchParams({
+      const queryParams = {
         page,
         page_size: pageSize,
         sort_by: sortBy,
@@ -53,7 +54,11 @@ export function useAdminData(refreshKey) {
         search,
         category,
         risk_level: riskLevel
-      }).toString();
+      };
+      if (includeClean) {
+        queryParams.include_clean = 'true';
+      }
+      const query = new URLSearchParams(queryParams).toString();
       
       const r = await apiClient(`/admin/reports?${query}`);
       setReportsData(r);
@@ -62,7 +67,7 @@ export function useAdminData(refreshKey) {
     } finally {
       setReportsLoading(false);
     }
-  }, [page, pageSize, sortBy, sortOrder, search, category, riskLevel]);
+  }, [page, pageSize, sortBy, sortOrder, search, category, riskLevel, includeClean]);
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -124,7 +129,8 @@ export function useAdminData(refreshKey) {
       sortOrder, setSortOrder,
       search, setSearch,
       category, setCategory,
-      riskLevel, setRiskLevel
+      riskLevel, setRiskLevel,
+      includeClean, setIncludeClean
     }
   };
 }

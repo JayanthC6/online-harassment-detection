@@ -377,5 +377,63 @@ def test_suspicious_link_migration_and_stats(client, auth_headers):
     assert sum_tiles == total, f"Dashboard tiles do not sum to total: {sum_tiles} != {total}"
 
 
+def test_queue_default_filter_and_include_clean(client, auth_headers):
+    """
+    Moderation queue must show flagged items (Medium, High, Critical, Unsupported) by default,
+    hiding harmless clean messages unless include_clean=true is passed.
+    """
+    import uuid
+    from core.database import db_instance, ReportModel
+
+    clean_id = f"clean_test_{uuid.uuid4().hex[:8]}"
+    threat_id = f"threat_test_{uuid.uuid4().hex[:8]}"
+
+    session = db_instance.get_session()
+    r_clean = ReportModel(
+        id=clean_id,
+        text="Have a wonderful morning and good luck on your presentation!",
+        category="clean",
+        risk_score=5.0,
+        severity_tier="Safe",
+        actor_id="clean_actor_99",
+        source="platform"
+    )
+    r_threat = ReportModel(
+        id=threat_id,
+        text="I am waiting outside your house to hurt you.",
+        category="threat",
+        risk_score=92.0,
+        severity_tier="Critical",
+        actor_id="threat_actor_99",
+        source="platform"
+    )
+    session.merge(r_clean)
+    session.merge(r_threat)
+    session.commit()
+    session.close()
+
+    # 1. Default queue request: hides clean message, includes threat
+    res_default = client.get("/api/admin/reports", headers=auth_headers)
+    assert res_default.status_code == 200
+    ids_default = [r["id"] for r in res_default.get_json()["reports"]]
+    assert threat_id in ids_default, "Flagged threat must appear in default queue"
+    assert clean_id not in ids_default, "Harmless clean message must be hidden by default"
+
+    # 2. Request with include_clean=true: shows clean message
+    res_clean = client.get("/api/admin/reports?include_clean=true", headers=auth_headers)
+    assert res_clean.status_code == 200
+    ids_clean = [r["id"] for r in res_clean.get_json()["reports"]]
+    assert clean_id in ids_clean, "Clean message must appear when include_clean=true"
+    assert threat_id in ids_clean, "Threat must still appear when include_clean=true"
+
+    # 3. Request with risk_level=low: shows clean/low messages
+    res_low = client.get("/api/admin/reports?risk_level=low", headers=auth_headers)
+    assert res_low.status_code == 200
+    ids_low = [r["id"] for r in res_low.get_json()["reports"]]
+    assert clean_id in ids_low, "Clean message must appear when risk_level=low"
+    assert threat_id not in ids_low, "Threat must not appear when risk_level=low"
+
+
+
 
 

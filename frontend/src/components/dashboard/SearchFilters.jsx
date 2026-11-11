@@ -60,18 +60,37 @@ export default function SearchFilters({ filters }) {
           <option value="unsupported">Unsupported Language</option>
         </select>
       </div>
+
+      {/* Include Clean Messages Toggle */}
+      <div className="flex items-center gap-2 pb-2 self-end">
+        <label className="flex items-center gap-2 cursor-pointer text-xs font-mono text-text-muted hover:text-text-primary select-none">
+          <input
+            type="checkbox"
+            className="w-4 h-4 rounded border-border/50 bg-black/40 text-cyan-400 focus:ring-0 cursor-pointer"
+            checked={Boolean(filters.includeClean)}
+            onChange={(e) => {
+              if (filters.setIncludeClean) filters.setIncludeClean(e.target.checked);
+              filters.setPage(1);
+            }}
+          />
+          <span>Include clean messages</span>
+        </label>
+      </div>
     </div>
   );
 }
 
 SearchFilters.propTypes = {
   filters: PropTypes.shape({
-    search:      PropTypes.string.isRequired,
-    setSearch:   PropTypes.func.isRequired,
-    riskLevel:   PropTypes.string.isRequired,
-    setRiskLevel:PropTypes.func.isRequired,
-    category:    PropTypes.string.isRequired,
-    setCategory: PropTypes.func.isRequired,
-    setPage:     PropTypes.func.isRequired,
+    search:          PropTypes.string.isRequired,
+    setSearch:       PropTypes.func.isRequired,
+    riskLevel:       PropTypes.string.isRequired,
+    setRiskLevel:    PropTypes.func.isRequired,
+    category:        PropTypes.string.isRequired,
+    setCategory:     PropTypes.func.isRequired,
+    page:            PropTypes.number,
+    setPage:         PropTypes.func.isRequired,
+    includeClean:    PropTypes.bool,
+    setIncludeClean: PropTypes.func,
   }).isRequired,
 };

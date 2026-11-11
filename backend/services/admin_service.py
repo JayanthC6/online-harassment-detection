@@ -36,7 +36,8 @@ class AdminService:
         risk_level: str = "",
         date_from: str = "",
         date_to: str = "",
-        cluster_id: str = ""
+        cluster_id: str = "",
+        include_clean: bool = False
     ) -> dict:
         return db_instance.get_reports(
             page=page,
@@ -45,7 +46,8 @@ class AdminService:
             sort_order=sort_order,
             search=search,
             category=category,
-            risk_level=risk_level
+            risk_level=risk_level,
+            include_clean=include_clean
         )
 
     @staticmethod

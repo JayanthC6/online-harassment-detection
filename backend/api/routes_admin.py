@@ -69,10 +69,12 @@ def admin_reports(token_data):
     date_from   = request.args.get("date_from", "")
     date_to     = request.args.get("date_to", "")
     cluster_id  = request.args.get("cluster_id", "")
+    include_clean = request.args.get("include_clean", "false").lower() in ("true", "1")
 
     reports_data = AdminService.get_reports(
         page, page_size, sort_by, sort_order, search,
-        category, risk_level, date_from, date_to, cluster_id
+        category, risk_level, date_from, date_to, cluster_id,
+        include_clean=include_clean
     )
     return jsonify(reports_data)
 
