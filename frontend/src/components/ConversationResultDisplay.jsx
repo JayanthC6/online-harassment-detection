@@ -246,17 +246,66 @@ export default function ConversationResultDisplay({ result }) {
             Risk Timeline
           </h2>
           <Card className="p-4">
-            <div className="flex items-center gap-4 overflow-x-auto pb-2">
-              {result.temporal_intelligence.risk_timeline.map((point, idx) => (
-                <div key={idx} className="flex flex-col items-center gap-2 min-w-[24px]">
-                  <div className="text-xs text-slate-400 font-mono">#{point.sequence + 1}</div>
-                  <div 
-                    className={`w-4 rounded-t ${point.is_high_risk ? 'bg-redaction-red' : point.risk_score > 0 ? 'bg-alert-amber' : 'bg-slate-700'}`}
-                    style={{ height: `${Math.max(point.risk_score, 5)}px`, minHeight: '5px' }}
-                    title={`Risk: ${point.risk_score}`}
-                  ></div>
-                </div>
-              ))}
+            <div className="flex items-end gap-3 overflow-x-auto pt-8 pb-3 border-b border-border/60 min-h-[160px] px-2">
+              {result.temporal_intelligence.risk_timeline.map((point, idx) => {
+                const score = Math.round(point.risk_score || 0);
+                const sender = point.sender || (result.messages && result.messages[idx] && result.messages[idx].sender) || 'Unknown';
+                const level = (point.level || (score >= 75 ? 'critical' : score >= 50 ? 'high' : score >= 25 ? 'medium' : 'low')).toLowerCase();
+
+                let barColor = 'bg-slate-700';
+                let pointColor = 'bg-slate-400 border-slate-300';
+                let glow = '';
+                if (level === 'critical' || level === 'high' || point.is_high_risk || score >= 70) {
+                  barColor = 'bg-critical';
+                  pointColor = 'bg-critical border-white';
+                  glow = 'shadow-[0_0_10px_rgba(244,63,94,0.6)]';
+                } else if (level === 'medium' || score >= 25) {
+                  barColor = 'bg-warning';
+                  pointColor = 'bg-warning border-white';
+                  glow = 'shadow-[0_0_8px_rgba(251,191,36,0.5)]';
+                } else {
+                  barColor = 'bg-success/80';
+                  pointColor = 'bg-success border-white';
+                  glow = 'shadow-[0_0_6px_rgba(16,185,129,0.3)]';
+                }
+
+                const barHeightPercent = Math.max(10, Math.min(100, score));
+
+                return (
+                  <div
+                    key={idx}
+                    className="flex flex-col items-center justify-end h-full min-w-[52px] group relative"
+                    title={`${sender}: ${score}/100 (${level})`}
+                  >
+                    {/* Tooltip on hover */}
+                    <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-none z-30 bg-black/90 border border-border rounded px-2.5 py-1 text-xs font-mono shadow-xl whitespace-nowrap text-white">
+                      <span className="font-bold text-accent-cyan">{sender}</span>: {score}/100
+                    </div>
+
+                    {/* Score label above point */}
+                    <span className="text-[10px] font-mono text-text-muted mb-1 font-semibold">{score}</span>
+
+                    {/* Point / dot indicator */}
+                    <div className={`w-3 h-3 rounded-full border-2 ${pointColor} ${glow} z-10 -mb-1.5 transition-transform group-hover:scale-125`}></div>
+
+                    {/* Visible vertical bar */}
+                    <div
+                      className={`w-5 rounded-t transition-all ${barColor} ${glow}`}
+                      style={{ height: `${barHeightPercent}px`, minHeight: '10px' }}
+                    ></div>
+
+                    {/* Sequence # */}
+                    <div className="text-[11px] font-mono text-text-muted mt-2 font-bold">
+                      #{point.sequence != null ? point.sequence + 1 : idx + 1}
+                    </div>
+
+                    {/* Sender name */}
+                    <div className="text-[10px] font-mono text-text-secondary truncate max-w-[50px] text-center mt-0.5" title={sender}>
+                      {sender}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             {result.temporal_intelligence.high_risk_clusters && result.temporal_intelligence.high_risk_clusters.length > 0 && (
               <p className="text-xs text-slate-300 mt-4">
