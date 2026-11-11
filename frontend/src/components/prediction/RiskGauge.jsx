@@ -116,5 +116,4 @@ RiskGauge.propTypes = {
   isUnsupported: PropTypes.bool,
   isNoText: PropTypes.bool,
 };
-};
 
