@@ -31,15 +31,33 @@ IGNORED_SENDERS = {
     "none", "null", "n/a", "me", "you"
 }
 
+def normalize_url_entity(val: str) -> str:
+    """
+    Normalise URLs and domains (Item 2):
+    - strip scheme (http://, https://)
+    - strip leading www.
+    - strip trailing slash
+    - lowercase
+    """
+    if not val or not isinstance(val, str):
+        return ""
+    v = val.strip().lower()
+    v = re.sub(r'^https?://', '', v)
+    v = re.sub(r'^www\.', '', v)
+    v = v.rstrip('/')
+    return v
+
 class OffenderService:
     @staticmethod
-    def extract_entities(text: str, sender: str = None) -> Dict[str, List[str]]:
+    def extract_entities(text: str, sender: str = None) -> Dict[str, Any]:
         """
         Extracts senders, URLs, phone numbers, and email addresses from text and metadata.
+        Normalises URL entities and tracks full raw URL examples.
         """
-        entities: Dict[str, List[str]] = {
+        entities: Dict[str, Any] = {
             "senders": [],
             "urls": [],
+            "raw_urls": {},
             "phones": [],
             "emails": []
         }
@@ -53,17 +71,22 @@ class OffenderService:
         if not text or not isinstance(text, str):
             return entities
 
-        # 2. URLs & Domains
-        found_urls = set()
+        # 2. URLs & Domains (Item 2: Normalised)
+        found_urls = {}
         for u in URL_PATTERN.findall(text):
             clean_u = u.strip().rstrip(".,;:)")
             if clean_u:
-                found_urls.add(clean_u.lower())
+                norm_u = normalize_url_entity(clean_u)
+                if norm_u and norm_u not in found_urls:
+                    found_urls[norm_u] = clean_u
         for d in DOMAIN_PATTERN.findall(text):
-            clean_d = d.strip().lower()
-            if clean_d and not clean_d.startswith("http"):
-                found_urls.add(clean_d)
-        entities["urls"] = sorted(list(found_urls))
+            clean_d = d.strip()
+            if clean_d:
+                norm_d = normalize_url_entity(clean_d)
+                if norm_d and norm_d not in found_urls:
+                    found_urls[norm_d] = clean_d
+        entities["urls"] = sorted(list(found_urls.keys()))
+        entities["raw_urls"] = found_urls
 
         # 3. Emails
         found_emails = set()
@@ -115,15 +138,18 @@ class OffenderService:
             if off:
                 recorded.append(off)
 
-        # Record URLs
+        # Record URLs (Item 2: normalised entity_value, full URL preserved as raw_value)
+        raw_urls = entities.get("raw_urls", {})
         for u in entities["urls"]:
+            full_example = raw_urls.get(u, u)
             off = db_instance.record_offender_hit(
                 entity_type="url",
                 entity_value=u,
                 risk_score=risk_score,
                 report_id=report_id,
                 category=category,
-                snippet=snippet
+                snippet=snippet,
+                raw_value=full_example
             )
             if off:
                 recorded.append(off)

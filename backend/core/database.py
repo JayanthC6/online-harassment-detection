@@ -367,6 +367,9 @@ class Database:
         # Run category migrations on existing rows
         self.run_category_migrations()
 
+        # Run URL entity normalisation migration on existing rows (Item 2)
+        self.migrate_normalize_offender_urls()
+
     def get_session(self):
         return self._session_factory()
 
@@ -682,10 +685,18 @@ class Database:
 
     # ── Repeat Offenders ─────────────────────────────────────────────────────
 
-    def record_offender_hit(self, entity_type: str, entity_value: str, risk_score: float, report_id: str = None, category: str = None, snippet: str = None) -> dict:
+    def record_offender_hit(self, entity_type: str, entity_value: str, risk_score: float, report_id: str = None, category: str = None, snippet: str = None, raw_value: str = None) -> dict:
         if not entity_value or not str(entity_value).strip():
             return None
         entity_value = str(entity_value).strip()
+        raw_example = raw_value or entity_value
+
+        if entity_type == "url":
+            from services.offender_service import normalize_url_entity
+            entity_value = normalize_url_entity(entity_value)
+            if not entity_value:
+                return None
+
         session = self.get_session()
         try:
             offender = session.query(OffenderModel).filter_by(entity_value=entity_value).first()
@@ -709,7 +720,9 @@ class Database:
                         "risk_score": risk_score,
                         "report_id": report_id,
                         "category": category,
-                        "snippet": mask_pii(snippet[:120] if snippet else "")
+                        "snippet": mask_pii(snippet[:120] if snippet else ""),
+                        "raw_value": raw_example,
+                        "example_url": raw_example if entity_type == "url" else None
                     }]
                 )
                 session.add(offender)
@@ -739,7 +752,9 @@ class Database:
                     "risk_score": risk_score,
                     "report_id": report_id,
                     "category": category,
-                    "snippet": mask_pii(snippet[:120] if snippet else "")
+                    "snippet": mask_pii(snippet[:120] if snippet else ""),
+                    "raw_value": raw_example,
+                    "example_url": raw_example if entity_type == "url" else None
                 })
                 # Keep most recent 50 events in timeline
                 offender.timeline = tl[-50:]
@@ -814,12 +829,13 @@ class Database:
         session = self.get_session()
         try:
             val = str(entity_value).strip()
+            from services.offender_service import normalize_url_entity
+            norm_val = normalize_url_entity(val)
+            candidates = [val, f"+{val}", val.lstrip("+")]
+            if norm_val:
+                candidates.append(norm_val)
             offender = session.query(OffenderModel).filter(
-                or_(
-                    OffenderModel.entity_value == val,
-                    OffenderModel.entity_value == f"+{val}",
-                    OffenderModel.entity_value == val.lstrip("+")
-                )
+                OffenderModel.entity_value.in_(candidates)
             ).first()
             if not offender:
                 return None
@@ -1274,6 +1290,89 @@ class Database:
         except Exception as e:
             session.rollback()
             logger.warning(f"Error during category migration: {e}")
+        finally:
+            session.close()
+
+    def migrate_normalize_offender_urls(self):
+        """
+        Entity normalisation migration (Item 2):
+        Normalises existing URL/domain offenders (strips scheme, www, trailing slash, lowercases).
+        Merges duplicates into a single record with combined hit count, peak risk, weighted avg risk,
+        merged categories, related reports, and timeline entries preserving full raw URL examples.
+        """
+        session = self.get_session()
+        try:
+            from services.offender_service import normalize_url_entity
+            url_offenders = session.query(OffenderModel).filter_by(entity_type="url").all()
+            grouped = {}
+            for off in url_offenders:
+                norm = normalize_url_entity(off.entity_value)
+                if not norm:
+                    continue
+                grouped.setdefault(norm, []).append(off)
+
+            merged_count = 0
+            for norm_val, records in grouped.items():
+                if len(records) == 1 and records[0].entity_value == norm_val:
+                    continue
+
+                # If one of the records already has entity_value == norm_val, pick it as primary
+                primary_idx = next((i for i, r in enumerate(records) if r.entity_value == norm_val), 0)
+                primary = records[primary_idx]
+                duplicates = [r for i, r in enumerate(records) if i != primary_idx]
+
+                total_hits = sum(r.hit_count or 1 for r in records)
+                peak_risk = max(float(r.peak_risk or 0.0) for r in records)
+                total_risk_sum = sum(float(r.avg_risk or 0.0) * (r.hit_count or 1) for r in records)
+                avg_risk = total_risk_sum / total_hits if total_hits > 0 else peak_risk
+
+                cats = set()
+                reps = set()
+                merged_timeline = []
+                for r in records:
+                    for c in (r.categories or []):
+                        cats.add(c)
+                    for rep in (r.related_reports or []):
+                        reps.add(rep)
+                    for tl in (r.timeline or []):
+                        tl_copy = dict(tl)
+                        if "raw_value" not in tl_copy:
+                            tl_copy["raw_value"] = r.entity_value
+                        if "example_url" not in tl_copy:
+                            tl_copy["example_url"] = r.entity_value
+                        merged_timeline.append(tl_copy)
+
+                first_seens = [r.first_seen for r in records if r.first_seen]
+                last_seens = [r.last_seen for r in records if r.last_seen]
+
+                # Delete duplicate records first so SQLite unique constraint is never violated
+                for duplicate in duplicates:
+                    session.delete(duplicate)
+                session.flush()
+
+                primary.entity_value = norm_val
+                primary.hit_count = total_hits
+                primary.peak_risk = peak_risk
+                primary.avg_risk = round(avg_risk, 1)
+                primary.categories = sorted(list(cats))
+                primary.related_reports = sorted(list(reps))
+                primary.timeline = sorted(merged_timeline, key=lambda x: x.get("timestamp", ""))[-50:]
+                if first_seens:
+                    primary.first_seen = min(first_seens)
+                if last_seens:
+                    primary.last_seen = max(last_seens)
+                if peak_risk >= 70.0 and primary.status == "active":
+                    primary.status = "flagged"
+
+                session.flush()
+                merged_count += 1
+
+            if merged_count > 0:
+                session.commit()
+                logger.info(f"URL entity normalisation migration merged {merged_count} groups of duplicate URL entities.")
+        except Exception as e:
+            session.rollback()
+            logger.warning(f"Error during URL offender migration: {e}")
         finally:
             session.close()
 
