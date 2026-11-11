@@ -13,7 +13,8 @@ import {
   PhoneCall,
   ExternalLink,
   FileCheck2,
-  Cpu
+  Cpu,
+  EyeOff
 } from 'lucide-react';
 import Card from './common/Card';
 import RiskBadge from './prediction/RiskBadge';
@@ -48,6 +49,18 @@ export default function ResultDisplay({ result }) {
 
   return (
     <div className="space-y-5 animate-slide-up mt-6">
+      {/* ── Privacy / Persistence Status Banner ── */}
+      {(result.saved === false || result.persisted === false) ? (
+        <div className="p-3.5 rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 flex items-center gap-2.5 text-xs font-medium">
+          <EyeOff className="w-4 h-4 text-slate-400 shrink-0" />
+          <span><strong>Private Scan:</strong> This submission was not saved to the moderation queue or database.</span>
+        </div>
+      ) : (result.saved === true || result.persisted === true) ? (
+        <div className="p-2.5 px-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 flex items-center gap-2 text-xs">
+          <FileCheck2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span><strong>Logged to Moderation Queue:</strong> Your submission is recorded for reviewer assessment.</span>
+        </div>
+      ) : null}
       {/* ── Blank Image / No Text Detected Warning Banner ── */}
       {isNoText && (
         <div className="p-4 rounded-xl border border-amber-500/50 bg-amber-500/10 flex items-start gap-3">

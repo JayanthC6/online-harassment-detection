@@ -36,6 +36,41 @@ def sanitize_result_for_public(result: dict) -> dict:
                 m["text"] = mask_pii(m["text"])
     return res
 
+def _handle_scan_persistence(result: dict, text: str, token_data: dict, persist: bool, actor_id: str = None, source_type: str = "text"):
+    """
+    Saves public and authenticated scans unless 'persist' is False (Private Scan).
+    Public scans from unauthenticated users are logged to the database/queue (as source='public_submission')
+    with PII masked for privacy, ensuring they appear in the moderator queue and offender intelligence.
+    """
+    if not persist:
+        result["saved"] = False
+        result["persisted"] = False
+        return
+
+    is_admin = bool(token_data and token_data.get("role", "").lower() in ["admin", "moderator"])
+    actor = actor_id or result.get("actor_id") or (token_data.get("user") if token_data else "Anonymous")
+    result["actor_id"] = actor
+
+    history_entry = {
+        "actor_id": actor,
+        "user_id": token_data.get("user") if token_data else "public",
+        "source": "platform" if is_admin else "public_submission",
+        "type": source_type,
+        "content": text,
+        "ai_analysis": result,
+        **result
+    }
+
+    if not is_admin:
+        history_entry["text_preview"] = mask_pii(history_entry.get("text_preview", ""))
+        history_entry["text_full"] = mask_pii(history_entry.get("text_full", ""))
+        history_entry["evidence"] = mask_pii(history_entry.get("evidence", ""))
+        history_entry["content"] = mask_pii(history_entry.get("content", ""))
+
+    AdminService.log_message(history_entry)
+    result["saved"] = True
+    result["persisted"] = True
+
 # Import the shared limiter instance (defined in extensions.py to avoid circular imports)
 from extensions import limiter
 
@@ -99,7 +134,7 @@ def predict_instant(token_data):
 
     data = request.get_json(silent=True) or {}
     text = data.get("text", "")
-    persist = data.get("persist", False)
+    persist = data.get("persist", True)
 
     if not text or not isinstance(text, str):
         return jsonify({"error": "Request body must include a non-empty 'text' string."}), 400
@@ -111,7 +146,7 @@ def predict_instant(token_data):
     result["text_full"] = text
     result["timestamp"] = datetime.utcnow().isoformat()
     
-    actor_id = token_data.get("user") if token_data else "Anonymous"
+    actor_id = data.get("actor_id") or (token_data.get("user") if token_data else "Anonymous")
     result["actor_id"] = actor_id
     result = PredictionService.attach_risk_and_similarity(result, text)
 
@@ -132,26 +167,8 @@ def predict_instant(token_data):
         result["guidance"] = None
         result["guidance_snippet"] = f"Error fetching guidance: {e}"
 
-    # If the user is logged in and persist is true, log it to db for history tracking
-    if persist and token_data:
-        is_public_user = token_data.get("role", "").lower() == "user"
-        history_entry = {
-            "actor_id": actor_id,
-            "user_id": token_data.get("user"),
-            "source": "self_serve" if is_public_user else "platform",
-            "type": "text",
-            "content": text,
-            "ai_analysis": result,
-            **result
-        }
-        
-        if is_public_user:
-            history_entry["text_preview"] = mask_pii(history_entry.get("text_preview", ""))
-            history_entry["text_full"] = mask_pii(history_entry.get("text_full", ""))
-            history_entry["evidence"] = mask_pii(history_entry.get("evidence", ""))
-            history_entry["content"] = mask_pii(history_entry.get("content", ""))
-            
-        AdminService.log_message(history_entry)
+    # Handle scan persistence for public and authenticated submissions
+    _handle_scan_persistence(result, text, token_data, persist, actor_id=actor_id, source_type="text")
 
     result.pop("embedding", None)
     result.pop("_id", None)
@@ -184,7 +201,7 @@ def predict(token_data):
 
     data = request.get_json(silent=True) or {}
     text = data.get("text", "")
-    persist = data.get("persist", False)
+    persist = data.get("persist", True)
 
     if not text or not isinstance(text, str):
         return jsonify({"error": "Request body must include a non-empty 'text' string."}), 400
@@ -196,24 +213,11 @@ def predict(token_data):
     result["text_preview"] = text[:120]
     result["text_full"] = text  # full text needed by /predict/explain for LIG
     result["timestamp"] = datetime.utcnow().isoformat()
-    result["actor_id"] = data.get("actor_id", "Anonymous")
+    actor_id = data.get("actor_id", "Anonymous")
+    result["actor_id"] = actor_id
     result = PredictionService.attach_risk_and_similarity(result, text)
 
-    if persist and token_data:
-        is_public_user = token_data.get("role", "").lower() == "user"
-        if is_public_user:
-            masked_result = result.copy()
-            masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
-            masked_result["text_full"] = mask_pii(result.get("text_full", ""))
-            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-            masked_result["source"] = "self_serve"
-            masked_result["user_id"] = token_data.get("user")
-            AdminService.log_message(masked_result)
-        else:
-            result_copy = result.copy()
-            result_copy["source"] = "platform"
-            result_copy["user_id"] = token_data.get("user")
-            AdminService.log_message(result_copy)
+    _handle_scan_persistence(result, text, token_data, persist, actor_id=actor_id, source_type="text")
 
     result.pop("embedding", None)
     result.pop("_id", None)  # MongoDB ObjectId is not JSON serializable
@@ -385,25 +389,12 @@ def predict_audio(token_data):
     result["text_preview"] = transcript_text[:120]
     result["timestamp"] = datetime.utcnow().isoformat()
     result["transcript"] = transcript_text
-    result["actor_id"] = request.form.get("actor_id", "Anonymous")
+    actor_id = request.form.get("actor_id", "Anonymous")
+    result["actor_id"] = actor_id
     result = PredictionService.attach_risk_and_similarity(result, transcript_text)
 
-    persist = request.form.get("persist", "false").lower() == "true"
-    if persist and token_data:
-        is_public_user = token_data.get("role", "").lower() == "user"
-        if is_public_user:
-            masked_result = result.copy()
-            masked_result["transcript"] = mask_pii(result.get("transcript", ""))
-            masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
-            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-            masked_result["source"] = "self_serve"
-            masked_result["user_id"] = token_data.get("user")
-            AdminService.log_message(masked_result)
-        else:
-            result_copy = result.copy()
-            result_copy["source"] = "platform"
-            result_copy["user_id"] = token_data.get("user")
-            AdminService.log_message(result_copy)
+    persist = request.form.get("persist", "true").lower() in ("true", "1")
+    _handle_scan_persistence(result, transcript_text, token_data, persist, actor_id=actor_id, source_type="audio")
 
     result.pop("embedding", None)
     
@@ -457,26 +448,13 @@ def predict_screenshot(token_data):
 
     result["pii_categories"] = extract_pii(extracted_text)
     result["timestamp"] = datetime.utcnow().isoformat()
-    result["actor_id"] = request.form.get("actor_id", "Anonymous")
+    actor_id = request.form.get("actor_id", "Anonymous")
+    result["actor_id"] = actor_id
     result["platform"] = request.form.get("platform", "generic")
     result = PredictionService.attach_risk_and_similarity(result, extracted_text)
 
-    persist = request.form.get("persist", "false").lower() == "true"
-    if persist and token_data:
-        is_public_user = token_data.get("role", "").lower() == "user"
-        if is_public_user:
-            masked_result = result.copy()
-            masked_result["text_preview"] = mask_pii(result.get("text_preview", "") or extracted_text[:120])
-            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-            masked_result["extracted_text"] = mask_pii(result.get("extracted_text", ""))
-            masked_result["source"] = "self_serve"
-            masked_result["user_id"] = token_data.get("user")
-            AdminService.log_message(masked_result)
-        else:
-            result_copy = result.copy()
-            result_copy["source"] = "platform"
-            result_copy["user_id"] = token_data.get("user")
-            AdminService.log_message(result_copy)
+    persist = request.form.get("persist", "true").lower() in ("true", "1")
+    _handle_scan_persistence(result, extracted_text, token_data, persist, actor_id=actor_id, source_type="screenshot")
 
     result.pop("embedding", None)
     
@@ -558,6 +536,11 @@ def predict_file(token_data):
                     "user_id": token_data.get("user") if token_data else "public"
                 }
                 AdminService.log_conversation(conv_entry)
+                chat_analysis["saved"] = True
+                chat_analysis["persisted"] = True
+            else:
+                chat_analysis["saved"] = False
+                chat_analysis["persisted"] = False
 
             return jsonify(chat_analysis)
 
@@ -608,22 +591,9 @@ def predict_file(token_data):
     result["text_full"] = extracted_text
     result = PredictionService.attach_risk_and_similarity(result, extracted_text)
 
-    persist = request.form.get("persist", "false").lower() == "true"
-    if persist and token_data:
-        is_public_user = token_data.get("role", "").lower() == "user"
-        if is_public_user:
-            masked_result = result.copy()
-            masked_result["text_preview"] = mask_pii(result.get("text_preview", ""))
-            masked_result["text_full"] = mask_pii(result.get("text_full", ""))
-            masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-            masked_result["source"] = "self_serve"
-            masked_result["user_id"] = token_data.get("user")
-            AdminService.log_message(masked_result)
-        else:
-            result_copy = result.copy()
-            result_copy["source"] = "platform"
-            result_copy["user_id"] = token_data.get("user")
-            AdminService.log_message(result_copy)
+    persist = request.form.get("persist", "true").lower() in ("true", "1")
+    actor_id = request.form.get("actor_id", "Anonymous")
+    _handle_scan_persistence(result, extracted_text, token_data, persist, actor_id=actor_id, source_type="document")
 
     result.pop("embedding", None)
     
@@ -664,7 +634,7 @@ def predict_conversation(token_data):
         return jsonify({"error": "Payload too large. Maximum 512 KB for /predict/conversation."}), 413
     data = request.get_json(silent=True) or {}
     messages = data.get("messages", [])
-    persist = data.get("persist", False)
+    persist = data.get("persist", True)
 
     if not isinstance(messages, list) or len(messages) == 0:
         return jsonify({"error": "Provide a non-empty 'messages' array."}), 400
@@ -691,6 +661,11 @@ def predict_conversation(token_data):
             result_copy["source"] = "chat_export"
             result_copy["user_id"] = token_data.get("user") if token_data else "public"
             AdminService.log_conversation(result_copy)
+            result["saved"] = True
+            result["persisted"] = True
+        else:
+            result["saved"] = False
+            result["persisted"] = False
             
         # Mask API response for normal or anonymous users
         is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]
@@ -749,6 +724,11 @@ def import_conversation(token_data):
             result_copy["source"] = "chat_export"
             result_copy["user_id"] = token_data.get("user") if token_data else "public"
             AdminService.log_conversation(result_copy)
+            result["saved"] = True
+            result["persisted"] = True
+        else:
+            result["saved"] = False
+            result["persisted"] = False
             
         # Mask API response for normal or anonymous users
         is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]

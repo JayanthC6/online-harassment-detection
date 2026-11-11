@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { Layers, Lightbulb, MessageSquare, AlertTriangle, ChevronRight, Users, Activity, Link, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Layers, Lightbulb, MessageSquare, AlertTriangle, ChevronRight, Users, Activity, Link, ShieldAlert, CheckCircle2, EyeOff } from 'lucide-react';
 import Card from './common/Card';
 import RiskBadge from './prediction/RiskBadge';
 import RedactionBar from './common/RedactionBar';
@@ -22,6 +22,18 @@ export default function ConversationResultDisplay({ result }) {
 
   return (
     <div className="space-y-6 animate-slide-up mt-8">
+      {/* ── Privacy / Persistence Status Banner ── */}
+      {(result.saved === false || result.persisted === false) ? (
+        <div className="p-3.5 rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 flex items-center gap-2.5 text-xs font-medium">
+          <EyeOff className="w-4 h-4 text-slate-400 shrink-0" />
+          <span><strong>Private Scan:</strong> This conversation was not saved to the moderation queue or database.</span>
+        </div>
+      ) : (result.saved === true || result.persisted === true) ? (
+        <div className="p-2.5 px-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 flex items-center gap-2 text-xs">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span><strong>Logged to Moderation Queue:</strong> Conversation recorded for reviewer assessment.</span>
+        </div>
+      ) : null}
       {/* ── SECTION 1: CONVERSATION ASSESSMENT ── */}
       <div className="space-y-3">
         <h2 className="text-base font-bold text-off-white font-display flex items-center gap-2">

@@ -192,18 +192,23 @@ export default function AnalyzeForm({ onNewResult }) {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="privacy-toggle"
-              checked={doNotSave}
-              onChange={(e) => setDoNotSave(e.target.checked)}
-              className="w-4 h-4 rounded border-border bg-surface text-blue focus:ring-blue focus:ring-offset-bg cursor-pointer"
-            />
-            <label htmlFor="privacy-toggle" className="text-xs font-semibold text-text-muted hover:text-text-secondary flex items-center gap-1 cursor-pointer">
-              <EyeOff size={13} />
-              Private Scan (Do not save)
-            </label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="privacy-toggle"
+                checked={doNotSave}
+                onChange={(e) => setDoNotSave(e.target.checked)}
+                className="w-4 h-4 rounded border-border bg-surface text-blue focus:ring-blue focus:ring-offset-bg cursor-pointer"
+              />
+              <label htmlFor="privacy-toggle" className="text-xs font-semibold text-text-muted hover:text-text-secondary flex items-center gap-1 cursor-pointer whitespace-nowrap">
+                <EyeOff size={13} />
+                Private Scan (Do not save)
+              </label>
+            </div>
+            <span className="text-2xs text-text-muted">
+              Your submission will be visible to moderators. Tick Private Scan to avoid saving.
+            </span>
           </div>
         </div>
 

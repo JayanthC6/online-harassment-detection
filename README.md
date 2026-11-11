@@ -261,6 +261,11 @@ All incident preview snippets, repeat offender timeline entries, and citizen com
 - Setting `DATA_RETENTION_DAYS=0` disables automatic purges for forensic preservation.
 - **On-Demand Admin Purge:** Administrators can trigger manual data compliance purges via `POST /api/admin/purge` specifying custom retention windows. Every purge event is logged to the immutable audit trail.
 
+### 3. Public Submissions & Private Scan Mode
+- **Public Scan Logging:** Threat analyses submitted via the public Scan page (text input, screenshot OCR, document file extraction, chat export analysis) by users who are not signed in are automatically preserved (`source: public_submission`) and visible to trust & safety teams in the Moderator Queue and Repeat Offender Intelligence database. PII is automatically redacted before persistence.
+- **Opt-Out (Private Scan):** The Scan page features a prominent privacy toggle stating: *"Your submission will be visible to moderators. Tick Private Scan to avoid saving."* When ticked (`persist: false`), the payload is evaluated strictly in-memory and not stored in the database or moderation queue.
+- **Unambiguous Result Feedback:** When Private Scan is active, the results view clearly displays: *"Private Scan: This submission was not saved to the moderation queue or database."* When saved, the results view confirms: *"Logged to Moderation Queue: Your submission is recorded for reviewer assessment."*
+
 ---
 
 ## 🧪 Comprehensive Verification & Test Suite
