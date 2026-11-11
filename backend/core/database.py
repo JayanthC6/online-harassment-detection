@@ -558,18 +558,28 @@ class Database:
             session.merge(conv)
             session.commit()
 
-            # Index repeat offenders from conversation messages
+            # Index repeat offenders from flagged conversation messages (Item 1)
             try:
                 from services.offender_service import OffenderService
                 conv_id = conv.id
                 for msg in (conv.messages or []):
-                    OffenderService.track_incident_entities(
-                        report_id=conv_id,
-                        text=msg.get("text", ""),
-                        risk_score=float(msg.get("risk_score") or conv.threat_score or 0.0),
-                        category=conv.primary_label,
-                        sender=msg.get("sender")
+                    # Check if message is flagged (+1 hit per flagged message)
+                    score = float(msg.get("risk_score") or msg.get("score") or 0.0)
+                    pred = msg.get("prediction") or {}
+                    prim_cat = (pred.get("primary_label") or pred.get("category") or msg.get("category") or "clean").lower()
+                    is_flagged = (
+                        msg.get("is_flagged") is True
+                        or (score >= 35.0 and prim_cat not in ["clean", "none", "safe"])
+                        or (pred.get("label") == "harassing" and score >= 30.0 and prim_cat not in ["clean", "none", "safe"])
                     )
+                    if is_flagged:
+                        OffenderService.track_incident_entities(
+                            report_id=conv_id,
+                            text=msg.get("text", ""),
+                            risk_score=score or float(conv.threat_score or 0.0),
+                            category=prim_cat if prim_cat not in ["clean", "none"] else conv.primary_label,
+                            sender=msg.get("sender")
+                        )
             except Exception as off_err:
                 logger.debug(f"Conversation offender tracking note: {off_err}")
 

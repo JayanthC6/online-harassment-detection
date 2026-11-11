@@ -50,3 +50,85 @@ def test_chat_export_flagged_actors_regression():
         if os.path.exists(f_path):
             os.remove(f_path)
 
+
+def test_chat_export_offender_tracking_upload_twice(client):
+    """
+    Item 1: Verify chat export tracking:
+    - Non-private upload records flagged senders (Sam) as offender entities (+1 hit per flagged message).
+    - Unflagged senders (Raj, Priya) must NOT be recorded.
+    - Uploading the exact same chat twice must increase Sam's hit count (+4 -> 8).
+    - Conversation record must be visible in get_conversations and get_stats.
+    """
+    from core.database import db_instance, OffenderModel, ConversationModel
+    session = db_instance.get_session()
+    try:
+        # Clean any prior records for Sam, Raj, Priya
+        session.query(OffenderModel).filter(OffenderModel.entity_value.in_(["Sam", "Raj", "Priya"])).delete(synchronize_session=False)
+        session.commit()
+    finally:
+        session.close()
+
+    with tempfile.NamedTemporaryFile("w+", delete=False, suffix=".txt", encoding="utf-8") as f:
+        f.write(CHAT_CONTENT)
+        f_path = f.name
+
+    try:
+        # Initial stats
+        stats_before = db_instance.get_stats()
+        conv_count_before = stats_before["conversation_stats"]["total"]
+
+        # --- FIRST UPLOAD ---
+        with open(f_path, "rb") as upload_file:
+            res1 = client.post(
+                "/api/predict/conversation/import",
+                data={"file": (upload_file, "raj_sam_priya_chat.txt"), "persist": "true"},
+                content_type="multipart/form-data"
+            )
+        assert res1.status_code == 200, f"Upload 1 failed: {res1.data}"
+        
+        # Check Sam after 1st upload
+        sam1 = db_instance.get_offender_by_value("Sam")
+        assert sam1 is not None, "Sam should be recorded as an offender entity"
+        assert sam1["entity_type"] == "sender"
+        assert sam1["hit_count"] == 4, f"Sam should have 4 hits after first upload, got {sam1['hit_count']}"
+        assert len(sam1["related_reports"]) == 1
+        assert len(sam1["timeline"]) == 4
+
+        # Raj and Priya must NOT be recorded
+        assert db_instance.get_offender_by_value("Raj") is None, "Raj (unflagged) must not be recorded"
+        assert db_instance.get_offender_by_value("Priya") is None, "Priya (unflagged) must not be recorded"
+
+        # Conversation is in get_conversations and counted in stats
+        convs1 = db_instance.get_conversations()
+        assert any(c["id"] == sam1["related_reports"][0] for c in convs1["conversations"]), "Conversation must be visible in queue"
+        stats1 = db_instance.get_stats()
+        assert stats1["conversation_stats"]["total"] == conv_count_before + 1
+
+        # --- SECOND UPLOAD OF SAME CHAT ---
+        with open(f_path, "rb") as upload_file:
+            res2 = client.post(
+                "/api/predict/conversation/import",
+                data={"file": (upload_file, "raj_sam_priya_chat.txt"), "persist": "true"},
+                content_type="multipart/form-data"
+            )
+        assert res2.status_code == 200, f"Upload 2 failed: {res2.data}"
+
+        # Check Sam after 2nd upload: hit count must double (+4 -> 8)
+        sam2 = db_instance.get_offender_by_value("Sam")
+        assert sam2 is not None
+        assert sam2["hit_count"] == 8, f"Sam should have 8 hits after second upload, got {sam2['hit_count']}"
+        assert len(sam2["related_reports"]) == 2, f"Expected 2 linked reports, got {len(sam2['related_reports'])}"
+        assert len(sam2["timeline"]) == 8, f"Expected 8 timeline entries, got {len(sam2['timeline'])}"
+
+        # Raj and Priya must STILL not be recorded
+        assert db_instance.get_offender_by_value("Raj") is None, "Raj must still not be recorded"
+        assert db_instance.get_offender_by_value("Priya") is None, "Priya must still not be recorded"
+
+        # Stats increased by 2
+        stats2 = db_instance.get_stats()
+        assert stats2["conversation_stats"]["total"] == conv_count_before + 2
+    finally:
+        if os.path.exists(f_path):
+            os.remove(f_path)
+
+

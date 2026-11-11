@@ -539,19 +539,23 @@ def predict_file(token_data):
                 is_chat_export = False
 
         if is_chat_export and chat_analysis:
-            persist = request.form.get("persist", "false").lower() == "true"
-            if persist and token_data:
+            persist = request.form.get("persist", "true").lower() in ("true", "1")
+            if persist:
+                import uuid
+                conv_id = str(uuid.uuid4())
                 conv_entry = {
-                    "primary_label": "Harassment",
+                    "id": conv_id,
+                    "primary_label": chat_analysis.get("primary_label") or "Harassment",
                     "severity_tier": chat_analysis.get("level", "Medium").title(),
                     "threat_score": float(chat_analysis.get("risk_score", 0.0)),
                     "conversation_risk": float(chat_analysis.get("risk_score", 0.0)),
-                    "confidence": 0.95,
-                    "escalation_level": chat_analysis.get("level", "Medium").title(),
-                    "escalation_score": float(chat_analysis.get("risk_score", 0.0)),
+                    "confidence": float(chat_analysis.get("confidence") or 0.95),
+                    "escalation_level": chat_analysis.get("escalation_level") or chat_analysis.get("level", "Medium").title(),
+                    "escalation_score": float(chat_analysis.get("escalation_score") or 0.0),
                     "messages": chat_analysis.get("messages", []),
-                    "actor_attribution": chat_analysis.get("sender_attribution", {}),
-                    "source": "platform"
+                    "actor_attribution": chat_analysis.get("sender_attribution") or chat_analysis.get("actor_intelligence", {}),
+                    "source": "chat_export",
+                    "user_id": token_data.get("user") if token_data else "public"
                 }
                 AdminService.log_conversation(conv_entry)
 
@@ -679,25 +683,14 @@ def predict_conversation(token_data):
     try:
         result = PredictionService.analyze_conversation(valid_messages)
         
-        if persist and token_data:
-            is_public_user = token_data.get("role", "").lower() == "user"
-            if is_public_user:
-                masked_result = result.copy()
-                masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-                masked_messages = []
-                for m in valid_messages:
-                    masked_m = m.copy()
-                    masked_m["text"] = mask_pii(m.get("text", ""))
-                    masked_messages.append(masked_m)
-                masked_result["messages"] = masked_messages
-                masked_result["source"] = "self_serve"
-                masked_result["user_id"] = token_data.get("user")
-                AdminService.log_conversation(masked_result)
-            else:
-                result_copy = result.copy()
-                result_copy["source"] = "platform"
-                result_copy["user_id"] = token_data.get("user")
-                AdminService.log_conversation(result_copy)
+        if persist:
+            import uuid
+            conv_id = str(uuid.uuid4())
+            result_copy = result.copy()
+            result_copy["id"] = conv_id
+            result_copy["source"] = "chat_export"
+            result_copy["user_id"] = token_data.get("user") if token_data else "public"
+            AdminService.log_conversation(result_copy)
             
         # Mask API response for normal or anonymous users
         is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]
@@ -747,26 +740,15 @@ def import_conversation(token_data):
         
         result = PredictionService.analyze_conversation(messages)
         
-        persist = request.form.get("persist", "false").lower() == "true"
-        if persist and token_data:
-            is_public_user = token_data.get("role", "").lower() == "user"
-            if is_public_user:
-                masked_result = result.copy()
-                masked_result["evidence"] = mask_pii(result.get("evidence", ""))
-                masked_messages = []
-                for m in messages:
-                    masked_m = m.copy()
-                    masked_m["text"] = mask_pii(m.get("text", ""))
-                    masked_messages.append(masked_m)
-                masked_result["messages"] = masked_messages
-                masked_result["source"] = "self_serve"
-                masked_result["user_id"] = token_data.get("user")
-                AdminService.log_conversation(masked_result)
-            else:
-                result_copy = result.copy()
-                result_copy["source"] = "platform"
-                result_copy["user_id"] = token_data.get("user")
-                AdminService.log_conversation(result_copy)
+        persist = request.form.get("persist", "true").lower() in ("true", "1")
+        if persist:
+            import uuid
+            conv_id = str(uuid.uuid4())
+            result_copy = result.copy()
+            result_copy["id"] = conv_id
+            result_copy["source"] = "chat_export"
+            result_copy["user_id"] = token_data.get("user") if token_data else "public"
+            AdminService.log_conversation(result_copy)
             
         # Mask API response for normal or anonymous users
         is_admin = token_data and token_data.get("role", "").lower() in ["admin", "moderator"]

@@ -104,12 +104,21 @@ class BehaviorService:
     def log_conversation_incidents(messages):
         """
         Process an array of conversation messages and update their senders' profiles.
+        Only FLAGGED messages are attributed to senders.
         """
         for msg in messages:
             actor = msg.get("sender")
-            pred = msg.get("prediction")
-            if actor and pred:
-                BehaviorService.log_incident(actor, pred)
+            pred = msg.get("prediction") or {}
+            score = float(msg.get("risk_score") or pred.get("score") or pred.get("threat_score") or 0.0)
+            prim_cat = (pred.get("primary_label") or pred.get("category") or msg.get("category") or "clean").lower()
+            is_flagged = (
+                msg.get("is_flagged") is True
+                or (score >= 35.0 and prim_cat not in ["clean", "none", "safe"])
+                or (pred.get("label") == "harassing" and score >= 30.0 and prim_cat not in ["clean", "none", "safe"])
+            )
+            if actor and is_flagged:
+                effective_pred = pred if pred else {"risk_score": score, "score": score, "primary_label": prim_cat}
+                BehaviorService.log_incident(actor, effective_pred)
 
     @staticmethod
     def get_all_profiles():
