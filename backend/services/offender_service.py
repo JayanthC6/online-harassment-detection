@@ -5,8 +5,11 @@ and maintains cross-report hit counts, peak risks, timelines, and linked inciden
 """
 import re
 from typing import Dict, List, Any
-from core.database import db_instance
 from core.logger import logger
+
+def _get_db():
+    from core.database import db_instance
+    return db_instance
 
 # Regex patterns for entity extraction
 URL_PATTERN = re.compile(
@@ -125,9 +128,10 @@ class OffenderService:
 
         snippet = (text[:120] if text else "")
 
+        db = _get_db()
         # Record Senders
         for s in entities["senders"]:
-            off = db_instance.record_offender_hit(
+            off = db.record_offender_hit(
                 entity_type="sender",
                 entity_value=s,
                 risk_score=risk_score,
@@ -142,7 +146,7 @@ class OffenderService:
         raw_urls = entities.get("raw_urls", {})
         for u in entities["urls"]:
             full_example = raw_urls.get(u, u)
-            off = db_instance.record_offender_hit(
+            off = db.record_offender_hit(
                 entity_type="url",
                 entity_value=u,
                 risk_score=risk_score,
@@ -156,7 +160,7 @@ class OffenderService:
 
         # Record Phone numbers
         for p in entities["phones"]:
-            off = db_instance.record_offender_hit(
+            off = db.record_offender_hit(
                 entity_type="phone",
                 entity_value=p,
                 risk_score=risk_score,
@@ -169,7 +173,7 @@ class OffenderService:
 
         # Record Emails
         for e in entities["emails"]:
-            off = db_instance.record_offender_hit(
+            off = db.record_offender_hit(
                 entity_type="email",
                 entity_value=e,
                 risk_score=risk_score,
@@ -192,7 +196,7 @@ class OffenderService:
         page: int = 1,
         page_size: int = 50
     ) -> dict:
-        return db_instance.get_offenders(
+        return _get_db().get_offenders(
             entity_type=entity_type,
             min_risk=min_risk,
             search=search,
@@ -204,9 +208,9 @@ class OffenderService:
 
     @staticmethod
     def get_offender_by_value(entity_value: str) -> dict:
-        return db_instance.get_offender_by_value(entity_value)
+        return _get_db().get_offender_by_value(entity_value)
 
     @staticmethod
     def update_offender_status(entity_value: str, status: str, notes: str = None) -> bool:
-        return db_instance.update_offender_status(entity_value, status, notes)
+        return _get_db().update_offender_status(entity_value, status, notes)
 

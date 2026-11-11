@@ -12,7 +12,7 @@ function getCategoryBadgeClass(category) {
   const cat = (category || '').toLowerCase();
   if (['hate_speech', 'threat', 'blackmail', 'extortion'].includes(cat)) return 'badge-danger';
   if (['scam', 'fraud', 'impersonation', 'phishing', 'social_engineering'].includes(cat)) return 'badge-critical';
-  if (['offensive_language', 'cyberbullying_harassment', 'cyberbullying'].includes(cat)) return 'badge-warning';
+  if (['offensive_language', 'cyberbullying_harassment', 'cyberbullying', 'suspicious_link', 'suspicious link'].includes(cat)) return 'badge-warning';
   if (cat === 'none' || cat === 'clean') return 'badge-success';
   return 'badge-muted';
 }
@@ -20,7 +20,12 @@ function getCategoryBadgeClass(category) {
 export default function RiskBadge({ safetyStatus, severityTier, category, threatScore }) {
   const isNoText = category === 'no_text_found' || severityTier === 'no_text_found' || safetyStatus === 'no_text_found';
   const score = threatScore != null ? Math.round(threatScore) : null;
-  const catLabel = isNoText ? 'No Text Detected' : (category || 'none').replace(/_/g, ' ').replace(/\//g, ' / ');
+  const rawCat = (category || '').toLowerCase();
+  const catLabel = isNoText
+    ? 'No Text Detected'
+    : (rawCat === 'suspicious_link' || rawCat === 'suspicious link')
+      ? 'Suspicious link'
+      : (category || 'none').replace(/_/g, ' ').replace(/\//g, ' / ');
 
   return (
     <div className="flex flex-col gap-4 w-full">

@@ -550,10 +550,10 @@ class ModelService:
                             "score": score
                         })
                     else:
-                        # Item 3: A shortened link alone is Medium at most
+                        # Item 3 & 4: A shortened link alone is Medium at most, labelled "suspicious_link" (not phishing)
                         signals.append({
                             "layer": "rules",
-                            "category": "phishing",
+                            "category": "suspicious_link",
                             "signal": f"URL shortener detected ({shortener}) concealing destination; verify destination domain before clicking",
                             "score": 35.0
                         })
@@ -641,7 +641,8 @@ class ModelService:
             "phishing": 0.0,
             "scam": 0.0,
             "harassment": 0.0,
-            "abusive_language": 0.0
+            "abusive_language": 0.0,
+            "suspicious_link": 0.0
         }
 
         # 1. Link checks (strictly filed under their respective signal categories)
@@ -1392,13 +1393,16 @@ class ModelService:
             final_harassment = min(final_harassment, 10.0)
             final_abusive = min(final_abusive, 10.0)
 
+        susp_link_score = float(rules_cats.get("suspicious_link", 0.0))
+
         final_category_scores = {
             "threat": round(final_threat, 1),
             "sextortion": round(final_sextortion, 1),
             "phishing": round(final_phishing, 1),
             "scam": round(final_scam, 1),
             "harassment": round(final_harassment, 1),
-            "abusive_language": round(final_abusive, 1)
+            "abusive_language": round(final_abusive, 1),
+            "suspicious_link": round(susp_link_score, 1)
         }
 
         # Overall risk score calculation:
@@ -1408,7 +1412,8 @@ class ModelService:
             final_phishing,
             final_scam,
             final_harassment,
-            final_abusive * 0.8
+            final_abusive * 0.8,
+            susp_link_score
         ]
         max_score = max(primary_risks)
 

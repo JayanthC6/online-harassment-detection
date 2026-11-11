@@ -122,7 +122,7 @@ export default function ResultDisplay({ result }) {
           <div className="mt-4 pt-3 border-t border-border/50 text-xs font-mono text-text-muted flex items-center justify-between">
             <span>Primary Category:</span>
             <span className="font-semibold text-text-primary uppercase">
-              {(result.category || result.primary_label || 'None').replace(/_/g, ' ')}
+              {(result.category === 'suspicious_link' ? 'Suspicious link' : (result.category || result.primary_label || 'None').replace(/_/g, ' '))}
             </span>
           </div>
         </Card>

@@ -25,7 +25,7 @@ except Exception:
 # ── Canonical Taxonomy & Normalization ───────────────────────────────────────
 CANONICAL_CATEGORIES = [
     "clean", "harassment", "threat", "sextortion",
-    "phishing", "scam", "abusive_language", "unsupported"
+    "phishing", "scam", "abusive_language", "suspicious_link", "unsupported"
 ]
 
 CATEGORY_NORMALIZATION_MAP = {
@@ -56,6 +56,8 @@ CATEGORY_NORMALIZATION_MAP = {
     "toxicity": "abusive_language",
     "toxicity / offensive language": "abusive_language",
     "profanity": "abusive_language",
+    "suspicious_link": "suspicious_link",
+    "suspicious link": "suspicious_link",
     "unsupported": "unsupported",
     "unsupported_language": "unsupported",
     "unsupported language": "unsupported"
