@@ -154,7 +154,12 @@ export default function ResultDisplay({ result }) {
                 </span>
               </div>
               <div className="mt-3">
-                {isClean ? (
+                {isUnsupported ? (
+                  <div className="p-2 rounded bg-black/40 border border-slate-700/50 text-xs font-mono text-slate-400 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                    <span>Confidence: N/A</span>
+                  </div>
+                ) : isClean ? (
                   <div className="p-2 rounded bg-black/40 border border-emerald-500/30 text-xs font-mono text-emerald-300 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                     <span>No threat signals detected</span>

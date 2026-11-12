@@ -18,10 +18,15 @@ function renderConfidence(r) {
                    ((modelUsed.includes('distilbert') || modelUsed.includes('neural')) && !modelUsed.includes('rules-only') && whichLayer !== 'rules');
 
   if (whichLayer === 'rules' || !isNeural || r.confidence == null || r.confidence === 0) {
-    return <span className="text-amber-400/90 text-xs font-mono font-medium">Rules</span>;
+    return <span className="text-amber-400/90 text-xs font-mono font-medium">Detected by: rules</span>;
   }
 
-  return <span className="text-text-muted text-xs tabular-nums font-mono">{(r.confidence * 100).toFixed(1)}%</span>;
+  return (
+    <div className="flex flex-col">
+      <span className="text-[10px] text-text-muted font-mono leading-none">Model confidence</span>
+      <span className="text-blue text-xs tabular-nums font-mono font-bold leading-tight">{(r.confidence * 100).toFixed(1)}%</span>
+    </div>
+  );
 }
 
 export default function ModeratorQueue({ reportsData, conversationsData, complaintsData, filters, loading }) {

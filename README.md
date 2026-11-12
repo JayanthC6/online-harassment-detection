@@ -367,6 +367,23 @@ The Frontend is built with React 18, Vite, Tailwind CSS, Lucide Icons, and Recha
 
 ---
 
+## 🆘 Verified Crisis Helplines & Emergency Referrals
+
+ShieldAI incorporates hardcoded, zero-latency safety guardrails for immediate physical danger and mental health crises. All emergency contacts and helplines are verified against official government and non-profit portals:
+
+| Service / Organization | Hotline / Contact | Operating Hours | Official Entity / Scope | Official Verification URL | Verified Date |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **National Emergency Response (ERSS)** | `112` | 24/7 | Emergency Response Support System (Police, Medical, Fire) | [112.gov.in](https://112.gov.in/) | Nov 2026 |
+| **National Cyber Crime Helpline** | `1930` | 24/7 | Ministry of Home Affairs (Financial cyber fraud & urgent freeze) | [cybercrime.gov.in](https://cybercrime.gov.in/) | Nov 2026 |
+| **National Cyber Crime Reporting Portal** | Online Filing | 24/7 | Formal cyber harassment, blackmail, identity theft complaint lodging | [cybercrime.gov.in](https://cybercrime.gov.in/) | Nov 2026 |
+| **Tele-MANAS** | `14416` / `1800-891-4416` | 24/7 Toll-Free | Ministry of Health & Family Welfare / NIMHANS nodal center | [telemanas.mohfw.gov.in](https://telemanas.mohfw.gov.in/) | Nov 2026 |
+| **KIRAN Mental Health Helpline** | `1800-599-0019` | 24/7 Toll-Free | DEPwD, Ministry of Social Justice & Empowerment | [disabilityaffairs.gov.in](https://disabilityaffairs.gov.in/) | Nov 2026 |
+| **Vandrevala Foundation** | `+91 9999 666 555` | 24/7 Free | Confidential crisis psychological counseling & suicide prevention | [vandrevalafoundation.com](https://www.vandrevalafoundation.com/) | Nov 2026 |
+| **AASRA Crisis Center** | `+91 98204 66726` | 24/7 | Community emotional crisis support & suicide intervention | [aasra.info](http://www.aasra.info/) | Nov 2026 |
+| **StopNCII.org** | Web Service | 24/7 | Non-consensual intimate image hash protection (SWGfL initiative) | [stopncii.org](https://stopncii.org/) | Nov 2026 |
+
+---
+
 ## 📁 Repository Directory Structure
 
 ```

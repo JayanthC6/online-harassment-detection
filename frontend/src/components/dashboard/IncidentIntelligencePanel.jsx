@@ -39,6 +39,11 @@ export default function IncidentIntelligencePanel({ report, onClose }) {
                         (report.model_used && (report.model_used.toLowerCase().includes('bert') || report.model_used.toLowerCase().includes('distilbert') || report.model_used.toLowerCase().includes('neural'))) ||
                         (report.model && (report.model.toLowerCase().includes('bert') || report.model.toLowerCase().includes('distilbert') || report.model.toLowerCase().includes('neural')));
 
+  const isUnsupported = report.category === 'unsupported' ||
+                        report.severity_tier === 'Unsupported' ||
+                        report.risk_level === 'unsupported' ||
+                        report.language_supported === false;
+
   const handleSummarize = async () => {
     setLoadingSummary(true);
     try {
@@ -181,8 +186,13 @@ export default function IncidentIntelligencePanel({ report, onClose }) {
               <Card className="p-4 flex flex-col justify-center bg-black/40 border-border/50 rounded-xl shadow-inner">
                 <p className="text-[10px] text-text-muted font-mono uppercase tracking-wider mb-1 flex items-center gap-1"><Shield size={12} /> Confidence</p>
                 <div className="flex items-end gap-2">
-                  {isNeuralModel ? (
-                    <span className="text-3xl font-extrabold text-blue font-mono tabular-nums leading-none drop-shadow-[0_0_5px_rgba(0,242,254,0.4)]">{(report.confidence * 100).toFixed(1)}%</span>
+                  {isUnsupported ? (
+                    <span className="text-2xl font-bold text-text-muted font-mono tracking-tight leading-tight">N/A</span>
+                  ) : isNeuralModel ? (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-text-muted font-mono leading-none mb-1">Model confidence</span>
+                      <span className="text-3xl font-extrabold text-blue font-mono tabular-nums leading-none drop-shadow-[0_0_5px_rgba(0,242,254,0.4)]">{(report.confidence * 100).toFixed(1)}%</span>
+                    </div>
                   ) : (
                     <span className="text-sm font-bold text-amber-400 font-mono tracking-tight leading-tight">Detected by: rules</span>
                   )}
@@ -194,14 +204,14 @@ export default function IncidentIntelligencePanel({ report, onClose }) {
               <div className="p-4 flex justify-between items-center relative overflow-hidden">
                 <div 
                   className="absolute left-0 top-0 bottom-0 bg-redaction-red/20 z-0" 
-                  style={{ width: isNeuralModel ? `${(report.confidence || 0) * 100}%` : '100%' }}
+                  style={{ width: isUnsupported ? '0%' : isNeuralModel ? `${(report.confidence || 0) * 100}%` : '100%' }}
                 />
                 <div className="relative z-10 flex items-center gap-3">
                   <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-white bg-critical/80 px-2.5 py-1 rounded-none shadow-[0_0_5px_rgba(244,63,94,0.5)]">Primary</span>
                   <span className="font-bold font-mono uppercase text-white text-sm drop-shadow-[0_0_3px_rgba(0,242,254,0.3)]">{report.primary_label || report.category.replace('_', ' ')}</span>
                 </div>
                 <span className="relative z-10 text-xs font-mono font-bold text-slate-400 tabular-nums">
-                  {isNeuralModel ? `${(report.confidence * 100).toFixed(1)}% match` : 'Detected by: rules'}
+                  {isUnsupported ? 'N/A' : isNeuralModel ? `${(report.confidence * 100).toFixed(1)}% match` : 'Detected by: rules'}
                 </span>
               </div>
               
@@ -209,14 +219,14 @@ export default function IncidentIntelligencePanel({ report, onClose }) {
                 <div key={label} className="p-4 flex justify-between items-center relative overflow-hidden">
                   <div 
                     className="absolute left-0 top-0 bottom-0 bg-alert-amber/20 z-0" 
-                    style={{ width: isNeuralModel ? `${conf * 100}%` : '100%' }}
+                    style={{ width: isUnsupported ? '0%' : isNeuralModel ? `${conf * 100}%` : '100%' }}
                   />
                   <div className="relative z-10 flex items-center gap-3">
                     <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-white bg-danger/80 px-2.5 py-1 rounded-none shadow-[0_0_5px_rgba(249,115,22,0.5)]">Secondary</span>
                     <span className="font-bold font-mono text-text-primary text-sm">{label}</span>
                   </div>
                   <span className="relative z-10 text-xs font-mono font-bold text-slate-400 tabular-nums">
-                    {isNeuralModel ? `${(conf * 100).toFixed(1)}% match` : 'Detected by: rules'}
+                    {isUnsupported ? 'N/A' : isNeuralModel ? `${(conf * 100).toFixed(1)}% match` : 'Detected by: rules'}
                   </span>
                 </div>
               ))}
