@@ -270,7 +270,7 @@ All incident preview snippets, repeat offender timeline entries, and citizen com
 
 ## 🧪 Comprehensive Verification & Test Suite
 
-The ShieldAI backend includes a 53-test automated pytest suite covering detection accuracy, safety guardrails, chat export parsing, multilingual safety invariants, and API security.
+The ShieldAI backend includes a 96-test automated pytest suite covering detection accuracy, safety guardrails, chat export parsing, multilingual safety invariants, multi-provider LLM fallbacks, and API security.
 
 ### Running Pytest
 ```powershell
@@ -278,7 +278,7 @@ $env:PYTHONPATH="backend"
 .\venv\Scripts\python.exe -m pytest -q
 ```
 
-### Complete Test Suite Collection (53 Tests)
+### Complete Test Suite Collection (96 Tests)
 ```
 backend/tests/test_chat_export_regression.py::test_chat_export_flagged_actors_regression
 backend/tests/test_chatbot.py::TestAnthropicPathAndFallback::test_default_anthropic_model_is_current
@@ -355,12 +355,15 @@ The Frontend is built with React 18, Vite, Tailwind CSS, Lucide Icons, and Recha
 4. **Repeat Offender Tracking (`RepeatOffenders.jsx`):**
    - Tracked entity cards categorized by Sender, Phone, URL, and Email.
    - Risk timeline charting escalating incident hits, peak risk score, and active monitoring status.
-5. **AI Safety Chatbot (`ChatbotPanel.jsx`):**
+5. **AI Safety Chatbot (`ChatbotPanel.jsx` & `ChatPage.jsx`):**
+   - Multi-provider real model integration (Groq `llama-3.3-70b-versatile` & Claude `claude-haiku-5-5`) with dynamic model selection and automatic graceful fallback to the rule engine on rate-limit (429), timeout, or invalid credentials.
    - Dual-persona operational modes:
-     - **Victim Support Mode:** Calm, non-victim-blaming guidance with concrete immediate steps and helpline contacts (Emergency: 112, Cybercrime Helpline: 1930, National Cybercrime Portal: `cybercrime.gov.in`).
-     - **Security Analyst Mode:** Structured intelligence report detailing classification scores, verified indicators, grounded attacker tactics, and legal guidance under the IT Act.
-   - Non-intrusive engine indicator (`engine: claude` or `engine: rules`).
-   - Resilient prompt injection defenses and crisis hotline interception.
+     - **Victim Support Mode:** Calm, non-victim-blaming guidance with concrete immediate steps and helpline contacts (Emergency: 112, Cybercrime Helpline: 1930, National Cybercrime Portal: `cybercrime.gov.in`, StopNCII.org).
+     - **Security Analyst Mode:** Structured intelligence report detailing classification scores, verified indicators, grounded attacker tactics, SOC mitigation steps, and legal guidance under the IT Act 2000 & BNS/IPC.
+   - Transparent engine indicator badge (`Groq`, `Claude`, or `Rules`).
+   - Delimiter-wrapped passive evidence ingestion (`<<<PASTED_USER_CONTENT>>>`) to neutralize prompt injections.
+   - Automated PII redaction (phones, emails, Aadhaar, PAN) before sending data to external LLMs.
+   - Zero-latency rule-based pre-model interception for immediate crisis/self-harm queries.
 6. **Citizen Complaint Portal (`SubmitComplaint.jsx` & `IncidentHistory.jsx`):**
    - Self-service portal for victims to file harassment and extortion incidents with screenshot and chat export attachments.
    - Tracking dashboard for reviewing complaint status and recommendations.

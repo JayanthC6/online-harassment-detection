@@ -98,6 +98,34 @@ def make_release(output_path: str = None) -> str:
     zip_size_mb = os.path.getsize(output_path) / (1024 * 1024)
     raw_size_mb = total_uncompressed_bytes / (1024 * 1024)
 
+    # ── Post-Packaging Security & Secret Audit ──
+    print("\n[*] Running security and credential leakage audit on archive...")
+    security_violations = []
+    with zipfile.ZipFile(output_path, "r") as check_zip:
+        for zinfo in check_zip.infolist():
+            zname = zinfo.filename
+            if zname.endswith(".env") or zname.endswith(".db"):
+                security_violations.append(f"Sensitive file included: {zname}")
+            # Scan text files for API keys
+            if any(zname.endswith(ext) for ext in [".py", ".json", ".js", ".jsx", ".md", ".txt", ".env.example"]):
+                try:
+                    content = check_zip.read(zname).decode("utf-8", errors="ignore")
+                    for bad_pat in [r"gsk_[a-zA-Z0-9]{20,}", r"sk-ant-[a-zA-Z0-9]{20,}", r"-----BEGIN (?:RSA )?PRIVATE KEY"]:
+                        import re
+                        m = re.search(bad_pat, content)
+                        if m and not ("test" in zname.lower() or "example" in zname.lower() or "mock" in zname.lower()):
+                            security_violations.append(f"Potential credential pattern {bad_pat} in {zname}")
+                except Exception:
+                    pass
+
+    if security_violations:
+        print("[!] SECURITY AUDIT FAILED:")
+        for v in security_violations:
+            print(f"    - {v}")
+        raise RuntimeError("Security violations found in packaged archive!")
+    else:
+        print("  [OK] Security audit passed: Zero API keys, secrets, or persistent databases found.")
+
     print(f"\n[+] Archive packaged successfully:")
     print(f"    - Total Files:            {total_files}")
     print(f"    - Model Files Included:   {model_files_included}")

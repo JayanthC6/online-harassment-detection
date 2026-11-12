@@ -137,12 +137,21 @@ def run():
     except Exception:
         print("  [INFO] Audio Engine:          faster-whisper not installed (optional)")
 
-    # Anthropic Claude API Key
+    # LLM Chatbot Provider Check (Groq / Anthropic / Rules)
+    llm_provider = os.environ.get("LLM_PROVIDER", "none").lower()
+    groq_key = os.environ.get("GROQ_API_KEY")
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
-    if anthropic_key and not anthropic_key.startswith("your_"):
-        print("  [OK]   LLM Chatbot API:       ANTHROPIC_API_KEY configured")
+    groq_model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+    anthropic_model = os.environ.get("ANTHROPIC_MODEL", "claude-haiku-5-5")
+
+    if llm_provider == "groq" and groq_key and not groq_key.startswith("your_"):
+        print(f"  [OK]   LLM Provider:          Groq ({groq_model})")
+    elif llm_provider == "anthropic" and anthropic_key and not anthropic_key.startswith("your_"):
+        print(f"  [OK]   LLM Provider:          Anthropic ({anthropic_model})")
+    elif llm_provider != "none":
+        print(f"  [WARN] LLM Provider:          Configured as '{llm_provider}' but API key not detected -> Rule fallback active")
     else:
-        print("  [INFO] LLM Chatbot API:       ANTHROPIC_API_KEY not set (Rule-based fallback active)")
+        print("  [INFO] LLM Chatbot Provider:  Rule-based fallback active (LLM_PROVIDER=none)")
 
     # ── 6. Port Availability ──
     p5000_ok = check_port(5000)

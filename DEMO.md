@@ -12,8 +12,8 @@ This script provides an exact, minute-by-minute walkthrough to demonstrate Shiel
    .\venv\Scripts\Activate.ps1
    $env:PYTHONPATH="backend"
 
-   # Seed realistic demo data into SQLite
-   .\venv\Scripts\python.exe scripts/seed_demo_data.py --force
+   # Reset and seed canonical demo database
+   .\venv\Scripts\python.exe scripts/reset_demo.py
 
    # Launch both Backend (port 5000) and Frontend (port 5173)
    .\start.ps1
@@ -132,7 +132,7 @@ This script provides an exact, minute-by-minute walkthrough to demonstrate Shiel
   Someone is blackmailing me on Instagram saying they have photos of me and demanding $500 in 24 hours. I'm terrified.
   ```
 - **Send & Observe:**
-  - Notice the **Engine Badge** (`engine: claude` or `engine: rules`).
+  - Notice the **Engine Badge** (`Groq`, `Claude`, or `Rules`).
   - Tone is calm, supportive, and never blames the victim.
   - Specifically addresses the amount (`$500`), platform (`Instagram`), and deadline (`24 hours`).
   - Mentions that many such claims are mass-sent bluffs.
