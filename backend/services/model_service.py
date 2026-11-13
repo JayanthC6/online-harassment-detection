@@ -971,7 +971,7 @@ class ModelService:
         target_script_text = text_no_url if text_no_url else text
 
         alpha_chars = [c for c in target_script_text if c.isalpha()]
-        non_latin = [c for c in target_script_text if ord(c) > 0x024F]
+        non_latin = [c for c in alpha_chars if ord(c) > 0x024F]
 
         if non_latin and len(non_latin) >= 4:
             ratio = len(non_latin) / len(alpha_chars) if alpha_chars else 1.0
