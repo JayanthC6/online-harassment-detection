@@ -6,78 +6,90 @@ graph TD
     classDef ml fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
     classDef intel fill:#ffebee,stroke:#d32f2f,stroke-width:2px;
     classDef db fill:#eceff1,stroke:#455a64,stroke-width:2px;
+    classDef llm fill:#ede7f6,stroke:#512da8,stroke-width:2px;
     
-    subgraph "Clients (Actors)"
+    subgraph Clients["Clients & Ingestion Channels"]
         User[End User / Victim]:::user
-        Admin[Admin / SOC Analyst]:::user
-    end
-
-    subgraph "Frontend Layer (React / Vite)"
-        WebUI[React SPA Dashboard & Portal]:::frontend
+        Admin[SOC Analyst / Moderator]:::user
         ChromeExt[Chrome Extension MV3]:::frontend
+        WebUI[React 18 + Vite SPA Portal]:::frontend
     end
 
-    subgraph "Backend Layer (Flask / Python)"
-        API[Flask REST API]:::backend
-        Auth[JWT Authentication & RBAC]:::backend
-        
-        subgraph "Services Core"
-            PredService[Prediction Service]:::backend
-            EvidService[Evidence & Job Safety Service]:::backend
-            Chatbot[Groq Chatbot Service]:::backend
-        end
-        
-        subgraph "Neurosymbolic Prediction Pipeline"
-            PIIMask[PII Masking]:::ml
-            MultiLing[Multilingual Adapter <br/>NLLB-200]:::ml
-            Neural[Primary Neural Engine <br/>DistilBERT]:::ml
-            Heuristic[Heuristic Engine <br/>Regex / Rules]:::ml
-            Fusion[Noisy-OR Fusion Engine]:::ml
-        end
-        
-        subgraph "External Threat Intelligence"
-            SafeBrowse[Google Safe Browsing]:::intel
-            HIBP[Have I Been Pwned]:::intel
-            WHOIS[Domain Age / WHOIS]:::intel
-        end
+    subgraph BackendGateway["API Gateway & Security Layer (Flask :5000)"]
+        API[Flask REST API Endpoints]:::backend
+        Auth[JWT HS256 Authentication & RBAC]:::backend
+        Limiter[Flask-Limiter Rate Guard]:::backend
+        PIIMask[PII Sanitization & Masking Engine]:::backend
     end
 
-    subgraph "Persistence Layer"
-        MongoDB[(MongoDB Database)]:::db
-        LocalFS[(Local File Storage)]:::db
+    subgraph NeurosymbolicPipeline["ShieldAI Hybrid Detection Pipeline"]
+        TextNorm[Text & Script Normalizer]:::ml
+        DistilBERT[DistilBERT Neural Classifier<br/>(Toxicity & Threat Weights)]:::ml
+        Heuristics[Heuristic Regex Rules Engine<br/>(Extortion, Scams, UPI, Phone, URLs)]:::ml
+        CaptumXAI[Captum Explainable AI<br/>(Integrated Gradients Token Attribution)]:::ml
+        Fusion[Decision Aggregator & Risk Calibrator<br/>(Score 0-100 & Severity Tiers)]:::ml
     end
 
-    %% Flow
-    User -->|Submit Text/Files| WebUI
-    Admin -->|Review Incidents| WebUI
-    User -->|Real-time scan| ChromeExt
+    subgraph IntelligenceCore["Threat Intelligence & Incident Management"]
+        ChatParser[Multi-Party Chat Export Parser<br/>(Culprit Isolation & Escalation Velocity)]:::intel
+        OffenderIntel[Repeat Offender Intelligence<br/>(Normalized Domains, Senders, Hit Counts)]:::intel
+        TriageQueue[Moderator Case Triage Queue<br/>(Messages & Conversations Tabs)]:::intel
+    end
+
+    subgraph SafetyAssistant["AI Cyber Safety Assistant (Multi-Provider Router)"]
+        Router[LLM Provider Router]:::llm
+        Groq[Groq API: openai/gpt-oss-120b]:::llm
+        Claude[Anthropic API: claude-haiku-5-5]:::llm
+        OfflineRules[Grounded Rule Fallback Engine<br/>(Victim Mode & Analyst Mode)]:::llm
+        StatutoryGuidance[Statutory Safety Protocols<br/>(Helpline 1930, StopNCII, 112)]:::llm
+    end
+
+    subgraph PersistenceLayer["Persistence & Compliance Layer (SQLAlchemy ORM)"]
+        SQLite[(SQLite Database: shieldai.db)]:::db
+        ReportsTab[Reports & Incident Evidence]:::db
+        OffendersTab[Repeat Offender Profiles & Timelines]:::db
+        ConversationsTab[Conversations & Chat Exports]:::db
+        RetentionPurge[Data Retention & Privacy Purge Policy]:::db
+    end
+
+    %% Client to Gateway
+    User -->|Submit Text, Screenshot, PDF, Audio| WebUI
+    Admin -->|Manage Queue & Offender Intel| WebUI
+    User -->|Live DOM Inspection| ChromeExt
     
-    WebUI -->|HTTP Requests| API
-    ChromeExt -->|HTTP Requests| API
+    WebUI -->|REST API Requests| API
+    ChromeExt -->|Batch Scan Requests| API
     
     API --> Auth
-    Auth --> PredService
-    Auth --> EvidService
-    Auth --> Chatbot
+    API --> Limiter
+    API --> PIIMask
+
+    %% Gateway to Detection & Intelligence
+    PIIMask --> TextNorm
+    TextNorm --> DistilBERT
+    TextNorm --> Heuristics
+    DistilBERT --> CaptumXAI
     
-    PredService --> PIIMask
-    PIIMask --> MultiLing
-    MultiLing --> Neural
-    MultiLing --> Heuristic
-    MultiLing --> SafeBrowse
-    MultiLing --> HIBP
-    MultiLing --> WHOIS
-    
-    Neural --> Fusion
-    Heuristic --> Fusion
-    SafeBrowse --> Fusion
-    HIBP --> Fusion
-    WHOIS --> Fusion
-    
-    Fusion --> EvidService
-    
-    PredService --> MongoDB
-    Chatbot -.->|Context| PredService
-    
-    EvidService --> MongoDB
-    API --> LocalFS
+    DistilBERT --> Fusion
+    Heuristics --> Fusion
+    CaptumXAI --> Fusion
+
+    PIIMask --> ChatParser
+    ChatParser --> OffenderIntel
+    Fusion --> TriageQueue
+
+    %% Assistant Connections
+    WebUI <--> Router
+    Router -->|Primary Cloud Provider| Groq
+    Router -->|Secondary Cloud Provider| Claude
+    Router -->|Rate-limit / Offline Fallback| OfflineRules
+    Router --> StatutoryGuidance
+
+    %% Database Connections
+    Fusion --> SQLite
+    OffenderIntel --> SQLite
+    TriageQueue --> SQLite
+    SQLite --> ReportsTab
+    SQLite --> OffendersTab
+    SQLite --> ConversationsTab
+    SQLite --> RetentionPurge

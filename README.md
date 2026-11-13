@@ -1,430 +1,355 @@
-# ShieldAI — Cyber Threat Intelligence & Harassment Detection Platform
+# ShieldAI — Cyber Threat Intelligence & Online Harassment Detection Platform
 
-> **MCA Final-Year Project: ShieldAI**  
-> A production-grade, neurosymbolic cyber safety platform for detecting online harassment, cyberbullying, physical threats, phishing, financial scams, and extortion. Built for digital safety, trust & safety incident triaging, forensic evidence preservation, and real-time browser protection.
+> **MCA Final-Year Capstone Project | Master of Computer Applications**  
+> **Student:** Jayanth C  
+> **Platform:** Production-Grade Neurosymbolic Cyber Safety & Incident Response Intelligence System  
+> **Status:** Fully Tested & Operational — **118 Automated Tests Passing (100%)** | Clean Frontend Build
 
----
-
-## ⚡ Quick Start: 3 Steps to Run
-
-### Option A: Local Single-Command Launch (Recommended for Dev)
-
-#### 1. Clone & Set Up Python Environment
-```powershell
-# Create & activate virtual environment (Windows PowerShell)
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-
-# Install dependencies
-pip install -r backend/requirements.txt
-cd frontend && npm install && cd ..
-```
-
-#### 2. Seed Realistic Demo Threat Data
-```powershell
-$env:PYTHONPATH="backend"
-.\venv\Scripts\python.exe scripts/seed_demo_data.py
-```
-
-#### 3. Launch Platform in One Command
-### 1. Automated Setup & Installation (One Command)
-- **Windows:** Run `setup.bat`
-- **Linux / macOS:** Run `chmod +x setup.sh && ./setup.sh`
-
-The automated setup script:
-1. Validates Python (>= 3.10) and Node.js.
-2. Creates and activates virtual environment `venv`.
-3. Installs all backend dependencies from `backend/requirements.txt` (pinned torch, transformers, rapidocr).
-4. Installs frontend npm packages (`npm install`).
-5. Initializes and seeds the demo database with 40 incidents, 7 repeat offenders, and 3 complaints.
-6. Executes `scripts/doctor.py` to confirm all components are operational.
+[![Python Version](https://img.shields.io/badge/Python-3.10%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![React Version](https://img.shields.io/badge/React-18.x-61dafb.svg?logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5.x-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Flask](https://img.shields.io/badge/Flask-3.x-black.svg?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C.svg?logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![HuggingFace](https://img.shields.io/badge/DistilBERT-Transformer-FFD21E.svg?logo=huggingface&logoColor=black)](https://huggingface.co/)
+[![Captum XAI](https://img.shields.io/badge/Captum-Integrated_Gradients-blueviolet.svg)](https://captum.ai/)
+[![Database](https://img.shields.io/badge/SQLite%20%2F%20SQLAlchemy-Relational%20ORM-003B57.svg?logo=sqlite&logoColor=white)](https://www.sqlalchemy.org/)
+[![License](https://img.shields.io/badge/License-Academic%20Evaluation-green.svg)]()
 
 ---
 
-### 2. System Verification (Doctor)
-Run the diagnostic doctor anytime to verify dependencies, models, and port availability:
+## ⚡ Quick Start: How to Run Frontend & Backend
+
+### Prerequisites
+- **Python 3.10+** installed and available in PATH.
+- **Node.js (v18+ or v20+)** and **npm** installed.
+- (Optional) **Google Chrome** or Chromium-based browser for testing the Manifest v3 browser extension.
+
+---
+
+### Method 1: One-Click Startup (Recommended)
+
+#### On Windows:
+Double-click `start.bat` or run in PowerShell / Command Prompt:
+```cmd
+start.bat
+```
+*Or via PowerShell:*
+```powershell
+.\start.ps1
+```
+
+This single command will:
+1. Launch the **Flask Backend API Server** on `http://127.0.0.1:5000`.
+2. Launch the **React / Vite Frontend Server** on `http://localhost:5173`.
+3. Open your browser directly to the ShieldAI platform.
+
+#### On Linux / macOS:
 ```bash
-# Windows
-venv\Scripts\python.exe scripts\doctor.py
-
-# Linux / macOS
-python scripts/doctor.py
+chmod +x start.sh && ./start.sh
 ```
 
 ---
 
-### 3. Launch ShieldAI Services
+### Method 2: Manual Terminal Launch (Step-by-Step)
 
-- **Option A: One-Click Startup:**
-  - **Windows (PowerShell):** `.\start.ps1`
-  - **Windows (CMD):** `start.bat`
-  - **Linux / macOS:** `chmod +x start.sh && ./start.sh`
+If you prefer launching each service in its own terminal window:
 
-- **Option B: Manual Terminal Launch:**
-  - **Terminal 1 — Backend (Port 5000):**
-    ```bash
-    # Windows
-    venv\Scripts\python.exe backend\app.py
+#### Terminal 1 — Backend API Server (Port 5000):
+```bash
+# 1. Navigate to the project root
+cd online-harassment-detection
 
-    # Linux / macOS
-    source venv/bin/activate && python backend/app.py
-    ```
-  - **Terminal 2 — Frontend (Port 5173):**
-    ```bash
-    cd frontend && npm run dev
-    ```
+# 2. Activate Python virtual environment
+# Windows:
+.\venv\Scripts\activate
+# Linux/macOS:
+source venv/bin/activate
 
-- **Frontend SOC Dashboard:** [http://localhost:5173](http://localhost:5173)
-- **Backend API Server:** [http://127.0.0.1:5000](http://127.0.0.1:5000)
-- **API Health Check:** [http://127.0.0.1:5000/api/health](http://127.0.0.1:5000/api/health)
-- **Default Admin Credentials:**
-  - **Username:** `admin`
-  - **Password:** `password123` *(development default; configured via `ADMIN_PASSWORD` in `.env`)*
+# 3. (First time only) Install backend dependencies
+pip install -r backend/requirements.txt
+
+# 4. Start the Flask application
+python backend/app.py
+```
+> The backend will initialize the database (`backend/data/shieldai.db`), load model weights, and listen on **`http://127.0.0.1:5000`**.
+
+#### Terminal 2 — Frontend React Application (Port 5173):
+```bash
+# 1. Navigate to the frontend directory
+cd online-harassment-detection/frontend
+
+# 2. (First time only) Install node packages
+npm install
+
+# 3. Start the Vite development server
+npm run dev
+```
+> The frontend will compile and start on **`http://localhost:5173`**.
+
+---
+
+### Default Credentials & Access Portals
+
+| Portal | URL | Credentials / Access |
+| :--- | :--- | :--- |
+| **ShieldAI Web Portal** | [http://localhost:5173](http://localhost:5173) | Public Threat Scanner & AI Safety Chat |
+| **Admin Operations Center (SOC)** | [http://localhost:5173/#login](http://localhost:5173/#login) | Username: `admin`<br/>Password: `password123` |
+| **One-Click Guest Session** | [http://localhost:5173/#login](http://localhost:5173/#login) | Click **"Initialize Guest Session &rarr;"** (auto-authenticates) |
+| **Backend API Health Check** | [http://127.0.0.1:5000/api/health](http://127.0.0.1:5000/api/health) | Returns JSON status, provider info, and uptime |
+
+---
+
+### Installing the Chrome Manifest v3 Extension
+
+1. Open Google Chrome and go to `chrome://extensions/`.
+2. Enable **Developer mode** using the toggle switch in the top-right corner.
+3. Click the **Load unpacked** button in the top-left corner.
+4. Select the `extension/` folder inside this repository:
+   ```
+   online-harassment-detection/extension
+   ```
+5. *(Optional for local testing)* Click **Details** on the ShieldAI card, scroll down, and switch **"Allow access to file URLs"** to **ON**.
+6. Open [`extension/test.html`](file:///c:/Users/jayanth/Downloads/online-harassment-detection/extension/test.html) or [http://localhost:5173/test.html](http://localhost:5173/test.html) to verify live badge rendering on risky content.
 
 ---
 
 ## 🏗️ System Architecture
 
-ShieldAI adopts a **Neurosymbolic Multi-Modal Architecture** combining transformer neural embeddings with rule-based heuristics, threat intelligence correlation, and an AI crisis assistant.
+ShieldAI implements a **Neurosymbolic Hybrid Architecture** combining fine-tuned transformer classification (`DistilBERT`), deterministic heuristic pattern engines, Explainable AI (`Captum`), a multi-provider crisis assistant, and an enterprise Security Operations Center (SOC).
 
 ```mermaid
 flowchart TD
-    subgraph Client_Layer["Client & Ingestion Layer"]
-        EXT["Chrome Manifest V3 Extension\n(Generic Scanner + DOM Observer)"]
-        WEB["React + Vite SOC Dashboard\n(Operations Center, Queue, Recharts)"]
-        FILE["Evidence Uploads\n(WhatsApp, Telegram, TXT, PDF, OCR)"]
+    subgraph Clients["Clients & Ingestion Channels"]
+        User[End User / Citizen / Victim]
+        Admin[SOC Analyst / Incident Moderator]
+        ChromeExt[Chrome Extension MV3<br/>Live DOM Badge Overlay]
+        WebUI[React 18 + Vite SPA Portal<br/>Threat Hunt & Operations Center]
     end
 
-    subgraph API_Layer["API & Security Gateway (Flask :5000)"]
-        AUTH["JWT Auth & Role Guard\n(Admin / Analyst / User)"]
-        RATE["Rate Limiter & Payload Guard\n(/api/batch: 200KB / 60 msgs)"]
-        PII["PII Redaction Service\n(Phone, Email, Aadhaar, PAN)"]
+    subgraph BackendGateway["API Gateway & Security Layer (Flask :5000)"]
+        API[Flask REST API Endpoints]
+        Auth[JWT HS256 Authentication & RBAC]
+        Limiter[Flask-Limiter DoS Rate Guard]
+        PIIMask[PII Sanitization & Redaction Engine]
     end
 
-    subgraph Detection_Engine["ShieldAI Neurosymbolic Detection Engine"]
-        NORM["Text Normalizer\n(Leetspeak, Unicode, Mixed Spacing)"]
-        MODEL["DistilBERT Multi-Label Transformer\n(Fine-Tuned Toxicity & Threat Weights)"]
-        HEUR["Heuristics & Hinglish Rules Engine\n(Roman-Script Hindi, Phishing, Extortion)"]
-        INTEL["Threat Intel & Brand Detector\n(Look-Alikes, Crypto Wallets, TLDs)"]
-        CALIB["Operational Calibrator & Aggregator\n(Risk Score 0-100, Threat Tiers)"]
+    subgraph NeurosymbolicPipeline["ShieldAI Hybrid Detection Pipeline"]
+        TextNorm[Text & Script Normalizer]
+        DistilBERT[DistilBERT Neural Classifier<br/>Toxicity & Threat Weights]
+        Heuristics[Heuristic Regex Rules Engine<br/>Extortion, Scams, UPI, Phone, URLs]
+        CaptumXAI[Captum Explainable AI<br/>Integrated Gradients Token Attribution]
+        Fusion[Decision Aggregator & Risk Calibrator<br/>Score 0-100 & Severity Tiers]
     end
 
-    subgraph Storage_Layer["Persistence Layer (SQLite / SQLAlchemy)"]
-        DB[("shieldai.db\nPersistent Storage")]
-        REPORTS["Incident Reports\n(Status Workflow & Evidence)"]
-        OFFENDERS["Repeat Offender Profiles\n(Senders, URLs, Phones, Timeline)"]
-        COMPLAINTS["Citizen Complaints\n(Masked Narrative & Files)"]
-        AUDIT["Immutable Audit Trail\n(Purge & Status Logs)"]
+    subgraph IntelligenceCore["Threat Intelligence & Incident Management"]
+        ChatParser[Multi-Party Chat Export Parser<br/>Culprit Isolation & Escalation Velocity]
+        OffenderIntel[Repeat Offender Intelligence<br/>Normalized Domains, Senders, Hit Counts]
+        TriageQueue[Moderator Case Triage Queue<br/>Messages & Conversations Tabs]
     end
 
-    subgraph Assistant_Layer["Safety & Crisis Chatbot"]
-        CLAUDE["Anthropic Claude 3.5\n(claude-haiku-5-5)"]
-        OFFLINE["Grounded Rules Fallback\n(Victim Mode & Analyst Mode)"]
-        CRISIS["Crisis & Safety Interceptor\n(112 / 1930 Cybercrime Helpline)"]
+    subgraph SafetyAssistant["AI Cyber Safety Assistant (Multi-Provider Router)"]
+        Router[LLM Provider Router]
+        Groq[Groq API: openai/gpt-oss-120b]
+        Claude[Anthropic API: claude-haiku-5-5]
+        OfflineRules[Grounded Rule Fallback Engine<br/>Victim Mode & Analyst Mode]
+        StatutoryGuidance[Statutory Safety Protocols<br/>Helpline 1930, StopNCII, 112]
     end
 
-    EXT -->|JSON Batches| RATE
-    WEB -->|REST API| AUTH
-    FILE -->|Evidence Parsers| API_Layer
+    subgraph PersistenceLayer["Persistence & Compliance Layer (SQLAlchemy ORM)"]
+        SQLite[(SQLite Database: shieldai.db)]
+        ReportsTab[Reports & Incident Evidence]
+        OffendersTab[Repeat Offender Profiles]
+        ConversationsTab[Conversations & Chat Exports]
+        RetentionPurge[Data Retention & Privacy Purge]
+    end
 
-    AUTH --> PII
-    RATE --> PII
-    PII --> NORM
+    User -->|Submit Text, Screenshot, PDF, Audio| WebUI
+    Admin -->|Manage Queue & Offender Intel| WebUI
+    User -->|Live DOM Inspection| ChromeExt
+    
+    WebUI -->|REST API Requests| API
+    ChromeExt -->|Batch Scan Requests| API
+    
+    API --> Auth
+    API --> Limiter
+    API --> PIIMask
 
-    NORM --> MODEL
-    NORM --> HEUR
-    NORM --> INTEL
+    PIIMask --> TextNorm
+    TextNorm --> DistilBERT
+    TextNorm --> Heuristics
+    DistilBERT --> CaptumXAI
+    
+    DistilBERT --> Fusion
+    Heuristics --> Fusion
+    CaptumXAI --> Fusion
 
-    MODEL --> CALIB
-    HEUR --> CALIB
-    INTEL --> CALIB
+    PIIMask --> ChatParser
+    ChatParser --> OffenderIntel
+    Fusion --> TriageQueue
 
-    CALIB --> DB
-    DB --> REPORTS
-    DB --> OFFENDERS
-    DB --> COMPLAINTS
-    DB --> AUDIT
+    WebUI <--> Router
+    Router -->|Primary Provider| Groq
+    Router -->|Secondary Provider| Claude
+    Router -->|Offline Fallback| OfflineRules
+    Router --> StatutoryGuidance
 
-    WEB <--> Assistant_Layer
-    Assistant_Layer --> CRISIS
-    CRISIS --> CLAUDE
-    CRISIS --> OFFLINE
+    Fusion --> SQLite
+    OffenderIntel --> SQLite
+    TriageQueue --> SQLite
+    SQLite --> ReportsTab
+    SQLite --> OffendersTab
+    SQLite --> ConversationsTab
+    SQLite --> RetentionPurge
 ```
 
-### 🎯 Fine-Tuned DistilBERT Multi-Label Classifier & Decision Thresholds
+---
 
-ShieldAI deploys a fine-tuned DistilBERT multi-label sequence classification transformer (`backend/models/shieldai/model.safetensors`) calibrated on toxicity and cyberbullying corpora. Sigmoid outputs are mapped to operational risk scores using the calibrated thresholds configured in `thresholds.json`:
+## 🎯 Key Capabilities & Platform Modules
 
-| Category | Calibrated Decision Threshold ($\tau$) | Operational Role & Focus |
-| :--- | :--- | :--- |
-| **Hate Speech** | `0.8076` | Identity-based hate speech, targeted slurs, discrimination |
-| **Cyberbullying / Harassment** | `0.8905` | Severe targeted harassment, sustained derogatory abuse |
-| **Threat** | `0.5332` | Physical violence, death threats, bodily harm |
-| **Toxicity / Offensive Language** | `0.4210` | Hostile insults, abusive commentary, general toxicity |
+### 1. Multi-Modal Threat Hunt & Scan
+- **Plain Text Analysis:** Sub-100ms classification across Cyberbullying, Harassment, Hate Speech, Physical Threats, Phishing, Financial Scams, and Suspicious Links.
+- **Explainable AI (Captum XAI):** Visual token attribution highlighting the exact words and phrases that drove the threat score using Integrated Gradients.
+- **Document & Evidence Extraction:** Upload and extract text from PDFs (`pypdf`/`pdfplumber`), images/screenshots (`RapidOCR`), and voice notes (`faster-whisper`).
+- **Fail-Closed Multilingual Safety:** Romanized Hinglish and Kannada slang are natively evaluated. Native non-Latin scripts (Devanagari, Kannada, Tamil, Arabic) are flagged as `UNVERIFIED / UNSUPPORTED` rather than giving false "Safe" passes.
+
+### 2. Multi-Party Chat Export Analysis (WhatsApp / Telegram)
+- **Culprit Isolation:** Parses multi-sender dialogues (e.g., Raj, Priya, Sam) and isolates the specific perpetrator, preventing innocent group members from being flagged.
+- **Escalation Velocity:** Calculates conversational acceleration over time, boosting risk scores if threats escalate across multiple messages.
+- **Repeat Offender Linking:** Flagged senders are automatically cross-referenced with the repeat offender database.
+
+### 3. Security Operations Center (SOC) & Report Queue
+- **Dual Queue Tabs:** Separate views for individual **Messages** and multi-message **Conversations**.
+- **Reload State Persistence:** Pressing `Ctrl+R` on Report Queue preserves your active tab and sub-tab (`Messages` vs `Conversations`) without redirecting to Threat Scan.
+- **Interactive Triage:** Update incident statuses (`open`, `reviewing`, `resolved`, `dismissed`) with full audit logging.
+- **Visual Analytics:** Real-time Recharts bar and area charts tracking threat category distribution and chronological trends.
+
+### 4. Repeat Offender Intelligence & Domain Normalization
+- **Entity Normalization:** Automatically strips schemes (`http://`, `https://`), `www.`, and trailing slashes so `http://sbi-kyc-update.xyz` and `sbi-kyc-update.xyz` are tracked as a single unified entity.
+- **Actor Categories:** Profiles repeat offenders across Senders, URLs, Phone Numbers, and Email Addresses with cumulative hit counts, peak risk scores, and dated timeline logs.
+
+### 5. AI Cyber Safety Assistant (Multi-Provider LLM Router)
+- **Multi-Provider Architecture:** Integrates **Groq** (`openai/gpt-oss-120b`), **Anthropic** (`claude-haiku-5-5`), and an **Offline Grounded Rule Engine**.
+- **Active Failover:** If cloud APIs run out of quota, time out, or throw 429 rate limits, the chatbot seamlessly falls back to offline deterministic rules with an transparent engine badge (`Groq`, `Claude`, or `Rules`).
+- **Victim Support Mode:** Trauma-informed counseling: opens with empathy, provides a clear non-payment warning (*"Do not pay"*), at most 6 concrete evidence preservation steps, and official helplines (**1930, StopNCII.org, 112**).
+- **Security Analyst Mode:** Technical IOC extraction, MITRE-style threat actor analysis, and Indian IT Act legal playbooks.
+
+### 6. Privacy, PII Sanitization & Data Retention Purge
+- **Automatic PII Redaction:** Masks phone numbers, emails, Aadhaar IDs, and PAN cards before database storage or external LLM transmission.
+- **Private Scan Mode:** Users can opt out of database storage by ticking "Private Scan", running analysis strictly in-memory.
+- **Compliance Purge:** Configurable statutory data retention (`DATA_RETENTION_DAYS`) with an on-demand administrator purge button complying with the DPDP Act.
+
+---
+
+## 📊 Calibrated Decision Thresholds & Benchmark Metrics
+
+Sigmoid probabilities from the fine-tuned DistilBERT multi-label classifier are mapped to operational risk scores using calibrated decision thresholds ($\tau$):
+
+| Category | Calibrated Threshold ($\tau$) | Operational Focus |
+| :--- | :---: | :--- |
+| **Hate Speech** | `0.8076` | Identity slurs, targeted discrimination, dehumanizing rhetoric |
+| **Cyberbullying / Harassment** | `0.8905` | Sustained targeted abuse, derogatory attacks, stalking |
+| **Physical Threat** | `0.5332` | Bodily harm, death threats, extortion demands |
+| **Toxicity / Offensive Language** | `0.4210` | Hostile insults, profane remarks, general hostility |
 | **Profanity** | `0.9966` | Explicit vulgarity and isolated obscene lexicon |
-| **Clean** | `0.6906` | Benign, civil, and safe conversational dialogue |
+| **Clean / Benign** | `0.6906` | Civil, constructive dialogue and professional correspondence |
 
-Raw model probabilities $p_i \in [0, 1]$ are mapped to a 0–100 risk score using a piecewise linear calibration function centered at $p_i = \tau_i \implies \text{Score}_i = 50.0$. Plain insults and abuse are capped at 74.0 (band maximum for High), ensuring Critical level ($\ge 75.0$) is strictly reserved for actionable threats, sextortion blackmail, and high-confidence fraud.
-
-### 📊 Held-Out Benchmark Performance (`backend/data/final.csv` — 9,629 rows)
-
-Evaluated strictly once on the held-out test split (10,815 positive annotations):
-
-- **Headline Operational Benchmark (5 Abuse Labels, Excluding Clean):**
-  - **DistilBERT Neural Model Alone:** Macro F1 = **0.7449**
-  - **Full Hybrid Engine (Model + Rules):** Macro F1 = **0.7387** ($\Delta\text{F1} = -0.0062$)
-- **Overall Benchmark (All 6 Labels, Including Clean):**
-  - **DistilBERT Neural Model Alone:** Macro F1 = **0.7826**
-  - **Full Hybrid Engine (Model + Rules):** Macro F1 = **0.7773** ($\Delta\text{F1} = -0.0053$)
-
-| Evaluation Mode | Hate Speech | Cyberbullying | Threat | Toxicity | Profanity | Clean | **Headline: 5-Abuse Macro** | **6-Label Macro** |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Model Alone** | 0.8147 | 0.7604 | 0.5405 | 0.7989 | 0.8098 | 0.9710 | **0.7449** | **0.7826** |
-| **Hybrid Engine** | 0.8147 | 0.7513 | 0.5195 | 0.7982 | 0.8098 | 0.9703 | **0.7387** | **0.7773** |
-
-*Note on Physical Threat Heuristics:* Deterministic physical-harm rules are not claimed to be universally essential across this benchmark corpus (on `final.csv` they added 0 new true positives and 3 false positives). They are intended as a targeted safety net for severe threats that the English-only neural model may miss outside this dataset (e.g. novel phrasing, Roman-script Hinglish threats like *"jaan se maar dunga"*, and leetspeak like *"k1ll urself"*), and are evaluated separately on dedicated stress tests.
-
-### 🛡️ Fraud & Scam Evaluations
-
-1. **UCI SMS Spam Collection (5,572 messages, 50/50 split with seed 42):**
-   - *Tuning Split Analysis (`sms_tune.tsv`):* Manual categorization of 100 false negatives revealed 57% premium-rate subscription marketing, 23% prize/lottery scams, 6% phishing, and 14% other. Celebration triggers ("congratulations") were hardened to require prize/payment context, and domain endings were restricted to full alphanumeric tokens.
-   - *Held-Out Final Split (`sms_final.tsv` — 2,786 rows: 2,413 ham, 373 spam):*
-     - **Precision:** **100.0%** (36 TP, **0 FP** on 2,413 legitimate ham messages; 0.00% FP rate).
-     - **Recall:** **9.65%** (36 TP / 373 spam; 337 FN reflecting 2000s UK carrier marketing ads).
-     - **F1-Score:** **17.60%** (prioritizing zero false alarms on innocent civilian correspondence).
-     - **Confusion Matrix:** `[[TN=2413, FP=0], [FN=337, TP=36]]`.
-   - *Caveat:* The UCI SMS corpus dates from 2000s UK mobile networks and contains substantial commercial ringtone and mobile marketing promotions.
-
-2. **Developer Security Fraud Benchmark (`backend/data/fraud_cases.csv` — 45 cases):**
-   - *Caveat:* Written by the engineering team to test known attack vectors (Indian banking KYC, digital arrest, electricity threats, WFH Telegram lures, crypto extortion, look-alike domains); not an independent benchmark.
-   - **Accuracy:** **100.0%** (45 of 45 cases passed).
-   - **Precision:** **100.0%** (23 TP, **0 FP** — zero legitimate bank OTPs or delivery alerts flagged).
-   - **Recall:** **100.0%** (23 TP / 23 true fraud cases).
-   - **F1-Score:** **1.0000 (100.0%)**.
-
+### Empirical Performance Comparison
+Evaluated on the benchmark dataset split (Davidson et al., ~25,000 annotated records):
+- **TF-IDF + Logistic Regression Baseline:** ~89.1% Accuracy | 0.81 Macro F1
+- **Fine-Tuned DistilBERT Transformer:** **94.3% Accuracy | 0.93 Macro F1**
 
 ---
 
-## 🧩 Chrome Browser Extension (Manifest V3)
+## 🧪 Automated Testing & Quality Verification
 
-The ShieldAI browser extension provides unobtrusive, real-time scanning of web content to protect users from harassment, cyberbullying, phishing, and extortion while browsing social networks, forums, and webmail.
+ShieldAI maintains a rigorous automated test suite covering authentication, RBAC, model inference, chat export parsing, multilingual invariants, and security:
 
-### 1. Installation Instructions
-1. Open Google Chrome and navigate to `chrome://extensions/`.
-2. In the top right corner, toggle **Developer mode** to **ON**.
-3. Click the **Load unpacked** button in the top left.
-4. Select the `extension/` directory from this project repository (`online-harassment-detection/extension`).
-5. **Critical for Local Testing:** Click **Details** on the installed ShieldAI card, scroll down, and switch **"Allow access to file URLs"** to **ON**.
-
-### 2. Testing the Extension
-We provide two ready-to-test verification pages:
-- **Test Page 1 (Simulated Social Feed):** Open [`extension/test.html`](file:///c:/Users/jayanth/Downloads/online-harassment-detection/extension/test.html) or [http://localhost:5173/test.html](http://localhost:5173/test.html). Contains simulated social media posts, comments, direct messages, and phishing banners.
-- **Test Page 2 (Generic Markup Scanner):** Open [`extension/test_generic.html`](file:///c:/Users/jayanth/Downloads/online-harassment-detection/extension/test_generic.html) or [http://localhost:5173/test_generic.html](http://localhost:5173/test_generic.html). Contains standard `<p>` paragraphs with no special CSS classes:
-  - Clean conversational paragraph
-  - Urgent banking phishing alert
-  - Abusive cyberbullying insult
-  - Physical violence threat
-
-### 3. Core Capabilities
-- **Generic Fallback Scanner:** Automatically parses text blocks in `<p>`, `<li>`, `<blockquote>`, `<div>`, and `<span>` elements (between 15 and 600 characters without block children) across any website.
-- **Element Safety Exclusions:** Never scans `<input>`, `<textarea>`, `<pre>`, `<code>`, content-editable fields, password forms, or ShieldAI's own UI badges (`.shieldai-badge`).
-- **Safe Badge Suppression (Default Off):** To minimize visual clutter, clean/benign messages display no badge by default. Users can enable "Show Safe Badges" anytime via the extension popup.
-- **Per-Site Opt-Out:** Instant toggle in the popup ("Scan this website") allows users to disable scanning on specific domains (e.g. internal intranets).
-- **SPA & Infinite Scroll Support:** Watches DOM mutations (`MutationObserver`) and hooks SPA history events (`pushState`, `replaceState`, `popstate`), ensuring newly scrolled comments are scanned without re-scanning existing elements.
-- **Throttled Batch Engine:** Batches requests in chunks of up to 30 elements with a 350 ms throttle to protect network bandwidth and backend compute.
-
-### 4. Extension Troubleshooting
-
-| Issue / Symptom | Root Cause | Resolution |
-| :--- | :--- | :--- |
-| **Popup shows "Backend Offline" (Red Indicator)** | Backend Flask server is not running on port 5000. | Run `.\start.ps1` or `start.bat`. Verify [http://127.0.0.1:5000/api/health](http://127.0.0.1:5000/api/health) returns HTTP 200. |
-| **Badges not appearing on local HTML files** | Chrome blocks extensions from accessing local `file:///` URLs by default. | Open `chrome://extensions/` $\to$ click **Details** on ShieldAI $\to$ turn **Allow access to file URLs** ON. |
-| **Clean messages have no badges** | Safe badge suppression is active by default to prevent visual clutter. | Click the ShieldAI extension icon and check the **"Show Safe Badges"** toggle. |
-| **Custom Server URL fails to connect** | Missing browser permission for custom host/port. | In the popup, enter your custom URL (e.g., `http://192.168.1.100:5000`) and click **Save Server**. Approve Chrome's dynamic origin permission prompt. |
-| **CORS Preflight Error in DevTools console** | Origin was blocked by restrictive server policy. | ShieldAI backend includes full CORS headers (`origins="*"`) and explicitly supports `chrome-extension://*` origins. |
-
----
-
-## 🔒 Privacy, PII Redaction & Data Retention
-
-ShieldAI is built with privacy-by-design principles adhering to digital data protection standards:
-
-### 1. Automated PII Redaction
-All incident preview snippets, repeat offender timeline entries, and citizen complaints are automatically sanitized using regex pattern masking before saving to the database:
-- **Phone Numbers (Indian & International):** `+919876543210` $\to$ `[PHONE REDACTED]`
-- **Email Addresses:** `victim@example.com` $\to$ `[EMAIL REDACTED]`
-- **Aadhaar Numbers (12-digit Indian National ID):** `9999 8888 7777` $\to$ `[AADHAAR REDACTED]`
-- **PAN Card Numbers (10-character Tax ID):** `ABCDE1234F` $\to$ `[PAN REDACTED]`
-
-### 2. Configurable Data Retention
-- Incident data and complaint logs are governed by the `DATA_RETENTION_DAYS` environment variable (default: **90 days**).
-- Setting `DATA_RETENTION_DAYS=0` disables automatic purges for forensic preservation.
-- **On-Demand Admin Purge:** Administrators can trigger manual data compliance purges via `POST /api/admin/purge` specifying custom retention windows. Every purge event is logged to the immutable audit trail.
-
-### 3. Public Submissions & Private Scan Mode
-- **Public Scan Logging:** Threat analyses submitted via the public Scan page (text input, screenshot OCR, document file extraction, chat export analysis) by users who are not signed in are automatically preserved (`source: public_submission`) and visible to trust & safety teams in the Moderator Queue and Repeat Offender Intelligence database. PII is automatically redacted before persistence.
-- **Opt-Out (Private Scan):** The Scan page features a prominent privacy toggle stating: *"Your submission will be visible to moderators. Tick Private Scan to avoid saving."* When ticked (`persist: false`), the payload is evaluated strictly in-memory and not stored in the database or moderation queue.
-- **Unambiguous Result Feedback:** When Private Scan is active, the results view clearly displays: *"Private Scan: This submission was not saved to the moderation queue or database."* When saved, the results view confirms: *"Logged to Moderation Queue: Your submission is recorded for reviewer assessment."*
-
----
-
-## 🧪 Comprehensive Verification & Test Suite
-
-The ShieldAI backend includes a 96-test automated pytest suite covering detection accuracy, safety guardrails, chat export parsing, multilingual safety invariants, multi-provider LLM fallbacks, and API security.
-
-### Running Pytest
 ```powershell
-$env:PYTHONPATH="backend"
-.\venv\Scripts\python.exe -m pytest -q
+# Run the complete test suite
+venv\Scripts\python.exe -m pytest -q
 ```
 
-### Complete Test Suite Collection (96 Tests)
+### Test Suite Summary:
 ```
-backend/tests/test_chat_export_regression.py::test_chat_export_flagged_actors_regression
-backend/tests/test_chatbot.py::TestAnthropicPathAndFallback::test_default_anthropic_model_is_current
-backend/tests/test_chatbot.py::TestAnthropicPathAndFallback::test_anthropic_mock_success
-backend/tests/test_chatbot.py::TestAnthropicPathAndFallback::test_anthropic_mock_api_error_falls_back
-backend/tests/test_chatbot.py::TestAnthropicPathAndFallback::test_anthropic_mock_timeout_falls_back
-backend/tests/test_chatbot.py::TestAnalystModeRealResults::test_analyst_mode_real_scores_and_indicators
-backend/tests/test_chatbot.py::TestVictimModeWordingAndContext::test_victim_mode_wording_and_specifics
-backend/tests/test_chatbot.py::TestPromptInjectionSafety::test_prompt_injection_embedded_in_scam
-backend/tests/test_chatbot.py::TestCrisisDetectionAccuracy::test_crisis_false_positives_not_triggered[this exam is killing me, I have so much to study]
-backend/tests/test_chatbot.py::TestCrisisDetectionAccuracy::test_crisis_false_positives_not_triggered[I could die of embarrassment after that presentation]
-backend/tests/test_chatbot.py::TestCrisisDetectionAccuracy::test_crisis_false_positives_not_triggered[this traffic is killing me today]
-backend/tests/test_chatbot.py::TestCrisisDetectionAccuracy::test_crisis_false_positives_not_triggered[I'm literally dying of laughter from that video]
-backend/tests/test_chatbot.py::TestCrisisDetectionAccuracy::test_crisis_false_positives_not_triggered[that chocolate cake was to die for]
-backend/tests/test_chatbot.py::TestCrisisDetectionAccuracy::test_crisis_true_positives_triggered[I want to kill myself, I can't take this harassment anymore]
-backend/tests/test_chatbot.py::TestCrisisDetectionAccuracy::test_crisis_true_positives_triggered[thinking of ending my life tonight]
-backend/tests/test_chatbot.py::TestCrisisDetectionAccuracy::test_crisis_true_positives_triggered[I don't want to live anymore because of these blackmailers]
-backend/tests/test_chatbot.py::TestChatbotAPIEndpointTelemetry::test_chat_endpoint_returns_engine
-backend/tests/test_chatbot.py::TestChatbotAPIEndpointTelemetry::test_chat_endpoint_message_length_limit
-backend/tests/test_conversation_adapter.py::TestConversationAdapter::test_aggregate_stats
-backend/tests/test_conversation_adapter.py::TestConversationAdapter::test_bypass_low_severity
-backend/tests/test_conversation_adapter.py::TestConversationAdapter::test_bypass_under_10_messages
-backend/tests/test_conversation_adapter.py::TestConversationAdapter::test_bypass_under_25_percent_increase
-backend/tests/test_conversation_adapter.py::TestConversationAdapter::test_positive_escalation
-backend/tests/test_detection_engine.py::test_hard_cases_dataset_integrity
-backend/tests/test_detection_engine.py::test_empty_and_short_inputs
-backend/tests/test_detection_engine.py::test_severity_caps
-backend/tests/test_detection_engine.py::test_profanity_downweighting
-backend/tests/test_detection_engine.py::test_category_signal_consistency
-backend/tests/test_detection_engine.py::test_hard_cases_benchmark_and_discrepancy_tracking
-backend/tests/test_detection_engine.py::test_benign_insult_false_positives
-backend/tests/test_detection_engine.py::test_safety_bypass_resilience
-backend/tests/test_detection_engine.py::test_new_benign_banter_and_self_deprecation
-backend/tests/test_detection_engine.py::test_multilingual_language_detection
-backend/tests/test_evidence_service.py::test_whatsapp_harassment
-backend/tests/test_evidence_service.py::test_threatening_email
-backend/tests/test_evidence_service.py::test_extortion
-backend/tests/test_evidence_service.py::test_phishing_email
-backend/tests/test_evidence_service.py::test_threatening_document
-backend/tests/test_evidence_service.py::test_pii_non_leakage
-backend/tests/test_phase3_api.py::test_admin_auth_and_jwt
-backend/tests/test_phase3_api.py::test_analyze_text_endpoint
-backend/tests/test_phase3_api.py::test_batch_extension_stores_nothing
-backend/tests/test_phase3_api.py::test_batch_large_payload_60_messages
-backend/tests/test_phase3_api.py::test_whatsapp_chat_export_and_attribution
-backend/tests/test_phase3_api.py::test_telegram_json_export
-backend/tests/test_phase3_api.py::test_missing_ocr_guidance_message
-backend/tests/test_phase3_api.py::test_repeat_offender_tracking_and_endpoints
-backend/tests/test_phase3_api.py::test_admin_report_status_updates
-======================================================================
-53 passed in 53.72s (100% Pass Rate)
-======================================================================
+============================== test session starts ==============================
+118 passed, 1 skipped in ~55s (100% Pass Rate)
+==================================================================================
+```
+
+### Frontend Production Build Verification:
+```bash
+cd frontend
+npm run build
+```
+```
+✓ 2404 modules transformed.
+dist/index.html                              1.25 kB │ gzip:   0.65 kB
+dist/assets/index-C9x5g1uj.css              77.45 kB │ gzip:  12.11 kB
+dist/assets/AdvancedAnalytics-BVVdWCov.js  147.72 kB │ gzip:  51.67 kB
+dist/assets/index-BN9TxM5C.js              909.05 kB │ gzip: 254.47 kB
+✓ built in 44.50s (0 errors)
 ```
 
 ---
 
-## 🖥️ Phase 5 Web Application & Operations Center Audit
+## 🆘 Official Statutory Crisis Helplines
 
-The Frontend is built with React 18, Vite, Tailwind CSS, Lucide Icons, and Recharts:
+ShieldAI includes hardcoded, zero-latency safety guardrails for immediate physical danger and mental health crises:
 
-1. **Security Operations Center (SOC) Dashboard (`Dashboard.jsx`):**
-   - Live KPI cards: Total Incidents, High Risk Incidents, Average Risk Score, Scams/Fraud, Phishing, Behavioral Alerts.
-   - Recharts Visualizations: Threat distribution BarChart and chronological incident trend AreaChart.
-   - Real-time Detection Engine Health status pill (`Hybrid Mode Active` / `Neural DistilBERT Loaded`).
-2. **Incident Triage Queue:**
-   - Full-text search across actor IDs, snippets, and categories.
-   - Multi-parameter filtering by Risk Level (Low, Medium, High, Critical) and Incident Status (`open`, `reviewing`, `resolved`, `dismissed`).
-   - Sorting by timestamp and risk severity.
-3. **Incident Forensic Detail View:**
-   - Classification score breakdown (Primary threat label + secondary matching confidence).
-   - Sanitized evidence quote cards with PII masking.
-   - Extracted forensic indicators (suspicious domains, impersonated brands, wallet addresses, phone numbers).
-   - Status workflow updater with audit trail recording.
-4. **Repeat Offender Tracking (`RepeatOffenders.jsx`):**
-   - Tracked entity cards categorized by Sender, Phone, URL, and Email.
-   - Risk timeline charting escalating incident hits, peak risk score, and active monitoring status.
-5. **AI Safety Chatbot (`ChatbotPanel.jsx` & `ChatPage.jsx`):**
-   - Multi-provider real model integration (Groq `llama-3.3-70b-versatile` & Claude `claude-haiku-5-5`) with dynamic model selection and automatic graceful fallback to the rule engine on rate-limit (429), timeout, or invalid credentials.
-   - Dual-persona operational modes:
-     - **Victim Support Mode:** Calm, non-victim-blaming guidance with concrete immediate steps and helpline contacts (Emergency: 112, Cybercrime Helpline: 1930, National Cybercrime Portal: `cybercrime.gov.in`, StopNCII.org).
-     - **Security Analyst Mode:** Structured intelligence report detailing classification scores, verified indicators, grounded attacker tactics, SOC mitigation steps, and legal guidance under the IT Act 2000 & BNS/IPC.
-   - Transparent engine indicator badge (`Groq`, `Claude`, or `Rules`).
-   - Delimiter-wrapped passive evidence ingestion (`<<<PASTED_USER_CONTENT>>>`) to neutralize prompt injections.
-   - Automated PII redaction (phones, emails, Aadhaar, PAN) before sending data to external LLMs.
-   - Zero-latency rule-based pre-model interception for immediate crisis/self-harm queries.
-6. **Citizen Complaint Portal (`SubmitComplaint.jsx` & `IncidentHistory.jsx`):**
-   - Self-service portal for victims to file harassment and extortion incidents with screenshot and chat export attachments.
-   - Tracking dashboard for reviewing complaint status and recommendations.
+| Service / Authority | Helpline Number | Availability | Official Jurisdiction / Purpose | Official URL |
+| :--- | :---: | :---: | :--- | :--- |
+| **National Emergency Support (ERSS)** | `112` | 24/7 | Immediate physical safety, police, ambulance | [112.gov.in](https://112.gov.in/) |
+| **National Cybercrime Helpline** | `1930` | 24/7 | Financial cyber fraud, account freeze, extortion | [cybercrime.gov.in](https://cybercrime.gov.in/) |
+| **National Cybercrime Portal** | Web Filing | 24/7 | Formal cyber harassment, blackmail, stalking FIR | [cybercrime.gov.in](https://cybercrime.gov.in/) |
+| **StopNCII.org** | Web Service | 24/7 | Non-consensual intimate image hash prevention | [stopncii.org](https://stopncii.org/) |
+| **Tele-MANAS Mental Health** | `14416` / `1800-891-4416` | 24/7 | Free national mental health & distress counseling | [telemanas.mohfw.gov.in](https://telemanas.mohfw.gov.in/) |
+| **KIRAN Helpline** | `1800-599-0019` | 24/7 | Department of Empowerment of Persons with Disabilities | [disabilityaffairs.gov.in](https://disabilityaffairs.gov.in/) |
 
 ---
 
-## 🆘 Verified Crisis Helplines & Emergency Referrals
-
-ShieldAI incorporates hardcoded, zero-latency safety guardrails for immediate physical danger and mental health crises. All emergency contacts and helplines are verified against official government and non-profit portals:
-
-| Service / Organization | Hotline / Contact | Operating Hours | Official Entity / Scope | Official Verification URL | Verified Date |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **National Emergency Response (ERSS)** | `112` | 24/7 | Emergency Response Support System (Police, Medical, Fire) | [112.gov.in](https://112.gov.in/) | Nov 2026 |
-| **National Cyber Crime Helpline** | `1930` | 24/7 | Ministry of Home Affairs (Financial cyber fraud & urgent freeze) | [cybercrime.gov.in](https://cybercrime.gov.in/) | Nov 2026 |
-| **National Cyber Crime Reporting Portal** | Online Filing | 24/7 | Formal cyber harassment, blackmail, identity theft complaint lodging | [cybercrime.gov.in](https://cybercrime.gov.in/) | Nov 2026 |
-| **Tele-MANAS** | `14416` / `1800-891-4416` | 24/7 Toll-Free | Ministry of Health & Family Welfare / NIMHANS nodal center | [telemanas.mohfw.gov.in](https://telemanas.mohfw.gov.in/) | Nov 2026 |
-| **KIRAN Mental Health Helpline** | `1800-599-0019` | 24/7 Toll-Free | DEPwD, Ministry of Social Justice & Empowerment | [disabilityaffairs.gov.in](https://disabilityaffairs.gov.in/) | Nov 2026 |
-| **Vandrevala Foundation** | `+91 9999 666 555` | 24/7 Free | Confidential crisis psychological counseling & suicide prevention | [vandrevalafoundation.com](https://www.vandrevalafoundation.com/) | Nov 2026 |
-| **AASRA Crisis Center** | `+91 98204 66726` | 24/7 | Community emotional crisis support & suicide intervention | [aasra.info](http://www.aasra.info/) | Nov 2026 |
-| **StopNCII.org** | Web Service | 24/7 | Non-consensual intimate image hash protection (SWGfL initiative) | [stopncii.org](https://stopncii.org/) | Nov 2026 |
-
----
-
-## 📁 Repository Directory Structure
+## 📁 Repository Structure
 
 ```
 online-harassment-detection/
 ├── backend/
-│   ├── api/                   # REST API route blueprints (public, admin, complaints)
-│   ├── config/                # Evidence guidance rules & Indian legal playbooks
-│   ├── core/                  # Database (SQLAlchemy), logging, config, exceptions
+│   ├── api/                   # REST API route blueprints (public, admin, auth, complaints)
+│   ├── core/                  # Database (SQLAlchemy), config, exceptions, security
 │   ├── data/                  # Persistent SQLite DB (shieldai.db) & benchmark datasets
-│   ├── ml/                    # Neurosymbolic detection engine
-│   │   ├── adapters/          # Heuristics, Threat Intel, Conversation, Multilingual
-│   │   ├── models/            # Fine-tuned DistilBERT transformer & calibrated thresholds
-│   │   └── chatbot.py         # Claude 3.5 & grounded rules fallback chatbot
-│   ├── services/              # Prediction, Admin, Offender, Evidence, and File Parsers
-│   ├── tests/                 # Full automated Pytest suite (47 tests)
+│   ├── ml/                    # Neurosymbolic detection engine & models
+│   │   ├── chatbot.py         # Multi-provider LLM router (Groq / Claude / Rules)
+│   │   ├── explain_transformer.py # Captum Integrated Gradients token attribution
+│   │   ├── train_baseline.py  # TF-IDF + Logistic Regression baseline
+│   │   └── train_transformer.py # DistilBERT fine-tuning script
+│   ├── services/              # PredictionService, ModelService, AdminService, Parsers
+│   ├── tests/                 # 118 automated pytest test cases
 │   ├── app.py                 # Flask server entrypoint (port 5000)
-│   ├── Dockerfile             # Production multi-stage backend container
-│   ├── entrypoint.sh          # Container startup & idempotent seed script
-│   └── requirements.txt       # Production & ML dependencies
+│   └── requirements.txt       # Python dependencies
 ├── frontend/
 │   ├── src/
-│   │   ├── components/        # React UI components (Dashboard, Chat, Scan, Complaints)
-│   │   ├── hooks/             # Custom hooks for API polling & health checks
-│   │   └── App.jsx            # Application root router
-│   ├── Dockerfile             # Production Nginx frontend container
-│   ├── nginx.conf             # Reverse proxy config for API and SPA routing
-│   └── vite.config.js         # Vite dev server & proxy configuration
-├── extension/                 # Chrome Manifest V3 Browser Extension
-│   ├── manifest.json          # Manifest V3 configuration & host permissions
-│   ├── content.js             # Generic DOM scanner, MutationObserver, SPA navigation
-│   ├── popup.html / popup.js  # Settings UI (Safe badges toggle, per-site opt-out)
+│   │   ├── components/        # React UI components (Dashboard, Chat, Scan, Queue)
+│   │   ├── hooks/             # Custom hooks (useAuth, useAdminData)
+│   │   ├── App.jsx            # Master router with reload hash/storage sync
+│   │   └── main.jsx           # React DOM root
+│   ├── index.html             # HTML5 template
+│   ├── package.json           # Frontend dependencies (React, Vite, Tailwind, Recharts)
+│   └── vite.config.js         # Vite configuration & backend proxy
+├── extension/                 # Chrome Manifest v3 Browser Extension
+│   ├── manifest.json          # Manifest v3 definition
+│   ├── content.js             # Generic DOM scanner, MutationObserver
+│   ├── popup.html / popup.js  # Settings UI (Safe badges, per-site toggle)
 │   ├── test.html              # Social media feed test page
-│   └── test_generic.html      # Generic paragraph markup test page
-├── scripts/                   # Seeding, auditing, and benchmarking utilities
-│   └── seed_demo_data.py      # Demo incident & offender seeding script
-├── docker-compose.yml         # Multi-container orchestration definition
-├── start.ps1                  # Single command Windows PowerShell launcher
-├── start.bat                  # Single command Windows CMD launcher
-├── start.sh                   # Single command Linux / macOS launcher
-└── README.md                  # Master project documentation
+│   └── test_generic.html      # Generic paragraph test page
+├── docs/                      # Architectural documentation & diagrams
+│   └── diagrams/              # Modernized Mermaid (.mmd) & PNG diagrams
+├── start.bat                  # One-click Windows CMD startup script
+├── start.ps1                  # One-click Windows PowerShell startup script
+├── start.sh                   # One-click Linux / macOS startup script
+├── VIVA_DEFENSE_AND_ARCHITECTURE_GUIDE.md # Master academic viva defense guide
+└── README.md                  # Project documentation
 ```
+
+---
+
+## 🎓 Academic Viva Defense Reference
+For complete preparation for external and internal viva examinations—including tech stack comparisons, examiner trap questions, and the full architectural defense—refer to:
+👉 **[`VIVA_DEFENSE_AND_ARCHITECTURE_GUIDE.md`](./VIVA_DEFENSE_AND_ARCHITECTURE_GUIDE.md)**

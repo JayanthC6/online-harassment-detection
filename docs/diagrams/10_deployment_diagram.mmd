@@ -1,39 +1,43 @@
 graph TD
-    subgraph "Client Environment (User Device)"
-        Browser[Web Browser]
-        React[React SPA UI]
-        Ext[Chrome Extension MV3]
-        Browser --- React
-        Browser --- Ext
+    subgraph ClientDevice["Client Environment (Browser & End-User Device)"]
+        Browser[Modern Web Browser - Chrome / Edge / Firefox]
+        ReactSPA[React 18 + Vite SPA Dashboard<br/>(Port :5173)]
+        ChromeExt[Chrome Manifest v3 Extension<br/>(Background Service Worker & DOM Badge Overlay)]
+        Browser --- ReactSPA
+        Browser --- ChromeExt
     end
 
-    subgraph "Application Server (Local / Cloud Host)"
-        subgraph "Python Virtual Environment"
-            Flask[Flask Backend API]
-            ML[DistilBERT & NLLB Models]
-            Whisper[Whisper & OCR Binaries]
+    subgraph HostServer["Application Host Server (Local Workstation / VM / Cloud Instance)"]
+        subgraph PythonEnv["Python 3.10+ Virtual Environment"]
+            FlaskAPI[Flask WSGI Application<br/>(Port :5000 / Gunicorn / Dev Server)]
+            LimiterMiddleware[Flask-Limiter Memory/Redis Rate Guard]
+            DistilBertEngine[DistilBERT PyTorch Transformer<br/>(CPU / CUDA Execution)]
+            CaptumEngine[Captum XAI Engine<br/>(Integrated Gradients Token Attribution)]
+            RegexHeuristics[Heuristic & Regex Rules Engine]
+            Parsers[Document, OCR & Chat Export Parsers]
+        end
+
+        subgraph EmbeddedStorage["Local Relational Persistence Layer"]
+            SQLite[(SQLite Embedded Database<br/>backend/data/shieldai.db<br/>Managed via SQLAlchemy ORM)]
         end
     end
 
-    subgraph "Data Tier"
-        Mongo[(MongoDB Database)]
+    subgraph ExternalCloudServices["External Cloud & API Infrastructure (Optional with Offline Fallback)"]
+        GroqAPI[Groq LLM API<br/>Model: openai/gpt-oss-120b]
+        AnthropicAPI[Anthropic Claude API<br/>Model: claude-haiku-5-5]
     end
 
-    subgraph "External Web Services"
-        Groq[Groq API]
-        GSB[Google Safe Browsing API]
-        HIBP[Have I Been Pwned API]
-    end
-
-    %% Connections
-    React -->|HTTP/REST| Flask
-    Ext -->|HTTP/REST| Flask
+    %% Communication channels
+    ReactSPA -->|HTTP / JSON via Vite Reverse Proxy| FlaskAPI
+    ChromeExt -->|HTTP / JSON Batch API| FlaskAPI
     
-    Flask --- ML
-    Flask --- Whisper
+    FlaskAPI --- LimiterMiddleware
+    FlaskAPI --- DistilBertEngine
+    FlaskAPI --- CaptumEngine
+    FlaskAPI --- RegexHeuristics
+    FlaskAPI --- Parsers
     
-    Flask <-->|PyMongo| Mongo
+    FlaskAPI <-->|SQLAlchemy Sessions / SQL Queries| SQLite
     
-    Flask <-->|HTTPS| Groq
-    Flask <-->|HTTPS| GSB
-    Flask <-->|HTTPS| HIBP
+    FlaskAPI -.->|HTTPS / API Key Authorization| GroqAPI
+    FlaskAPI -.->|HTTPS / API Key Authorization| AnthropicAPI

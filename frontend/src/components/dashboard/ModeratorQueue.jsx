@@ -11,11 +11,11 @@ function renderConfidence(r) {
   if (isUnsupported) {
     return <span className="text-text-muted text-xs font-mono">N/A</span>;
   }
-  
+
   const whichLayer = (r.which_layer || (r.threat_intel && r.threat_intel.which_layer) || '').toLowerCase();
   const modelUsed = (r.model_used || r.model || '').toLowerCase();
   const isNeural = (whichLayer === 'model' || whichLayer === 'hybrid') ||
-                   ((modelUsed.includes('distilbert') || modelUsed.includes('neural')) && !modelUsed.includes('rules-only') && whichLayer !== 'rules');
+    ((modelUsed.includes('distilbert') || modelUsed.includes('neural')) && !modelUsed.includes('rules-only') && whichLayer !== 'rules');
 
   if (whichLayer === 'rules' || !isNeural || r.confidence == null || r.confidence === 0) {
     return <span className="text-amber-400/90 text-xs font-mono font-medium">Detected by: rules</span>;
@@ -148,13 +148,12 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                         </div>
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`badge ${
-                            r.category === 'unsupported' || r.severity_tier === 'Unsupported' || r.risk_level === 'unsupported' ? 'bg-purple-900/40 text-purple-300 border border-purple-500/40' :
-                            r.category === 'threat' || r.category === 'sextortion' ? 'badge-danger' :
+                        <span className={`badge ${r.category === 'unsupported' || r.severity_tier === 'Unsupported' || r.risk_level === 'unsupported' ? 'bg-purple-900/40 text-purple-300 border border-purple-500/40' :
+                          r.category === 'threat' || r.category === 'sextortion' ? 'badge-danger' :
                             r.category === 'scam' || r.category === 'phishing' ? 'badge-critical' :
-                            r.category === 'abusive_language' || r.category === 'harassment' ? 'badge-warning' :
-                            r.category === 'suspicious_link' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30' :
-                            r.category === 'none' || r.category === 'clean' ? 'badge-success' : 'badge-muted'
+                              r.category === 'abusive_language' || r.category === 'harassment' ? 'badge-warning' :
+                                r.category === 'suspicious_link' ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30' :
+                                  r.category === 'none' || r.category === 'clean' ? 'badge-success' : 'badge-muted'
                           } capitalize`}>
                           {r.category === 'unsupported' || r.severity_tier === 'Unsupported' ? 'Unsupported' : (r.category === 'suspicious_link' ? 'Suspicious link' : (r.category || 'unknown').replace(/_/g, ' '))}
                         </span>
@@ -164,8 +163,8 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                           <span className="text-purple-400 font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">UNVERIFIED</span>
                         ) : (
                           <span className={`${r.risk_score >= 80 ? 'score-critical' :
-                              r.risk_score >= 55 ? 'score-high' :
-                                r.risk_score >= 30 ? 'score-medium' : 'score-low'
+                            r.risk_score >= 55 ? 'score-high' :
+                              r.risk_score >= 30 ? 'score-medium' : 'score-low'
                             }`}>{Math.round(r.risk_score)}</span>
                         )}
                       </td>
@@ -244,13 +243,13 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
                       </td>
                       <td className="px-5 py-3">
                         <span className={`${c.conversation_risk >= 80 ? 'score-critical' :
-                            c.conversation_risk >= 55 ? 'score-high' :
-                              c.conversation_risk >= 30 ? 'score-medium' : 'score-low'
+                          c.conversation_risk >= 55 ? 'score-high' :
+                            c.conversation_risk >= 30 ? 'score-medium' : 'score-low'
                           }`}>{Math.round(c.conversation_risk)}</span>
                       </td>
                       <td className="px-5 py-3">
                         <span className={`badge ${c.escalation_level === 'High' ? 'badge-danger' :
-                            c.escalation_level === 'Medium' ? 'badge-warning' : 'badge-muted'
+                          c.escalation_level === 'Medium' ? 'badge-warning' : 'badge-muted'
                           }`}>
                           {c.escalation_level} {c.escalation_score != null ? `(+${c.escalation_score})` : ''}
                         </span>
@@ -273,68 +272,68 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
             </table>
           </div>
         ) : queueType === 'complaints' ? (
-        <div className="overflow-x-auto min-h-[300px] max-h-[580px]">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th className="px-5 py-3">Timestamp</th>
-                <th className="px-5 py-3">User ID</th>
-                <th className="px-5 py-3">Complaint Details</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {!loading && (!complaintsData || complaintsData.length === 0) ? (
+          <div className="overflow-x-auto min-h-[300px] max-h-[580px]">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <td colSpan="5" className="px-5 py-20 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="p-4 bg-surface-2 rounded-lg border border-border text-text-muted">
-                        <Inbox size={40} strokeWidth={1} />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-text-secondary">No complaints</p>
-                        <p className="text-xs mt-1 text-text-muted">Queue is empty.</p>
-                      </div>
-                    </div>
-                  </td>
+                  <th className="px-5 py-3">Timestamp</th>
+                  <th className="px-5 py-3">User ID</th>
+                  <th className="px-5 py-3">Complaint Details</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
-              ) : (
-                (complaintsData || []).map((c, idx) => (
-                  <tr 
-                    key={idx} 
-                    className="hover:bg-surface-2 transition-colors group cursor-pointer"
-                    onClick={() => setSelectedReport(c)}
-                  >
-                    <td className="px-5 py-3 text-text-muted text-xs font-mono">
-                      {new Date(c.logged_at).toLocaleString()}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className="text-xs font-mono bg-surface-3 px-2 py-1 rounded text-text-muted">
-                        {(c.user_id || c.actor_id || 'anonymous').substring(0, 8)}...
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="max-w-[320px] truncate text-text-primary text-sm">
-                        {c.content || (c.ai_analysis && c.ai_analysis.incident_description) || 'Attached evidence'}
+              </thead>
+              <tbody>
+                {!loading && (!complaintsData || complaintsData.length === 0) ? (
+                  <tr>
+                    <td colSpan="5" className="px-5 py-20 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <div className="p-4 bg-surface-2 rounded-lg border border-border text-text-muted">
+                          <Inbox size={40} strokeWidth={1} />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-text-secondary">No complaints</p>
+                          <p className="text-xs mt-1 text-text-muted">Queue is empty.</p>
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`badge ${c.status === 'resolved' ? 'badge-success' : 'badge-warning'} capitalize`}>
-                        {c.status || 'Pending'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <button className="text-primary hover:underline text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100">
-                        Review
-                      </button>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  (complaintsData || []).map((c, idx) => (
+                    <tr
+                      key={idx}
+                      className="hover:bg-surface-2 transition-colors group cursor-pointer"
+                      onClick={() => setSelectedReport(c)}
+                    >
+                      <td className="px-5 py-3 text-text-muted text-xs font-mono">
+                        {new Date(c.logged_at).toLocaleString()}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className="text-xs font-mono bg-surface-3 px-2 py-1 rounded text-text-muted">
+                          {(c.user_id || c.actor_id || 'anonymous').substring(0, 8)}...
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="max-w-[320px] truncate text-text-primary text-sm">
+                          {c.content || (c.ai_analysis && c.ai_analysis.incident_description) || 'Attached evidence'}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`badge ${c.status === 'resolved' ? 'badge-success' : 'badge-warning'} capitalize`}>
+                          {c.status || 'Pending'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button className="text-primary hover:underline text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100">
+                          Review
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         ) : null}
 
         {/* Pagination */}
