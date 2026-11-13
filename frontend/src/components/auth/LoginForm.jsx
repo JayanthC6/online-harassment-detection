@@ -28,6 +28,27 @@ export default function LoginForm({ onLogin }) {
     }
   };
 
+  const handleGuestSession = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      // First attempt authenticating with dev demo admin credentials
+      const data = await apiClient('/admin/login', {
+        method: 'POST',
+        body: JSON.stringify({ username: 'admin', password: 'password123' })
+      });
+      if (data?.token) {
+        onLogin(data.token);
+        return;
+      }
+    } catch (err) {
+      // Fallback to GUEST token if login endpoint fails or in offline demo
+    } finally {
+      setLoading(false);
+    }
+    onLogin('GUEST');
+  };
+
   return (
     <div className="max-w-md w-full mx-auto mt-12 bg-black/40 backdrop-blur-xl border border-blue/30 rounded-xl overflow-hidden animate-fade-in shadow-[0_0_30px_rgba(0,242,254,0.15)] relative">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue to-purple"></div>
@@ -102,8 +123,9 @@ export default function LoginForm({ onLogin }) {
           <div className="flex items-center justify-center gap-2 pt-4 border-t border-border/50 mt-4">
             <button 
               type="button" 
-              onClick={() => onLogin('GUEST')}
-              className="text-xs font-semibold text-blue hover:text-white transition-colors flex items-center gap-1 drop-shadow-[0_0_5px_rgba(0,242,254,0.4)]"
+              onClick={handleGuestSession}
+              disabled={loading}
+              className="text-xs font-semibold text-blue hover:text-white transition-colors flex items-center gap-1 drop-shadow-[0_0_5px_rgba(0,242,254,0.4)] disabled:opacity-50"
             >
               Initialize Guest Session &rarr;
             </button>

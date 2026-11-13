@@ -33,6 +33,11 @@ def token_required(f):
         if not token:
             return jsonify({"error": "Token is missing"}), 401
 
+        # GUEST / Development demo session bypass
+        if token == "GUEST" and Config.APP_ENV == "development":
+            kwargs["token_data"] = {"user": "guest", "role": "Admin"}
+            return f(*args, **kwargs)
+
         try:
             # SECURITY: algorithms list is explicit — alg:none bypass is blocked.
             payload = jwt.decode(token, Config.JWT_SECRET_KEY, algorithms=["HS256"])

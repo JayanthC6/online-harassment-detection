@@ -1,34 +1,36 @@
 import { useState, useEffect } from 'react';
 
+function decodeJwtRole(token) {
+  if (!token) return null;
+  if (token === 'GUEST') return 'Guest';
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const parsed = JSON.parse(jsonPayload);
+    return parsed.role || parsed.sub || null;
+  } catch (e) {
+    try {
+      return JSON.parse(atob(token.split('.')[1])).role;
+    } catch (e2) {
+      return null;
+    }
+  }
+}
+
 export function useAuth() {
   const [token, setToken] = useState(() => localStorage.getItem('adminToken') || '');
-  
-  const [role, setRole] = useState(() => {
-    const t = localStorage.getItem('adminToken');
-    if (t === 'GUEST') return 'Guest';
-    if (t) {
-      try {
-        return JSON.parse(atob(t.split('.')[1])).role;
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [role, setRole] = useState(() => decodeJwtRole(localStorage.getItem('adminToken')));
 
   useEffect(() => {
-    if (token === 'GUEST') {
-      setRole('Guest');
-    } else if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setRole(payload.role);
-      } catch (e) {
-        setRole(null);
-      }
-    } else {
-      setRole(null);
-    }
+    setRole(decodeJwtRole(token));
   }, [token]);
 
   const login = (newToken) => {

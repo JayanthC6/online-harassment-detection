@@ -72,7 +72,7 @@ export default function ChatPage({ role }) {
           }]);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [chatMode]);
 
   useEffect(() => {
@@ -219,11 +219,10 @@ export default function ChatPage({ role }) {
           <button
             type="button"
             onClick={() => setChatMode('victim')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all ${
-              chatMode === 'victim'
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all ${chatMode === 'victim'
                 ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-sm'
                 : 'text-text-muted hover:text-text-primary'
-            }`}
+              }`}
           >
             <UserCheck size={14} />
             Victim Mode
@@ -231,11 +230,10 @@ export default function ChatPage({ role }) {
           <button
             type="button"
             onClick={() => setChatMode('analyst')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all ${
-              chatMode === 'analyst'
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all ${chatMode === 'analyst'
                 ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40 shadow-sm'
                 : 'text-text-muted hover:text-text-primary'
-            }`}
+              }`}
           >
             <Cpu size={14} />
             Analyst Mode
@@ -294,11 +292,10 @@ export default function ChatPage({ role }) {
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                  msg.role === 'user'
+                className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
                     ? 'rounded-br-sm text-white shadow-md'
                     : 'rounded-bl-sm bg-black/60 border border-border/60 text-text-primary shadow-inner'
-                }`}
+                  }`}
                 style={
                   msg.role === 'user'
                     ? { background: 'linear-gradient(135deg, #00F2FE 0%, #0284c7 100%)' }
@@ -321,22 +318,20 @@ export default function ChatPage({ role }) {
                 {msg.engine && (
                   <div className="mt-2 pt-2 border-t border-border/40 flex items-center justify-between text-[11px] font-mono">
                     <span
-                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-semibold ${
-                        msg.engine === 'groq'
+                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-semibold ${msg.engine === 'groq'
                           ? 'bg-orange-950/60 text-orange-300 border border-orange-800/40'
                           : msg.engine === 'claude'
-                          ? 'bg-purple-950/60 text-purple-300 border border-purple-800/40'
-                          : 'bg-cyan-950/60 text-cyan-300 border border-cyan-800/40'
-                      }`}
+                            ? 'bg-purple-950/60 text-purple-300 border border-purple-800/40'
+                            : 'bg-cyan-950/60 text-cyan-300 border border-cyan-800/40'
+                        }`}
                     >
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          msg.engine === 'groq'
+                        className={`w-1.5 h-1.5 rounded-full ${msg.engine === 'groq'
                             ? 'bg-orange-400 shadow-[0_0_6px_rgba(251,146,60,0.6)]'
                             : msg.engine === 'claude'
-                            ? 'bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.6)]'
-                            : 'bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.6)]'
-                        }`}
+                              ? 'bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.6)]'
+                              : 'bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.6)]'
+                          }`}
                       />
                       Engine: {msg.engine === 'groq' ? 'Groq' : msg.engine === 'claude' ? 'Claude' : 'Rules'}
                     </span>

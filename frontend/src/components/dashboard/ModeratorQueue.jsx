@@ -30,7 +30,21 @@ function renderConfidence(r) {
 }
 
 export default function ModeratorQueue({ reportsData, conversationsData, complaintsData, filters, loading }) {
-  const [queueType, setQueueType] = useState('messages'); // 'messages' | 'conversations'
+  const [queueType, setQueueType] = useState(() => {
+    try {
+      return localStorage.getItem('shieldai_queue_type') || 'messages';
+    } catch (e) {
+      return 'messages';
+    }
+  });
+
+  const handleQueueTypeChange = (type) => {
+    setQueueType(type);
+    try {
+      localStorage.setItem('shieldai_queue_type', type);
+    } catch (e) {}
+    filters.setPage(1);
+  };
 
   const { reports, total: messagesTotal, total_pages: messagesPages } = reportsData;
   const { conversations, total: convTotal, total_pages: convPages } = conversationsData || { conversations: [], total: 0, total_pages: 0 };
@@ -59,13 +73,13 @@ export default function ModeratorQueue({ reportsData, conversationsData, complai
         <h2 className="text-base font-semibold text-text-primary">Digital Safety Incidents</h2>
         <div className="flex bg-black/40 p-1 border border-border/50 rounded-md gap-1 shadow-inner">
           <button
-            onClick={() => { setQueueType('messages'); filters.setPage(1); }}
+            onClick={() => handleQueueTypeChange('messages')}
             className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${queueType === 'messages' ? 'bg-blue/20 text-blue shadow-[0_0_10px_rgba(0,242,254,0.2)]' : 'text-text-muted hover:text-white'}`}
           >
             Messages
           </button>
           <button
-            onClick={() => { setQueueType('conversations'); filters.setPage(1); }}
+            onClick={() => handleQueueTypeChange('conversations')}
             className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${queueType === 'conversations' ? 'bg-blue/20 text-blue shadow-[0_0_10px_rgba(0,242,254,0.2)]' : 'text-text-muted hover:text-white'}`}
           >
             Conversations
