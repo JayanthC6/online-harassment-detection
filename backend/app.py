@@ -16,7 +16,15 @@ from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-load_dotenv()  # reads MONGODB_URI from a .env file if present
+# Explicitly load .env from backend folder or project root regardless of cwd
+_backend_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_env = os.path.join(_backend_dir, ".env")
+_root_env = os.path.join(os.path.dirname(_backend_dir), ".env")
+if os.path.exists(_backend_env):
+    load_dotenv(_backend_env)
+if os.path.exists(_root_env):
+    load_dotenv(_root_env)
+load_dotenv()
 
 # Import the shared limiter BEFORE blueprints so the singleton exists
 from extensions import limiter

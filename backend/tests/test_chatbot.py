@@ -24,6 +24,10 @@ from ml.chatbot import (
     check_prompt_injection,
     extract_user_specifics,
     check_offline_knowledge_base,
+    normalize_query_text,
+    is_content_to_analyze,
+    is_general_question,
+    get_llm_status,
     mask_pii_for_llm,
     wrap_user_content_as_data,
     validate_analyst_response,
@@ -33,6 +37,12 @@ from ml.chatbot import (
 )
 from app import app
 import db
+
+
+@pytest.fixture(autouse=True)
+def default_rules_provider(monkeypatch):
+    """By default in test suite, isolate LLM to rules mode unless a test explicitly sets a provider."""
+    monkeypatch.setenv("LLM_PROVIDER", "none")
 
 
 @pytest.fixture
@@ -134,9 +144,9 @@ class TestGroqPathAndFallback:
         monkeypatch.setenv("LLM_PROVIDER", "groq")
 
     def test_default_groq_model_is_configured(self):
-        """Default GROQ_MODEL must be a modern model (e.g., llama-3.3-70b-versatile)."""
+        """Default GROQ_MODEL must be a currently active high-performance model (e.g. openai/gpt-oss-120b)."""
         assert DEFAULT_GROQ_MODEL
-        assert "llama" in DEFAULT_GROQ_MODEL.lower()
+        assert any(m in DEFAULT_GROQ_MODEL.lower() for m in ["gpt-oss", "llama", "qwen"])
 
     def test_groq_mock_success(self, monkeypatch):
         """When Groq API succeeds, return engine='groq' and the generated response."""
@@ -709,5 +719,189 @@ class TestItem8SafetyAndModelIntegration:
         assert off_topic is not None
         assert "Paris" in off_topic
         assert "ShieldAI is specialized" in off_topic
+
+
+class TestGroqProviderAndTelemetry:
+
+    def test_default_groq_model_is_valid(self):
+        """Default GROQ_MODEL must be a currently supported high-performance chat model."""
+        assert "llama-3.3-70b-versatile" not in DEFAULT_GROQ_MODEL
+        assert DEFAULT_GROQ_MODEL == "openai/gpt-oss-120b"
+
+    def test_groq_mock_success(self, monkeypatch):
+        """When Groq API succeeds, return engine='groq' and update telemetry last_result='ok'."""
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_test_key_valid")
+
+        mock_client = MagicMock()
+        mock_choice = MagicMock()
+        mock_choice.message.content = "Groq AI assistant response: Cyberbullying involves digital harassment."
+        mock_completion = MagicMock(choices=[mock_choice])
+        mock_client.chat.completions.create.return_value = mock_completion
+        monkeypatch.setattr("ml.chatbot._get_groq_client", lambda: mock_client)
+
+        history = [{"role": "user", "content": "What is cyberbullying?"}]
+        resp = generate_chat_response(history, persona="victim")
+
+        assert resp.engine == "groq"
+        assert "Groq AI assistant response" in resp
+        status = get_llm_status()
+        assert status["provider"] == "groq"
+        assert status["key_present"] == "yes"
+        assert status["last_result"] == "ok"
+
+    def test_groq_rate_limit_fallback(self, monkeypatch, caplog):
+        """When Groq throws 429 RateLimitError, fall back with note and last_result='rate_limit_exceeded'."""
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_test_key_valid")
+
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = Exception("Error 429: RateLimitError - Rate limit exceeded")
+        monkeypatch.setattr("ml.chatbot._get_groq_client", lambda: mock_client)
+
+        with caplog.at_level(logging.WARNING, logger="ShieldAI.Chatbot"):
+            history = [{"role": "user", "content": "What is cyberbullying?"}]
+            resp = generate_chat_response(history, persona="victim")
+
+        assert resp.engine == "rules"
+        assert "*Note: AI service unavailable, showing basic guidance.*" in resp
+        status = get_llm_status()
+        assert status["last_result"] == "rate_limit_exceeded"
+
+    def test_groq_timeout_fallback(self, monkeypatch):
+        """When Groq times out, fall back with note and last_result='timeout'."""
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_test_key_valid")
+
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = Exception("APITimeoutError: Connection timed out")
+        monkeypatch.setattr("ml.chatbot._get_groq_client", lambda: mock_client)
+
+        history = [{"role": "user", "content": "What is cyberbullying?"}]
+        resp = generate_chat_response(history, persona="victim")
+
+        assert resp.engine == "rules"
+        assert "*Note: AI service unavailable, showing basic guidance.*" in resp
+        status = get_llm_status()
+        assert status["last_result"] == "timeout"
+
+    def test_groq_missing_key_fallback(self, monkeypatch):
+        """When provider is groq but key is empty, fall back with note and last_result='api_error'."""
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.delenv("GROQ_API_KEY", raising=False)
+        monkeypatch.setattr("ml.chatbot._get_groq_client", lambda: None)
+
+        history = [{"role": "user", "content": "What is cyberbullying?"}]
+        resp = generate_chat_response(history, persona="victim")
+
+        assert resp.engine == "rules"
+        assert "*Note: AI service unavailable, showing basic guidance.*" in resp
+        status = get_llm_status()
+        assert status["key_present"] == "no"
+        assert status["last_result"] == "api_error"
+
+
+class TestGeneralQuestionsBothModes:
+
+    @pytest.mark.parametrize("query", [
+        "what is cyberbullying?",
+        "what is cyber bullying",
+        "whay is cyber bullying",
+        "explain phishing",
+        "how do I report a scam in India"
+    ])
+    def test_general_questions_answered_in_victim_mode(self, query, monkeypatch):
+        """General questions in Victim mode return assistant explanations, not scan/action templates."""
+        monkeypatch.setenv("LLM_PROVIDER", "none")
+        resp = generate_chat_response([{"role": "user", "content": query}], persona="victim")
+
+        assert resp is not None
+        assert len(resp) > 50
+        # Must NOT include the SOC incident assessment template
+        assert "### 🛡️ Structured Incident Assessment" not in resp
+        # Must NOT include empty indicators
+        assert "Technical & Behavioral Indicators:" not in resp
+        # Must NOT include harassment action plan template
+        assert "1. Do not reply, argue, or retaliate" not in resp
+
+    @pytest.mark.parametrize("query", [
+        "what is cyberbullying?",
+        "what is cyber bullying",
+        "whay is cyber bullying",
+        "explain phishing",
+        "how do I report a scam in India"
+    ])
+    def test_general_questions_answered_in_analyst_mode(self, query, monkeypatch):
+        """General questions in Analyst mode return assistant explanations, not scan/action templates."""
+        monkeypatch.setenv("LLM_PROVIDER", "none")
+        resp = generate_chat_response([{"role": "user", "content": query}], persona="analyst")
+
+        assert resp is not None
+        assert len(resp) > 50
+        # Must NOT include the SOC incident assessment template with empty indicators
+        assert "### 🛡️ Structured Incident Assessment" not in resp
+        assert "Technical & Behavioral Indicators:" not in resp
+
+
+class TestOfflineKnowledgeBaseTypoAndSpacingTolerance:
+
+    def test_query_normalization_typo_and_spacing(self):
+        """Verifies typo and spacing normalization maps variants to canonical terms."""
+        assert normalize_query_text("what is cyberbullying?") == "what is cyberbullying"
+        assert normalize_query_text("what is cyber bullying") == "what is cyberbullying"
+        assert normalize_query_text("whay is cyber bullying") == "what is cyberbullying"
+        assert normalize_query_text("explain phishing") == "explain phishing"
+        assert normalize_query_text("how do I report a scam in India") == "how do i report a scam in india"
+        assert normalize_query_text("cyber-bullying") == "cyberbullying"
+
+    @pytest.mark.parametrize("query", [
+        "what is cyberbullying?",
+        "what is cyber bullying",
+        "whay is cyber bullying",
+        "explain phishing",
+        "how do I report a scam in India"
+    ])
+    def test_kb_matches_all_required_queries(self, query):
+        """Offline KB matches all 5 user-specified test cases."""
+        answer = check_offline_knowledge_base(query)
+        assert answer is not None
+        assert len(answer) > 100
+
+
+class TestApiHealthLlmStatus:
+
+    def test_health_endpoint_returns_llm_status(self, client):
+        """GET /health and /api/health include llm telemetry status."""
+        for path in ("/health", "/api/health"):
+            res = client.get(path)
+            assert res.status_code == 200
+            data = res.get_json()
+            assert "llm" in data
+            llm = data["llm"]
+            assert "provider" in llm
+            assert llm["provider"] in ("groq", "anthropic", "none")
+            assert "key_present" in llm
+            assert llm["key_present"] in ("yes", "no")
+            assert "last_result" in llm
+            assert llm["last_result"] in ("ok", "rate_limit_exceeded", "timeout", "model_not_found", "api_error", "not_called")
+
+
+@pytest.mark.skipif(
+    not os.getenv("RUN_REAL_GROQ_TEST"),
+    reason="Real Groq API key test excluded from automated test suites"
+)
+def test_groq_real_api_call_excluded_from_ci():
+    """Real Groq API test call - excluded from CI."""
+    from groq import Groq
+    key = os.getenv("GROQ_API_KEY")
+    client = Groq(api_key=key)
+    resp = client.chat.completions.create(
+        model="openai/gpt-oss-120b",
+        messages=[{"role": "user", "content": "What is cyberbullying?"}],
+        max_tokens=60
+    )
+    assert resp.choices and len(resp.choices) > 0
+    reply = resp.choices[0].message.content
+    assert len(reply) > 20
 
 

@@ -77,3 +77,4 @@ If you or someone you know is in immediate distress or facing severe cybercrime:
 - **The web app says "Backend Offline":** Ensure the terminal running `start.bat` is still open. Verify that port 5000 is available.
 - **Does ShieldAI require internet to work?** No. The core DistilBERT machine learning model, rule heuristics, offline knowledge base, and database run completely offline on your local computer. External AI features (Groq or Claude) are optional.
 - **How do I reset demo data?** Run `python scripts/reset_demo.py` in your terminal to refresh the database to a clean, canonical state.
+

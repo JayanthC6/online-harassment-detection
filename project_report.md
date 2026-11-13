@@ -307,3 +307,4 @@ ShieldAI establishes a functional, multi-layered defensive framework for detecti
 1. **Multilingual Transformer Fine-Tuning:** Extend neural multi-label classification to vernacular South Asian languages using IndicBERT and XLM-RoBERTa.
 2. **Multimodal Visual Forensics:** Integrate Vision Transformers (ViT) to perform automated forensic hash matching and deepfake artifact detection on attached screenshots and extortion media.
 3. **Decentralized Threat Intelligence Sharing:** Implement STIX/TAXII threat intel feeds allowing decentralized Trust & Safety operations across institutions to share repeat offender indicators in real time.
+

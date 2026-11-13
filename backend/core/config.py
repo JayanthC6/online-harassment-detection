@@ -3,6 +3,14 @@ import sys
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash
 
+_core_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.dirname(_core_dir)
+_backend_env = os.path.join(_backend_dir, ".env")
+_root_env = os.path.join(os.path.dirname(_backend_dir), ".env")
+if os.path.exists(_backend_env):
+    load_dotenv(_backend_env)
+if os.path.exists(_root_env):
+    load_dotenv(_root_env)
 load_dotenv()
 
 

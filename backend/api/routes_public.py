@@ -112,13 +112,15 @@ def allowed_file(filename, allowed_set):
 @public_bp.route("/health", methods=["GET"])
 def health():
     model_loaded = PredictionService.is_model_loaded()
+    from ml.chatbot import get_llm_status
     return jsonify({
         "status": "ok",
         "time": datetime.utcnow().isoformat(),
         "database": "sqlite (persistent)",
         "model": PredictionService.get_active_model_name(),
         "model_loaded": model_loaded,
-        "mode": "hybrid (neural + rules)" if model_loaded else "rules-only"
+        "mode": "hybrid (neural + rules)" if model_loaded else "rules-only",
+        "llm": get_llm_status()
     })
 
 from api.dependencies import token_optional
@@ -782,13 +784,19 @@ def chat():
     engine = getattr(ai_response, "engine", "rules")
     
     # Append ai response
-    ai_msg = {"role": "assistant", "content": ai_response_text}
+    ai_msg = {"role": "assistant", "content": ai_response_text, "engine": engine}
     history.append(ai_msg)
     
     # Save capped history
     db.save_chat_session(session_id, history[-20:])
     
-    return jsonify({"response": ai_response_text, "session_id": session_id, "engine": engine})
+    from ml.chatbot import get_llm_status
+    return jsonify({
+        "response": ai_response_text,
+        "session_id": session_id,
+        "engine": engine,
+        "llm_status": get_llm_status()
+    })
 
 @public_bp.route("/chat/<session_id>", methods=["GET"])
 def get_chat(session_id):

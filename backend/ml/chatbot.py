@@ -19,14 +19,64 @@ import re
 import json
 import logging
 from typing import List, Dict, Any, Optional, Tuple
+from dotenv import load_dotenv
+
+# Explicitly load .env from backend folder and project root regardless of execution cwd
+_ml_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.dirname(_ml_dir)
+_backend_env = os.path.join(_backend_dir, ".env")
+_root_env = os.path.join(os.path.dirname(_backend_dir), ".env")
+if os.path.exists(_backend_env):
+    load_dotenv(_backend_env)
+if os.path.exists(_root_env):
+    load_dotenv(_root_env)
+load_dotenv()
 
 logger = logging.getLogger("ShieldAI.Chatbot")
 
-DEFAULT_GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+DEFAULT_GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 DEFAULT_ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-haiku-5-5")
 MAX_FILE_TEXT_CHARS = 12000
 MAX_HISTORY_TURNS = 20
 MAX_MESSAGE_CHARS = 2000
+
+# ── LLM Telemetry & Status ────────────────────────────────────────────────────
+_LLM_STATUS: Dict[str, Any] = {
+    "provider": "none",
+    "key_present": "no",
+    "last_result": "not_called",
+    "last_error": None
+}
+
+
+def get_llm_status() -> Dict[str, Any]:
+    """Returns telemetry status for /api/health and chat UI display."""
+    prov = get_configured_provider()
+    key_present = False
+    if prov == "groq":
+        key_present = bool(os.getenv("GROQ_API_KEY", "").strip())
+    elif prov == "anthropic":
+        key_present = bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+    return {
+        "provider": prov,
+        "key_present": "yes" if key_present else "no",
+        "last_result": _LLM_STATUS.get("last_result", "not_called"),
+        "last_error": _LLM_STATUS.get("last_error")
+    }
+
+
+def update_llm_status(last_result: str, last_error: Optional[str] = None):
+    """Updates internal LLM telemetry status."""
+    prov = get_configured_provider()
+    key_present = False
+    if prov == "groq":
+        key_present = bool(os.getenv("GROQ_API_KEY", "").strip())
+    elif prov == "anthropic":
+        key_present = bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+    _LLM_STATUS["provider"] = prov
+    _LLM_STATUS["key_present"] = "yes" if key_present else "no"
+    _LLM_STATUS["last_result"] = last_result
+    _LLM_STATUS["last_error"] = last_error
 
 
 class ChatResponse(str):
@@ -252,23 +302,128 @@ def extract_user_specifics(text: str) -> Dict[str, Any]:
     return specifics
 
 
-# ── Offline Knowledge Base (Item 7) ──────────────────────────────────────────
+# ── Normalization & Query Classification ──────────────────────────────────────
+
+def normalize_query_text(text: str) -> str:
+    """
+    Normalizes query text with typo and spacing tolerance:
+    - Lowercase, strip punctuation and whitespace
+    - Normalizes hyphens/underscores to spaces (e.g. cyber-bullying -> cyber bullying)
+    - Fixes common typos for question words and cyber safety terminology
+    - Collapses variations like 'cyber bullying' into canonical 'cyberbullying'
+    """
+    if not text:
+        return ""
+    t = text.lower().strip()
+    t = re.sub(r'[\?\!\.,;:"\'`\(\)\[\]\{\}]', ' ', t)
+    t = re.sub(r'[-_]', ' ', t)
+    t = re.sub(r'\s+', ' ', t).strip()
+
+    typo_map = [
+        (r'\b(?:whay|wht|wat|waht|whot)\b', 'what'),
+        (r'\b(?:expain|explan|xplain|esplain)\b', 'explain'),
+        (r'\b(?:differnce|diffrence|diference)\b', 'difference'),
+        (r'\b(?:defne|defination|definitiom)\b', 'define'),
+        (r'\b(?:phishin|phishng|phising)\b', 'phishing'),
+        (r'\b(?:scamm|scams|scammig|scammin)\b', 'scam'),
+        (r'\b(?:sextort|sextortionn|sextortin)\b', 'sextortion'),
+        (r'\b(?:bulling|bullyng|bulllying)\b', 'bullying'),
+        (r'\b(?:cyber\s+bully(?:ing)?|cyberbulling|cyberbully)\b', 'cyberbullying'),
+    ]
+    for pat, rep in typo_map:
+        t = re.sub(pat, rep, t)
+
+    t = re.sub(r'\bcyber\s+bullying\b', 'cyberbullying', t)
+    return re.sub(r'\s+', ' ', t).strip()
+
+
+def is_content_to_analyze(text: str) -> bool:
+    """
+    Returns True if the text looks like content to analyze (pasted SMS, email, chat, link,
+    extortion demand, or user asking to scan/analyze specific text), rather than a general inquiry.
+    """
+    if not text or not isinstance(text, str):
+        return False
+    lower = text.lower().strip()
+
+    # Explicit directives asking to analyze, check, or scan content
+    if any(lower.startswith(p) for p in [
+        "analyze this", "scan this", "check this", "is this a scam", "is this safe",
+        "is this phishing", "is this harassment", "please analyze", "review this"
+    ]):
+        return True
+
+    # Active URLs or suspicious domains
+    if re.search(r'https?://\S+|www\.\S+|\b[a-zA-Z0-9-]+\.(?:xyz|top|online|site|ru|cn|tk|cc|pw|live)\b', lower):
+        return True
+
+    # Crypto wallet addresses (0x + 40 hex, or Bitcoin bc1/1/3)
+    if re.search(r'\b0x[a-fA-F0-9]{40}\b|\b(?:bc1|[13])[a-zA-HJ-NP-Z0-9]{25,39}\b', text):
+        return True
+
+    # Email RFC headers or raw email formats
+    if any(k in lower for k in ["from:", "subject:", "to:", "return-path:", "dkim-signature:"]):
+        return True
+
+    # Pasted extortion / scam / threat text with active first-person demands
+    if any(k in lower for k in [
+        "i have recorded you", "send 500 dollars", "pay in bitcoin", "pay me", "transfer money",
+        "i will kill you", "i will ruin you", "i know where you live", "your account is suspended",
+        "kyc is pending", "electricity will be disconnected", "lottery prize", "claim your prize",
+        "on your webcam", "recorded on webcam"
+    ]):
+        return True
+
+    return False
+
+
+def is_general_question(text: str) -> bool:
+    """
+    Returns True if the message is a general informational question
+    (what/why/how/explain/difference/meaning, or a question mark without pasted suspicious content).
+    """
+    if not text or not isinstance(text, str):
+        return False
+    if is_content_to_analyze(text):
+        return False
+
+    norm = normalize_query_text(text)
+
+    # Check for question cues or keywords
+    question_starters = (
+        "what", "why", "how", "explain", "difference", "meaning",
+        "define", "tell me", "can you explain", "who", "when", "where"
+    )
+    if any(norm.startswith(q) or f" {q} " in f" {norm} " for q in question_starters):
+        return True
+
+    # If text ends with '?' and has no suspicious content to analyze
+    if text.strip().endswith("?") and len(text.strip().split()) <= 25:
+        return True
+
+    return False
+
+
+# ── Offline Knowledge Base ────────────────────────────────────────────────────
 
 def check_offline_knowledge_base(text: str) -> Optional[str]:
     """
-    Returns accurate educational answers for general cyber-safety questions (Item 7)
-    so that rule mode never answers a general question with a harassment/threat action plan template.
+    Returns accurate educational answers for general cyber-safety questions
+    so that rule mode answers common questions with accurate information in BOTH modes.
+    Matches with typo and spacing tolerance.
     """
     if not text or not isinstance(text, str):
         return None
+
+    # Do not treat explicit evidence/pasted text as offline KB query
+    if is_content_to_analyze(text):
+        return None
+
+    norm = normalize_query_text(text)
     lower = text.strip().lower()
 
-    # General cyberbullying
-    if any(re.search(p, lower) for p in [
-        r"\b(?:what\s+is|what\s+are|define|explain|meaning\s+of|tell\s+me\s+about)\s+(?:a\s+)?(?:cyberbullying|cyber-bullying|online\s+harassment|trolling)\b",
-        r"^what\s+is\s+cyberbullying\??$",
-        r"^cyberbullying\??$"
-    ]):
+    # 1. Cyberbullying (e.g. "what is cyberbullying?", "what is cyber bullying", "whay is cyber bullying")
+    if (any(w in norm for w in ["what", "how", "explain", "define", "meaning", "tell me"]) and "cyberbullying" in norm) or norm in ("cyberbullying", "what is cyberbullying", "what is cyber bullying"):
         return (
             "Cyberbullying is the repeated use of digital communications (social media, messaging platforms, online gaming) "
             "to intentionally distress, humiliate, intimidate, or threaten another person. Common forms include posting "
@@ -279,12 +434,8 @@ def check_offline_knowledge_base(text: str) -> Optional[str]:
             "block the perpetrator, report to the platform, and file a report at cybercrime.gov.in."
         )
 
-    # General phishing
-    if any(re.search(p, lower) for p in [
-        r"\b(?:what\s+is|what\s+are|how\s+do|how\s+does|explain|define)\s+(?:a\s+)?(?:phishing|smishing|vishing|phish\s+scam)\b",
-        r"^what\s+is\s+phishing\??$",
-        r"^how\s+do\s+phishing\s+scams\s+work\??$"
-    ]):
+    # 2. Phishing (e.g. "explain phishing", "what is phishing?", "how do phishing scams work")
+    if (any(w in norm for w in ["what", "how", "explain", "define", "meaning", "tell me"]) and "phish" in norm) or norm in ("phishing", "what is phishing", "explain phishing"):
         return (
             "Phishing is a deceptive social engineering attack where malicious actors impersonate legitimate institutions "
             "(such as banks, delivery couriers, telecom operators, or government bodies) through fake emails, SMS (smishing), "
@@ -295,11 +446,17 @@ def check_offline_knowledge_base(text: str) -> Optional[str]:
             "never request passwords or OTPs over links or calls. If you suspect financial fraud, immediately call helpline 1930 and report at cybercrime.gov.in."
         )
 
-    # General sextortion
-    if any(re.search(p, lower) for p in [
-        r"\b(?:what\s+is|define|explain|tell\s+me\s+about)\s+(?:a\s+)?(?:sextortion|webcam\s+blackmail|digital\s+blackmail)\b",
-        r"^what\s+is\s+sextortion\??$"
-    ]):
+    # 3. How to report in India (e.g. "how do I report a scam in India", "how to report cyber crime in India")
+    if "report" in norm and any(w in norm for w in ["india", "scam", "cybercrime", "cyber crime", "1930", "police", "portal", "fraud", "complaint"]):
+        return (
+            "In India, cyber crimes and scams can be reported through two official channels:\n"
+            "1. **National Cyber Crime Helpline (1930):** For immediate financial cyber fraud (UPI scams, bank fraud, unauthorized transactions). Calling within the golden hour enables authorities to freeze fraudulent transactions.\n"
+            "2. **National Cyber Crime Reporting Portal (cybercrime.gov.in):** For filing formal complaints and submitting digital evidence for cyber harassment, blackmail, non-consensual imagery, and identity theft.\n\n"
+            "If you ever face immediate physical danger or violence, dial **112** (National Emergency Response)."
+        )
+
+    # 4. Sextortion (e.g. "what is sextortion?", "explain sextortion")
+    if (any(w in norm for w in ["what", "how", "explain", "define", "meaning", "tell me"]) and "sextort" in norm) or norm in ("sextortion", "what is sextortion", "explain sextortion"):
         return (
             "Sextortion is a cyber extortion scheme where a perpetrator threatens to distribute intimate images, webcam footage, "
             "or private conversations to the victim's friends, family, or employer unless ransom (frequently cryptocurrency or gift cards) "
@@ -309,12 +466,8 @@ def check_offline_knowledge_base(text: str) -> Optional[str]:
             "use StopNCII.org to protect non-consensual images, and report the incident at cybercrime.gov.in or helpline 1930."
         )
 
-    # Digital arrest scams
-    if any(re.search(p, lower) for p in [
-        r"\b(?:what\s+is|explain|tell\s+me\s+about|define)\s+(?:a\s+)?(?:digital\s+arrest|digital\s+arrest\s+scams?)\b",
-        r"^what\s+is\s+a\s+digital\s+arrest\s+scam\??$",
-        r"digital\s+arrest"
-    ]):
+    # 5. Digital arrest scams
+    if "digital arrest" in norm:
         return (
             "A 'digital arrest' scam is an extortion scheme where cybercriminals pose as law enforcement, CBI, police, customs, or court judges "
             "via video calls (Skype or WhatsApp). The scammers claim that illegal contraband, narcotics, or money-laundering funds were found in your name, "
@@ -323,34 +476,18 @@ def check_offline_knowledge_base(text: str) -> Optional[str]:
             "If you receive such a call, disconnect immediately, do not transfer any money, and report it to the National Cyber Crime Helpline at 1930."
         )
 
-    # How to protect Instagram / Social media account
-    if any(re.search(p, lower) for p in [
-        r"\b(?:how\s+to|how\s+can\s+i|how\s+do\s+i)\s+(?:protect|secure)\s+(?:my\s+)?(?:instagram|whatsapp|facebook|social\s+media)\s*(?:account)?\b",
-        r"^how\s+can\s+i\s+protect\s+my\s+instagram\s+account\??$"
-    ]):
+    # 6. How to protect Instagram / Social media account
+    if any(w in norm for w in ["protect", "secure"]) and any(w in norm for w in ["instagram", "whatsapp", "facebook", "account", "social media"]):
         return (
-            "To secure your Instagram and social media accounts effectively:\n"
-            "1. **Enable Two-Factor Authentication (2FA):** Go to Settings > Accounts Center > Password and Security > Two-Factor Authentication. Prefer an authenticator app (such as Google Authenticator) over SMS.\n"
-            "2. **Use a Strong, Unique Password:** Avoid reusing passwords across different websites or using personal details (birthdays, names).\n"
+            "To secure your social media and online accounts effectively:\n"
+            "1. **Enable Two-Factor Authentication (2FA):** Go to Settings > Accounts Center / Security > Two-Factor Authentication. Prefer an authenticator app (such as Google Authenticator) over SMS.\n"
+            "2. **Use a Strong, Unique Password:** Avoid reusing passwords across different websites or using personal details.\n"
             "3. **Check Active Login Activity:** Regularly review active sessions in Settings > Password and Security > Where You're Logged In, and terminate any unrecognized devices.\n"
             "4. **Set Your Account to Private:** Prevent unknown individuals from scraping your followers list and photos for extortion or impersonation.\n"
             "5. **Beware of Suspicious DMs:** Never click password-reset links, copyright violation notices, or contest voting links sent via direct message."
         )
 
-    # How to report in India
-    if any(re.search(p, lower) for p in [
-        r"\b(?:how\s+(?:to|can\s+i|do\s+i)\s+(?:report|file\s+a\s+complaint).*(?:in\s+india|cyber\s*crime|police|portal|1930))\b",
-        r"^how\s+to\s+report\s+cyber\s*crime\s+in\s+india\??$",
-        r"^how\s+to\s+report\??$"
-    ]):
-        return (
-            "In India, cyber crimes can be reported through two official channels:\n"
-            "1. **National Cyber Crime Helpline (1930):** For immediate financial cyber fraud (UPI scams, bank fraud, unauthorized transactions). Calling within the golden hour enables authorities to freeze fraudulent transactions.\n"
-            "2. **National Cyber Crime Reporting Portal (cybercrime.gov.in):** For filing formal complaints and submitting digital evidence for cyber harassment, blackmail, non-consensual imagery, child sexual abuse material, and identity theft.\n\n"
-            "If you ever face immediate physical danger or violence, dial **112** (National Emergency Response)."
-        )
-
-    # Off-topic questions (Item 2: brief answer or polite redirect)
+    # 7. Off-topic questions (brief answer or polite redirect)
     off_topic_patterns = [
         r"^what\s+is\s+the\s+capital\s+of\b",
         r"^who\s+wrote\b",
@@ -376,7 +513,7 @@ def check_offline_knowledge_base(text: str) -> Optional[str]:
 
 def generate_fallback_response(user_text: str, persona: str = "victim", prediction_context: dict = None) -> ChatResponse:
     """
-    High-quality deterministic fallback response when the Anthropic API is unconfigured, fails, or times out.
+    High-quality deterministic fallback response when the LLM API is unconfigured, fails, or times out.
     Adheres strictly to requested persona ('victim' or 'analyst') and builds analyst output from real engine scores.
     """
     mode = "analyst" if (persona or "").lower() == "analyst" else "victim"
@@ -386,7 +523,7 @@ def generate_fallback_response(user_text: str, persona: str = "victim", predicti
     if crisis_resp:
         return ChatResponse(crisis_resp, engine="rules")
 
-    # Offline knowledge base check: Return educational/factual answers for common queries (Item 7)
+    # Offline knowledge base check: Return educational/factual answers for common queries
     kb_answer = check_offline_knowledge_base(user_text)
     if kb_answer:
         return ChatResponse(kb_answer, engine="rules")
@@ -458,6 +595,13 @@ def generate_fallback_response(user_text: str, persona: str = "victim", predicti
                     engine="rules"
                 )
         else:
+            if is_general_question(user_text) or "?" in user_text:
+                return ChatResponse(
+                    "ShieldAI Security Advisory: For general inquiries regarding cyber threats, threat actor tactics, "
+                    "and technical countermeasures, please specify the concept or vector you would like evaluated (e.g. phishing, "
+                    "credential harvesting, digital arrest extortion). To analyze suspicious messages, logs, or headers, paste them here.",
+                    engine="rules"
+                )
             return ChatResponse(
                 "### 🛡️ Structured Incident Assessment (Analyst Mode)\n\n"
                 "**Classification:** Benign Communication / No Threat Detected\n"
@@ -759,15 +903,25 @@ def get_configured_provider() -> str:
     """
     Returns the configured LLM provider: 'groq', 'anthropic', or 'none'.
     Reads LLM_PROVIDER from environment; if unset, auto-detects based on available API keys.
+    Logs runtime status strictly without any key values.
     """
     prov = os.getenv("LLM_PROVIDER", "").strip().lower()
+    provider = "none"
     if prov in ("groq", "anthropic", "none"):
-        return prov
-    if os.getenv("GROQ_API_KEY", "").strip():
-        return "groq"
-    if os.getenv("ANTHROPIC_API_KEY", "").strip():
-        return "anthropic"
-    return "none"
+        provider = prov
+    elif os.getenv("GROQ_API_KEY", "").strip():
+        provider = "groq"
+    elif os.getenv("ANTHROPIC_API_KEY", "").strip():
+        provider = "anthropic"
+
+    key_present = False
+    if provider == "groq":
+        key_present = bool(os.getenv("GROQ_API_KEY", "").strip())
+    elif provider == "anthropic":
+        key_present = bool(os.getenv("ANTHROPIC_API_KEY", "").strip())
+
+    logger.info(f"provider={provider}, key present: {'yes' if key_present else 'no'}")
+    return provider
 
 
 def _get_groq_client():
@@ -901,10 +1055,10 @@ def _build_system_prompt(persona: str, prediction_context: Optional[dict] = None
         return (
             f"{base}\n\n"
             "ROLE: VICTIM MODE (Supportive, practical, clear incident response)\n"
-            "- When a user asks a general informational question (e.g. 'What is cyberbullying?', 'How do phishing scams work?', 'How can I protect my Instagram account?', 'What is a digital arrest scam?', 'How to report in India?'), "
-            "provide a clear, accurate, educational response like a normal expert security assistant.\n"
+            "- GENERAL QUESTIONS: When the user asks a general informational question (e.g. 'What is cyberbullying?', 'Explain phishing', 'How do I report a scam in India?'), "
+            "provide a clear, accurate, educational response like a normal expert security assistant. Do not use the incident action plan template for general questions.\n"
             "- If the user asks an off-topic question, provide a brief answer and politely redirect to cyber safety.\n"
-            "- If the user is facing an active cyber threat, extortion, sextortion, or harassment incident, you MUST structure your reply in this exact shape:\n"
+            "- ACTIVE INCIDENT RESPONSE: If the user is facing an active cyber threat, extortion, sextortion, or harassment incident, you MUST structure your reply in this exact shape:\n"
             "  1. Start with ONE warm sentence acknowledging what the user said (and their feelings/distress if stated).\n"
             "  2. ONE short key line stating the core point (e.g. 'Do not pay: payment rarely stops the demands, and many of these messages are bluffs.' or 'Do not click links or share credentials: legitimate organizations never threaten immediate account suspension.').\n"
             "  3. A numbered list of at most 6 steps, where each step is exactly ONE sentence:\n"
@@ -926,7 +1080,9 @@ def _build_system_prompt(persona: str, prediction_context: Optional[dict] = None
         return (
             f"{base}\n\n"
             "ROLE: ANALYST MODE (Structured SOC / Tactical incident triage)\n"
-            "You MUST output a structured incident assessment using this exact layout:\n"
+            "- GENERAL QUESTIONS: When the user asks a general informational question (e.g. 'What is cyberbullying?', 'Explain phishing', 'How do I report a scam in India?'), "
+            "provide a clear, comprehensive technical and legal explanation like an expert security advisor. Do NOT output a SOC incident assessment or triage template with empty indicators unless the user provides specific message content or evidence to analyze.\n"
+            "- EVIDENCE & MESSAGE TRIAGE: When analyzing a specific suspicious message, email, SMS, or incident evidence, you MUST output a structured incident assessment using this exact layout:\n"
             "- Classification: (Incident category)\n"
             "- Assessed Risk Level and Score: strictly matching the scan data\n"
             "- Indicators: list each indicator (URLs, domains, brand, phones, emails, wallets) exactly ONCE with no duplicates\n"
@@ -953,12 +1109,26 @@ def _call_groq(client, history: list, persona: str, user_text: str, prediction_c
     if not any(m["role"] == "user" for m in messages) and user_text:
         messages.append({"role": "user", "content": wrap_user_content_as_data(user_text)})
 
-    completion = client.chat.completions.create(
-        model=model_name,
-        messages=messages,
-        max_tokens=1000,
-        temperature=0.2
-    )
+    try:
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            max_tokens=1000,
+            temperature=0.2
+        )
+    except Exception as e:
+        err_str = str(e)
+        if ("404" in err_str or "model_not_found" in err_str) and model_name != "openai/gpt-oss-120b":
+            logger.warning(f"Groq model {model_name} not found. Retrying with fallback model openai/gpt-oss-120b.")
+            completion = client.chat.completions.create(
+                model="openai/gpt-oss-120b",
+                messages=messages,
+                max_tokens=1000,
+                temperature=0.2
+            )
+        else:
+            raise
+
     if completion.choices and completion.choices[0].message:
         return completion.choices[0].message.content or ""
     return ""
@@ -1016,6 +1186,7 @@ def generate_chat_response(history: list, persona: str = "victim", prediction_co
     # 2. Check provider configuration
     provider = get_configured_provider()
     if provider == "none":
+        update_llm_status("not_called", None)
         logger.info("LLM provider set to none. Using rule-based fallback engine.")
         return generate_fallback_response(user_text, persona=mode, prediction_context=prediction_context)
 
@@ -1025,6 +1196,7 @@ def generate_chat_response(history: list, persona: str = "victim", prediction_co
     if provider == "groq":
         client = _get_groq_client()
         if client is None:
+            update_llm_status("api_error", "Groq API key not configured")
             logger.warning("Groq API client unavailable (missing or empty key). Using rule-based fallback engine.")
             fallback = generate_fallback_response(user_text, persona=mode, prediction_context=prediction_context)
             return ChatResponse(f"{ai_fallback_note}{fallback}", engine="rules")
@@ -1033,11 +1205,24 @@ def generate_chat_response(history: list, persona: str = "victim", prediction_co
             if mode == "analyst" and not validate_analyst_response(content, prediction_context):
                 logger.warning("Groq analyst response contradicted scan metrics. Using rule-based fallback engine.")
                 fallback = generate_fallback_response(user_text, persona=mode, prediction_context=prediction_context)
+                update_llm_status("ok", None)
                 return ChatResponse(fallback, engine="rules")
+            update_llm_status("ok", None)
             return ChatResponse(content, engine="groq")
         except Exception as e:
             err_type = type(e).__name__
-            logger.warning(f"Groq API call failed ({err_type}: {e}). Using rule-based fallback engine.")
+            err_str = str(e)
+            status_code = "api_error"
+            if "429" in err_str or "rate_limit" in err_str.lower() or "RateLimit" in err_type:
+                status_code = "rate_limit_exceeded"
+            elif "timeout" in err_str.lower() or "Timeout" in err_type:
+                status_code = "timeout"
+            elif "404" in err_str or "model_not_found" in err_str.lower() or "NotFound" in err_type:
+                status_code = "model_not_found"
+
+            clean_err = re.sub(r'gsk_[A-Za-z0-9_-]+|sk-ant-[A-Za-z0-9_-]+', '[REDACTED_KEY]', err_str)
+            update_llm_status(status_code, clean_err)
+            logger.warning(f"Groq API call failed ({err_type}: {clean_err}). Using rule-based fallback engine.")
             fallback = generate_fallback_response(user_text, persona=mode, prediction_context=prediction_context)
             return ChatResponse(f"{ai_fallback_note}{fallback}", engine="rules")
 
@@ -1045,6 +1230,7 @@ def generate_chat_response(history: list, persona: str = "victim", prediction_co
     elif provider == "anthropic":
         client = _get_anthropic_client()
         if client is None:
+            update_llm_status("api_error", "Anthropic API key not configured")
             logger.warning("Anthropic API client unavailable (missing or empty key). Using rule-based fallback engine.")
             fallback = generate_fallback_response(user_text, persona=mode, prediction_context=prediction_context)
             return ChatResponse(f"{ai_fallback_note}{fallback}", engine="rules")
@@ -1053,11 +1239,24 @@ def generate_chat_response(history: list, persona: str = "victim", prediction_co
             if mode == "analyst" and not validate_analyst_response(content, prediction_context):
                 logger.warning("Anthropic analyst response contradicted scan metrics. Using rule-based fallback engine.")
                 fallback = generate_fallback_response(user_text, persona=mode, prediction_context=prediction_context)
+                update_llm_status("ok", None)
                 return ChatResponse(fallback, engine="rules")
+            update_llm_status("ok", None)
             return ChatResponse(content, engine="claude")
         except Exception as e:
             err_type = type(e).__name__
-            logger.warning(f"Anthropic API call failed ({err_type}: {e}). Using rule-based fallback engine.")
+            err_str = str(e)
+            status_code = "api_error"
+            if "429" in err_str or "rate_limit" in err_str.lower() or "RateLimit" in err_type:
+                status_code = "rate_limit_exceeded"
+            elif "timeout" in err_str.lower() or "Timeout" in err_type:
+                status_code = "timeout"
+            elif "404" in err_str or "model_not_found" in err_str.lower() or "NotFound" in err_type:
+                status_code = "model_not_found"
+
+            clean_err = re.sub(r'gsk_[A-Za-z0-9_-]+|sk-ant-[A-Za-z0-9_-]+', '[REDACTED_KEY]', err_str)
+            update_llm_status(status_code, clean_err)
+            logger.warning(f"Anthropic API call failed ({err_type}: {clean_err}). Using rule-based fallback engine.")
             fallback = generate_fallback_response(user_text, persona=mode, prediction_context=prediction_context)
             return ChatResponse(f"{ai_fallback_note}{fallback}", engine="rules")
 
