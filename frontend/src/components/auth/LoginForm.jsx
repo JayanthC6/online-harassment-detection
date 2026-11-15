@@ -120,15 +120,20 @@ export default function LoginForm({ onLogin }) {
             {isRegistering ? 'Already have an account? Sign In' : 'Need an account? Register'}
           </button>
           
-          <div className="flex items-center justify-center gap-2 pt-4 border-t border-border/50 mt-4">
-            <button 
-              type="button" 
-              onClick={handleGuestSession}
-              disabled={loading}
-              className="text-xs font-semibold text-blue hover:text-white transition-colors flex items-center gap-1 drop-shadow-[0_0_5px_rgba(0,242,254,0.4)] disabled:opacity-50"
-            >
-              Initialize Guest Session &rarr;
-            </button>
+          <div className="pt-4 border-t border-border/50 mt-4 space-y-2">
+            <div className="flex items-center justify-center">
+              <button 
+                type="button" 
+                onClick={handleGuestSession}
+                disabled={loading}
+                className="text-xs font-semibold text-blue hover:text-white transition-colors flex items-center gap-1 drop-shadow-[0_0_5px_rgba(0,242,254,0.4)] disabled:opacity-50"
+              >
+                Initialize Guest Session &rarr;
+              </button>
+            </div>
+            <p className="text-[11px] text-text-muted font-mono text-center">
+              Demo Credentials: <span className="text-cyan-400 font-semibold">admin</span> / <span className="text-cyan-400 font-semibold">password123</span>
+            </p>
           </div>
         </div>
       </div>

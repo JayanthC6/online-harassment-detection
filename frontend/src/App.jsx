@@ -61,58 +61,69 @@ const ADMIN_ONLY_TABS = ['dashboard', 'incidents', 'offenders', 'behavioral', 'r
 export default function App() {
   const { token, role, login, logout } = useAuth()
 
-  // Compute initial tab from URL hash, then pathname, then localStorage, then default role
+  // Compute initial tab from URL hash, then pathname, then storage, then default role
   const getInitialTab = () => {
-    // 1. Check URL hash (e.g., #incidents, #queue, #chat)
+    // 1. If unauthenticated, always default to the Login portal
+    if (!token) {
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const tabFromHash = normalizeTab(window.location.hash);
+        // Only permit public informational pages if explicitly hashed
+        if (tabFromHash === 'how_it_works') {
+          return tabFromHash;
+        }
+      }
+      return 'login';
+    }
+
+    // 2. Authenticated user: Check URL hash (e.g., #incidents, #queue, #chat)
     if (typeof window !== 'undefined' && window.location.hash) {
       const tabFromHash = normalizeTab(window.location.hash);
-      if (tabFromHash) {
+      if (tabFromHash && tabFromHash !== 'login') {
         if (ADMIN_ONLY_TABS.includes(tabFromHash)) {
-          if (token && role !== 'User') return tabFromHash;
-          return 'login';
+          if (role !== 'User') return tabFromHash;
+          return 'analyze';
         }
-        if (tabFromHash === 'my_history' && (!token || role !== 'User')) {
-          return token ? 'dashboard' : 'login';
+        if (tabFromHash === 'my_history' && role !== 'User') {
+          return 'dashboard';
         }
         return tabFromHash;
       }
     }
 
-    // 2. Check URL pathname (e.g., /incidents, /queue)
+    // 3. Authenticated user: Check URL pathname (e.g., /incidents, /queue)
     if (typeof window !== 'undefined' && window.location.pathname && window.location.pathname !== '/') {
       const tabFromPath = normalizeTab(window.location.pathname);
-      if (tabFromPath) {
+      if (tabFromPath && tabFromPath !== 'login') {
         if (ADMIN_ONLY_TABS.includes(tabFromPath)) {
-          if (token && role !== 'User') return tabFromPath;
-          return 'login';
+          if (role !== 'User') return tabFromPath;
+          return 'analyze';
         }
-        if (tabFromPath === 'my_history' && (!token || role !== 'User')) {
-          return token ? 'dashboard' : 'login';
+        if (tabFromPath === 'my_history' && role !== 'User') {
+          return 'dashboard';
         }
         return tabFromPath;
       }
     }
 
-    // 3. Check localStorage
+    // 4. Authenticated user: Check sessionStorage / localStorage
     try {
-      const saved = localStorage.getItem('shieldai_active_tab');
+      const saved = sessionStorage.getItem('shieldai_active_tab') || localStorage.getItem('shieldai_active_tab');
       const normalizedSaved = normalizeTab(saved);
-      if (normalizedSaved) {
+      if (normalizedSaved && normalizedSaved !== 'login') {
         if (ADMIN_ONLY_TABS.includes(normalizedSaved)) {
-          if (token && role !== 'User') return normalizedSaved;
-          return 'login';
+          if (role !== 'User') return normalizedSaved;
+          return 'analyze';
         }
-        if (normalizedSaved === 'my_history' && (!token || role !== 'User')) {
-          return token ? 'dashboard' : 'login';
+        if (normalizedSaved === 'my_history' && role !== 'User') {
+          return 'dashboard';
         }
         return normalizedSaved;
       }
     } catch (e) {
-      // Ignore localStorage errors
+      // Ignore storage errors
     }
 
-    // 4. Fallback based on authentication
-    if (!token) return 'analyze';
+    // 5. Fallback based on authenticated role
     if (role === 'User') return 'analyze';
     return 'dashboard';
   };
@@ -120,12 +131,26 @@ export default function App() {
   const [activeTab, setActiveTabState] = useState(getInitialTab);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Tab switcher with URL Hash and localStorage synchronization
+  // Explicit logout handler that wipes session, active tab, and redirects to Login
+  const handleLogout = useCallback(() => {
+    logout();
+    try {
+      sessionStorage.removeItem('shieldai_active_tab');
+      localStorage.removeItem('shieldai_active_tab');
+    } catch (e) {}
+    setActiveTabState('login');
+    if (typeof window !== 'undefined') {
+      window.location.hash = '#login';
+    }
+  }, [logout]);
+
+  // Tab switcher with URL Hash and storage synchronization
   const setActiveTab = useCallback((rawTab) => {
     const tab = normalizeTab(rawTab) || rawTab;
     if (!VALID_TABS.includes(tab)) return;
     setActiveTabState(tab);
     try {
+      sessionStorage.setItem('shieldai_active_tab', tab);
       localStorage.setItem('shieldai_active_tab', tab);
     } catch (e) {}
 
@@ -148,6 +173,7 @@ export default function App() {
         } else {
           setActiveTabState(hash);
           try {
+            sessionStorage.setItem('shieldai_active_tab', hash);
             localStorage.setItem('shieldai_active_tab', hash);
           } catch (e) {}
         }
@@ -166,6 +192,7 @@ export default function App() {
         window.location.hash = `#${activeTab}`;
       }
       try {
+        sessionStorage.setItem('shieldai_active_tab', activeTab);
         localStorage.setItem('shieldai_active_tab', activeTab);
       } catch (e) {}
     }
@@ -177,7 +204,7 @@ export default function App() {
       setActiveTab('login');
     } else if (token && activeTab === 'login') {
       const savedTarget = (typeof window !== 'undefined' && normalizeTab(window.location.hash))
-        || normalizeTab(localStorage.getItem('shieldai_active_tab'));
+        || normalizeTab(sessionStorage.getItem('shieldai_active_tab') || localStorage.getItem('shieldai_active_tab'));
       const target = (role === 'User')
         ? 'analyze'
         : (savedTarget && savedTarget !== 'login' ? savedTarget : 'dashboard');
@@ -211,7 +238,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         token={token}
         role={role}
-        onLogout={logout}
+        onLogout={handleLogout}
       />
 
       {/* ── Header ── */}
@@ -219,7 +246,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         token={token}
-        onLogout={logout}
+        onLogout={handleLogout}
         role={role}
       />
 

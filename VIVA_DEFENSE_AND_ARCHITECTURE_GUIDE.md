@@ -529,3 +529,4 @@ To achieve top marks during your live evaluation, execute this exact 5-minute de
    - Switch to **Victim Mode** and submit a blackmail inquiry. Highlight the warm empathetic opening sentence, the clear key takeaway (*"Do not pay"*), the actionable numbered steps, and verified helplines (**1930, StopNCII.org, 112**).
    - Switch to **Analyst Mode** to demonstrate technical IOC extraction.
    - Switch to the terminal and execute `pytest -q`: demonstrate that all **118 automated tests pass**.
+

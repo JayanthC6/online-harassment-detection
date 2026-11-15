@@ -25,9 +25,26 @@ function decodeJwtRole(token) {
   }
 }
 
+function getStoredToken() {
+  if (typeof window === 'undefined') return '';
+  // sessionStorage maintains active session during refreshes (Ctrl+R),
+  // but resets on new browser launch/tab so the app cleanly defaults to the Login page.
+  return sessionStorage.getItem('adminToken') || '';
+}
+
 export function useAuth() {
-  const [token, setToken] = useState(() => localStorage.getItem('adminToken') || '');
-  const [role, setRole] = useState(() => decodeJwtRole(localStorage.getItem('adminToken')));
+  const [token, setToken] = useState(() => {
+    const sessionToken = getStoredToken();
+    // If opening fresh without an active session, clear any stale legacy localStorage token
+    // so fresh project runs always present the Login portal
+    if (!sessionToken && typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('adminToken');
+      } catch (e) {}
+    }
+    return sessionToken;
+  });
+  const [role, setRole] = useState(() => decodeJwtRole(getStoredToken()));
 
   useEffect(() => {
     setRole(decodeJwtRole(token));
@@ -35,12 +52,21 @@ export function useAuth() {
 
   const login = (newToken) => {
     setToken(newToken);
-    localStorage.setItem('adminToken', newToken);
+    try {
+      sessionStorage.setItem('adminToken', newToken);
+      localStorage.setItem('adminToken', newToken);
+    } catch (e) {}
   };
 
   const logout = () => {
     setToken('');
-    localStorage.removeItem('adminToken');
+    setRole(null);
+    try {
+      sessionStorage.removeItem('adminToken');
+      localStorage.removeItem('adminToken');
+      sessionStorage.removeItem('shieldai_active_tab');
+      localStorage.removeItem('shieldai_active_tab');
+    } catch (e) {}
   };
 
   useEffect(() => {

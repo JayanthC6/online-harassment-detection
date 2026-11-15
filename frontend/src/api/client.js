@@ -1,5 +1,7 @@
 export const apiClient = async (endpoint, options = {}) => {
-  const token = localStorage.getItem('adminToken');
+  const token = (typeof window !== 'undefined')
+    ? (sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken'))
+    : null;
   
   const headers = {
     ...options.headers,

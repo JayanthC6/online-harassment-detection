@@ -23,12 +23,12 @@ export default function Sidebar({ activeTab, setActiveTab, token, role, onLogout
   let navItems = [];
 
   if (!isAuth) {
-    // Unauthenticated public visitors
+    // Unauthenticated visitors - Login is primary landing portal
     navItems = [
+      { id: 'login', label: 'Admin Sign In', icon: LogIn },
       { id: 'analyze', label: 'Scan Content', icon: Search },
       { id: 'chat', label: 'AI Safety Chat', icon: MessageSquare },
-      { id: 'how_it_works', label: 'How It Works', icon: HelpCircle },
-      { id: 'login', label: 'Admin Sign In', icon: LogIn }
+      { id: 'how_it_works', label: 'How It Works', icon: HelpCircle }
     ];
   } else if (isPublicUser) {
     // Authenticated regular user
