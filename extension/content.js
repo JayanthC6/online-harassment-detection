@@ -71,6 +71,11 @@
           hideAllBadges();
         } else {
           showAllBadges();
+          if (changes.showSafeBadges?.newValue) {
+            document.querySelectorAll('[data-shieldai-checked="true"]:not([data-shieldai-badged="true"])').forEach(el => {
+              el.removeAttribute('data-shieldai-checked');
+            });
+          }
           debouncedScanDOM();
         }
       }
@@ -85,10 +90,10 @@
 
   function showAllBadges() {
     document.querySelectorAll('.shieldai-badge').forEach(b => {
-      if (b.classList.contains('badge-safe') && !showSafeBadges) {
-        b.style.display = 'none';
-      } else if (b.classList.contains('badge-purple') && !showUnsupportedBadges) {
-        b.style.display = 'none';
+      if (b.classList.contains('badge-safe')) {
+        b.style.display = showSafeBadges ? 'inline-flex' : 'none';
+      } else if (b.classList.contains('badge-purple')) {
+        b.style.display = showUnsupportedBadges ? 'inline-flex' : 'none';
       } else {
         b.style.display = 'inline-flex';
       }
@@ -107,7 +112,7 @@
   // Site-specific high-priority selectors
   function getSiteSpecificSelector() {
     if (currentHostname.includes('mail.google.com')) {
-      return '.a3s.aiL, div[role="listitem"] .a3s';
+      return '.a3s.aiL p, .a3s.aiL div, .a3s.aiL td, .a3s.aiL span, div[role="listitem"] .a3s p, div[role="listitem"] .a3s td, div[role="listitem"] .a3s div, .a3s.aiL';
     } else if (currentHostname.includes('web.whatsapp.com')) {
       return 'div.message-in, div.message-out, span.selectable-text';
     }
@@ -306,14 +311,12 @@
       badgeLabel = 'SAFE';
     }
 
-    // Requirement: Do not show a badge for clean messages unless "show safe badges" popup option is on
+    // Determine initial visibility based on user preferences
+    let initialDisplay = 'inline-flex';
     if (badgeClass === 'badge-safe' && !showSafeBadges) {
-      return;
-    }
-
-    // Requirement: Do not show a purple badge on every non-English paragraph unless "show unsupported badges" is on
-    if (badgeClass === 'badge-purple' && !showUnsupportedBadges) {
-      return;
+      initialDisplay = 'none';
+    } else if (badgeClass === 'badge-purple' && !showUnsupportedBadges) {
+      initialDisplay = 'none';
     }
 
     // Mark element as badged
@@ -336,6 +339,7 @@
     // Create badge container
     const badge = document.createElement('span');
     badge.className = `shieldai-badge ${badgeClass}`;
+    badge.style.display = initialDisplay;
     if (elId) badge.setAttribute('data-target-id', elId);
 
     // Indicator dot
@@ -375,7 +379,7 @@
     badge.appendChild(tooltip);
 
     // Append badge inline at the end of element or immediately after
-    if (['div', 'p', 'li', 'blockquote'].includes(element.tagName.toLowerCase())) {
+    if (['div', 'p', 'li', 'blockquote', 'td'].includes(element.tagName.toLowerCase())) {
       element.appendChild(badge);
     } else if (element.parentNode) {
       element.parentNode.insertBefore(badge, element.nextSibling);
@@ -406,6 +410,17 @@
     });
   }, { root: null, threshold: 0.1 });
 
+  function isElementInViewport(el) {
+    if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+    const rect = el.getBoundingClientRect();
+    return (
+      rect.width > 0 &&
+      rect.height > 0 &&
+      rect.top < (window.innerHeight || document.documentElement.clientHeight) + 300 &&
+      rect.bottom > -300
+    );
+  }
+
   // DOM Scanner: runs site-specific first, then generic fallback
   function scanDOM() {
     if (!isEnabled || isSiteDisabled) return;
@@ -420,20 +435,28 @@
           el.getAttribute('data-shieldai-badged') !== 'true' &&
           isEligibleTextNode(el)
         ) {
-          visibleObserver.observe(el);
+          if (isElementInViewport(el)) {
+            queueElementForScan(el);
+          } else {
+            visibleObserver.observe(el);
+          }
         }
       });
     }
 
-    // 2. Generic fallback scanner for any page (p, li, blockquote, div, span)
-    const candidates = document.querySelectorAll('p, li, blockquote, div, span');
+    // 2. Generic fallback scanner for any page (p, li, blockquote, div, span, td)
+    const candidates = document.querySelectorAll('p, li, blockquote, div, span, td');
     candidates.forEach(el => {
       if (
         el.getAttribute('data-shieldai-checked') !== 'true' &&
         el.getAttribute('data-shieldai-badged') !== 'true' &&
         isEligibleTextNode(el)
       ) {
-        visibleObserver.observe(el);
+        if (isElementInViewport(el)) {
+          queueElementForScan(el);
+        } else {
+          visibleObserver.observe(el);
+        }
       }
     });
   }
