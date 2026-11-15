@@ -276,36 +276,47 @@
       return;
     }
 
-    const score = parseFloat(result.score || (result.confidence ? result.confidence * 100 : 0)) || 0.0;
+    // Accurately extract risk score (do NOT fall back to confidence, which is high for clean text)
+    const rawRiskScore = result.risk_score !== undefined && result.risk_score !== null
+      ? result.risk_score
+      : (result.threat_score !== undefined && result.threat_score !== null
+          ? result.threat_score
+          : (result.score !== undefined && result.score !== null ? result.score : 0.0));
+    const score = parseFloat(rawRiskScore) || 0.0;
     const level = (result.level || result.severity_tier || '').toLowerCase();
-    const category = (result.primary_label || result.category || 'Threat').toUpperCase();
+    const rawCategory = (result.primary_label || result.category || '').toUpperCase();
+    const isClean = rawCategory === 'CLEAN' || rawCategory === 'SAFE' || level === 'low' || level === 'safe' || (result.label && result.label.toLowerCase() === 'non_harassing');
+    const category = isClean ? 'SAFE' : (rawCategory || 'THREAT');
 
     const isUnsupported = result.language_supported === false;
     let badgeClass = 'badge-safe';
     let badgeLabel = 'SAFE';
 
     if (isUnsupported) {
-      if (score >= 50.0) {
+      if (score >= 50.0 && !isClean) {
         if (level === 'critical' || score >= 75) {
           badgeClass = 'badge-red';
-          badgeLabel = category === 'CLEAN' ? 'CRITICAL' : category;
+          badgeLabel = category;
         } else {
           badgeClass = 'badge-orange';
-          badgeLabel = category === 'CLEAN' ? 'HIGH RISK' : category;
+          badgeLabel = category;
         }
       } else {
         badgeClass = 'badge-purple';
         badgeLabel = 'UNVERIFIED';
       }
-    } else if (level === 'critical' || score >= 75) {
+    } else if (isClean || level === 'low' || level === 'safe' || score < 25.0) {
+      badgeClass = 'badge-safe';
+      badgeLabel = 'SAFE';
+    } else if (level === 'critical' || score >= 75.0) {
       badgeClass = 'badge-red';
-      badgeLabel = category === 'CLEAN' ? 'CRITICAL' : category;
-    } else if (level === 'high' || score >= 50) {
+      badgeLabel = category;
+    } else if (level === 'high' || score >= 50.0) {
       badgeClass = 'badge-orange';
-      badgeLabel = category === 'CLEAN' ? 'HIGH RISK' : category;
-    } else if (level === 'medium' || score >= 25) {
+      badgeLabel = category;
+    } else if (level === 'medium' || score >= 25.0) {
       badgeClass = 'badge-amber';
-      badgeLabel = category === 'CLEAN' ? 'SUSPICIOUS' : (category === 'SUSPICIOUS_LINK' ? 'SUSPICIOUS LINK' : category);
+      badgeLabel = category === 'SUSPICIOUS_LINK' ? 'SUSPICIOUS LINK' : category;
     } else {
       badgeClass = 'badge-safe';
       badgeLabel = 'SAFE';
@@ -371,6 +382,9 @@
     scoreFooter.className = 'shieldai-tooltip-footer';
     if (isUnsupported && score < 50.0) {
       scoreFooter.textContent = 'Confidence: Unverified Language';
+    } else if (isClean || badgeClass === 'badge-safe') {
+      const confPct = Math.round((result.confidence ? parseFloat(result.confidence) : 0.95) * 100);
+      scoreFooter.textContent = `Confidence: ${confPct}% • Status: SAFE`;
     } else {
       scoreFooter.textContent = `Confidence: ${Math.round(score)}% • Risk: ${level.toUpperCase()}`;
     }
@@ -385,14 +399,14 @@
       element.parentNode.insertBefore(badge, element.nextSibling);
     }
 
-    // Report flagged items to background worker
-    if (badgeClass !== 'badge-safe' && typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+    // Report flagged items to background worker strictly if hazardous
+    if (badgeClass !== 'badge-safe' && badgeClass !== 'badge-purple' && typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
       try {
         chrome.runtime.sendMessage({
           type: 'REPORT_FLAGGED',
           item: {
             category: badgeLabel,
-            confidence: score / 100,
+            confidence: (result.confidence ? parseFloat(result.confidence) : score / 100),
             text: (result.text_preview || element.innerText || '').slice(0, 100),
             reason: tooltipReason
           }
