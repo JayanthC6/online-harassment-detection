@@ -83,7 +83,7 @@
   }
 
   function hideAllBadges() {
-    document.querySelectorAll('.shieldai-badge').forEach(b => {
+    document.querySelectorAll('.shieldai-badge, .shieldai-email-banner').forEach(b => {
       b.style.display = 'none';
     });
   }
@@ -97,6 +97,9 @@
       } else {
         b.style.display = 'inline-flex';
       }
+    });
+    document.querySelectorAll('.shieldai-email-banner.banner-safe').forEach(b => {
+      b.style.display = showSafeBadges ? 'flex' : 'none';
     });
   }
 
@@ -320,6 +323,58 @@
     } else {
       badgeClass = 'badge-safe';
       badgeLabel = 'SAFE';
+    }
+
+    // In Gmail: Show ONE sleek security banner at the top of the email
+    // instead of cluttering every single paragraph and bullet point!
+    if (currentHostname.includes('mail.google.com')) {
+      const mailContainer = element.closest('.a3s');
+      if (mailContainer) {
+        if (badgeClass === 'badge-safe') {
+          // If this email already has a safe badge/banner, do NOT inject duplicate safe badges on every line
+          if (mailContainer.getAttribute('data-shieldai-email-badged') === 'true') {
+            return;
+          }
+          mailContainer.setAttribute('data-shieldai-email-badged', 'true');
+
+          let banner = mailContainer.querySelector('.shieldai-email-banner');
+          if (!banner) {
+            banner = document.createElement('div');
+            banner.className = 'shieldai-email-banner banner-safe';
+            banner.style.display = showSafeBadges ? 'flex' : 'none';
+            const confPct = Math.round((result.confidence ? parseFloat(result.confidence) : 0.95) * 100);
+            banner.innerHTML = `
+              <div class="banner-left">
+                <span class="banner-brand">ShieldAI</span>
+                <span>•</span>
+                <span class="banner-status">✓ Verified Safe</span>
+                <span class="banner-details">— No threat or phishing indicators detected</span>
+              </div>
+              <div class="banner-right">Confidence: ${confPct}%</div>
+            `;
+            mailContainer.insertBefore(banner, mailContainer.firstChild);
+          }
+          return;
+        } else {
+          // If a threat is found, add/upgrade the top email alert banner
+          let banner = mailContainer.querySelector('.shieldai-email-banner');
+          if (!banner) {
+            banner = document.createElement('div');
+            mailContainer.insertBefore(banner, mailContainer.firstChild);
+          }
+          banner.className = `shieldai-email-banner ${badgeClass === 'badge-red' ? 'banner-threat' : 'banner-warning'}`;
+          banner.style.display = 'flex';
+          banner.innerHTML = `
+            <div class="banner-left">
+              <span class="banner-brand">ShieldAI Alert</span>
+              <span>•</span>
+              <span class="banner-status">⚠ ${badgeLabel} Detected</span>
+              <span class="banner-details">— Suspicious content flagged below</span>
+            </div>
+            <div class="banner-right">Risk Tier: ${level.toUpperCase()}</div>
+          `;
+        }
+      }
     }
 
     // Determine initial visibility based on user preferences
