@@ -234,3 +234,207 @@
   0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.2); }
   50% { box-shadow: 0 0 6px 2px rgba(239, 68, 68, 0.3); }
 }
+
+/* Floating Page Safety Guard (Bottom-Right Dock) */
+#shieldai-floating-guard {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  box-sizing: border-box;
+  user-select: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.shieldai-guard-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  background: #0B0F19;
+  color: #F8FAFC;
+  border-radius: 24px;
+  border: 1px solid #1E293B;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.shieldai-guard-pill:hover {
+  transform: translateY(-2px);
+  border-color: #38BDF8;
+  box-shadow: 0 14px 28px -5px rgba(0, 0, 0, 0.7);
+}
+
+.shieldai-guard-pill.pill-safe {
+  border-left: 3px solid #10B981;
+}
+
+.shieldai-guard-pill.pill-safe .guard-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #10B981;
+  box-shadow: 0 0 6px #10B981;
+}
+
+.shieldai-guard-pill.pill-threat {
+  border-left: 3px solid #EF4444;
+  border-color: rgba(239, 68, 68, 0.5);
+  animation: shieldai-guard-pulse 2s infinite;
+}
+
+.shieldai-guard-pill.pill-threat .guard-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #EF4444;
+  box-shadow: 0 0 8px #EF4444;
+}
+
+@keyframes shieldai-guard-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 12px 3px rgba(239, 68, 68, 0.4); }
+}
+
+.shieldai-guard-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.shieldai-guard-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.shieldai-guard-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.shieldai-guard-close:hover {
+  color: #F8FAFC;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Expanded Card (on hover or click) */
+.shieldai-guard-card {
+  position: absolute;
+  bottom: 42px;
+  right: 0;
+  width: 270px;
+  background: #0B0F19;
+  border: 1px solid #1E293B;
+  border-radius: 10px;
+  padding: 12px;
+  color: #F8FAFC;
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+  pointer-events: none;
+}
+
+#shieldai-floating-guard:hover .shieldai-guard-card,
+#shieldai-floating-guard.card-open .shieldai-guard-card {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.shieldai-guard-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1E293B;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.shieldai-guard-card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #00F2FE;
+  font-family: ui-monospace, monospace;
+}
+
+.shieldai-guard-card-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  font-family: ui-monospace, monospace;
+}
+
+.shieldai-guard-card-tag.tag-safe {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.shieldai-guard-card-tag.tag-threat {
+  background: rgba(239, 68, 68, 0.15);
+  color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.shieldai-guard-card-body {
+  font-size: 11px;
+  color: #CBD5E1;
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+
+.shieldai-guard-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #1E293B;
+  padding-top: 6px;
+  font-size: 9.5px;
+  color: #94A3B8;
+  font-family: ui-monospace, monospace;
+}
+
+/* Minimized Guard State */
+#shieldai-floating-guard.is-minimized .shieldai-guard-pill {
+  padding: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+#shieldai-floating-guard.is-minimized .shieldai-guard-label,
+#shieldai-floating-guard.is-minimized .shieldai-guard-close,
+#shieldai-floating-guard.is-minimized .guard-dot,
+#shieldai-floating-guard.is-minimized .shieldai-guard-card {
+  display: none !important;
+}
+
+#shieldai-floating-guard.is-minimized .shieldai-guard-icon {
+  font-size: 15px;
+  margin: 0;
+}
+

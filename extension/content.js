@@ -19,11 +19,95 @@
   let showUnsupportedBadges = false;
   let isSiteDisabled = false;
 
+  // Page scanning stats for Floating Security Guard
+  let pageScannedElements = 0;
+  let pageThreatCount = 0;
+  let floatingGuardEl = null;
+  let isGuardMinimized = false;
+
   const pendingBatch = [];
   let batchTimeout = null;
   let lastBatchDispatchTime = 0;
   const MIN_BATCH_INTERVAL_MS = 350; // Throttle rate limit
   const MAX_BATCH_SIZE = 30; // Batch cap
+
+  // Floating Corner Security Guard (Bottom-Right Dock)
+  function renderOrUpdateFloatingGuard() {
+    if (!isEnabled || isSiteDisabled) {
+      if (floatingGuardEl) floatingGuardEl.style.display = 'none';
+      return;
+    }
+
+    if (!document.body) return;
+
+    if (!floatingGuardEl) {
+      floatingGuardEl = document.createElement('div');
+      floatingGuardEl.id = 'shieldai-floating-guard';
+      document.body.appendChild(floatingGuardEl);
+    }
+
+    floatingGuardEl.style.display = 'block';
+
+    const isGmail = currentHostname.includes('mail.google.com');
+    const hasThreats = pageThreatCount > 0;
+    const pillClass = hasThreats ? 'shieldai-guard-pill pill-threat' : 'shieldai-guard-pill pill-safe';
+    const icon = hasThreats ? '⚠️' : '🛡️';
+    const labelText = hasThreats 
+      ? `${pageThreatCount} Threat${pageThreatCount > 1 ? 's' : ''} Flagged`
+      : (isGmail ? 'ShieldAI: Email Safe' : 'ShieldAI: Page Safe');
+
+    const cardTagClass = hasThreats ? 'shieldai-guard-card-tag tag-threat' : 'shieldai-guard-card-tag tag-safe';
+    const cardTagText = hasThreats ? 'THREAT WARNING' : 'VERIFIED SAFE';
+    const cardStatusText = hasThreats 
+      ? `Detected ${pageThreatCount} potential security or harassment threat(s) on this page.`
+      : (isGmail 
+          ? `Current email and messages verified clean. No phishing, scams, or extortion detected.` 
+          : `Page content analyzed and verified clean. No malicious or harmful text detected.`);
+
+    floatingGuardEl.className = isGuardMinimized ? 'is-minimized' : '';
+    floatingGuardEl.innerHTML = `
+      <div class="${pillClass}" id="shieldai-guard-pill-btn" title="ShieldAI Active Protection">
+        <span class="guard-dot"></span>
+        <span class="shieldai-guard-icon">${icon}</span>
+        <span class="shieldai-guard-label">${labelText}</span>
+        <button class="shieldai-guard-close" id="shieldai-guard-min-btn" title="Minimize guard">×</button>
+      </div>
+      <div class="shieldai-guard-card">
+        <div class="shieldai-guard-card-header">
+          <span class="shieldai-guard-card-title">${isGmail ? 'Gmail Protection' : currentHostname}</span>
+          <span class="${cardTagClass}">${cardTagText}</span>
+        </div>
+        <div class="shieldai-guard-card-body">
+          ${cardStatusText}
+        </div>
+        <div class="shieldai-guard-card-footer">
+          <span>Scanned: ${pageScannedElements} elements</span>
+          <span>Threats: ${pageThreatCount}</span>
+        </div>
+      </div>
+    `;
+
+    const minBtn = floatingGuardEl.querySelector('#shieldai-guard-min-btn');
+    if (minBtn) {
+      minBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        isGuardMinimized = !isGuardMinimized;
+        floatingGuardEl.classList.toggle('is-minimized', isGuardMinimized);
+      });
+    }
+
+    const pillBtn = floatingGuardEl.querySelector('#shieldai-guard-pill-btn');
+    if (pillBtn) {
+      pillBtn.addEventListener('click', () => {
+        if (isGuardMinimized) {
+          isGuardMinimized = false;
+          floatingGuardEl.classList.remove('is-minimized');
+        } else {
+          floatingGuardEl.classList.toggle('card-open');
+        }
+      });
+    }
+  }
 
   // Load configuration from chrome.storage.local
   function loadConfig() {
@@ -42,6 +126,7 @@
         hideAllBadges();
       } else {
         showAllBadges();
+        renderOrUpdateFloatingGuard();
         if (typeof debouncedScanDOM === 'function') {
           debouncedScanDOM();
         }
@@ -86,6 +171,7 @@
     document.querySelectorAll('.shieldai-badge, .shieldai-email-banner').forEach(b => {
       b.style.display = 'none';
     });
+    if (floatingGuardEl) floatingGuardEl.style.display = 'none';
   }
 
   function showAllBadges() {
@@ -99,8 +185,11 @@
       }
     });
     document.querySelectorAll('.shieldai-email-banner.banner-safe').forEach(b => {
-      b.style.display = showSafeBadges ? 'flex' : 'none';
+      b.style.display = 'flex';
     });
+    if (floatingGuardEl && isEnabled && !isSiteDisabled) {
+      floatingGuardEl.style.display = 'block';
+    }
   }
 
   // Debounce helper
@@ -124,15 +213,15 @@
   }
 
   // Requirement: Never scan UI elements on any site:
-  // nav, header, footer, button, label, select, menu, tab, headings, short ALL-CAPS labels, anything under 4 words.
+  // nav, header, footer, button, label, select, menu, tab, headings, links, short ALL-CAPS labels, anything under 4 words.
   const UI_EXCLUDED_TAGS = new Set([
     'NAV', 'HEADER', 'FOOTER', 'BUTTON', 'LABEL', 'SELECT', 'MENU',
-    'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+    'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'A',
     'SCRIPT', 'STYLE', 'CODE', 'PRE', 'KBD', 'SAMP',
     'INPUT', 'TEXTAREA', 'OPTION', 'NOSCRIPT', 'SVG', 'CANVAS'
   ]);
 
-  const UI_ANCESTOR_SELECTOR = 'nav, header, footer, button, label, select, menu, h1, h2, h3, h4, h5, h6, [role="navigation"], [role="banner"], [role="contentinfo"], [role="button"], [role="tab"], [role="tablist"], [role="menu"], [role="menuitem"], [role="heading"]';
+  const UI_ANCESTOR_SELECTOR = 'nav, header, footer, button, label, select, menu, h1, h2, h3, h4, h5, h6, a, [role="navigation"], [role="banner"], [role="contentinfo"], [role="button"], [role="tab"], [role="tablist"], [role="menu"], [role="menuitem"], [role="heading"], [role="link"]';
 
   const BLOCK_CHILDREN_SELECTOR = 'p, div, ul, ol, li, blockquote, pre, table, section, article, header, footer, nav, h1, h2, h3, h4, h5, h6, form';
 
@@ -140,10 +229,15 @@
     if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
     if (UI_EXCLUDED_TAGS.has(el.tagName)) return false;
     if (el.isContentEditable || el.closest('[contenteditable="true"]')) return false;
-    if (el.closest('pre, code, kbd, samp, .shieldai-badge')) return false;
+    if (el.closest('pre, code, kbd, samp, .shieldai-badge, #shieldai-floating-guard')) return false;
 
-    // Never scan UI elements: nav, header, footer, button, label, select, menu, tab, headings
+    // Never scan UI elements or interactive links/buttons
     if (el.closest(UI_ANCESTOR_SELECTOR)) return false;
+
+    // Prevent duplicate scanning of nested elements (e.g. li > span)
+    if (el.getAttribute('data-shieldai-checked') === 'true' || el.getAttribute('data-shieldai-badged') === 'true') return false;
+    if (el.closest('[data-shieldai-checked="true"], [data-shieldai-badged="true"]')) return false;
+    if (el.querySelector('[data-shieldai-checked="true"], [data-shieldai-badged="true"]')) return false;
 
     // Must have no block children
     if (el.querySelector(BLOCK_CHILDREN_SELECTOR)) return false;
@@ -325,12 +419,16 @@
       badgeLabel = 'SAFE';
     }
 
+    // Update scanned elements count
+    pageScannedElements++;
+
     // In Gmail: Show ONE sleek security banner at the top of the email
     // instead of cluttering every single paragraph and bullet point!
     if (currentHostname.includes('mail.google.com')) {
       const mailContainer = element.closest('.a3s');
       if (mailContainer) {
         if (badgeClass === 'badge-safe') {
+          renderOrUpdateFloatingGuard();
           // If this email already has a safe badge/banner, do NOT inject duplicate safe badges on every line
           if (mailContainer.getAttribute('data-shieldai-email-badged') === 'true') {
             return;
@@ -341,13 +439,13 @@
           if (!banner) {
             banner = document.createElement('div');
             banner.className = 'shieldai-email-banner banner-safe';
-            banner.style.display = showSafeBadges ? 'flex' : 'none';
+            banner.style.display = 'flex';
             const confPct = Math.round((result.confidence ? parseFloat(result.confidence) : 0.95) * 100);
             banner.innerHTML = `
               <div class="banner-left">
                 <span class="banner-brand">ShieldAI</span>
                 <span>•</span>
-                <span class="banner-status">✓ Verified Safe</span>
+                <span class="banner-status">✓ Email Verified Safe</span>
                 <span class="banner-details">— No threat or phishing indicators detected</span>
               </div>
               <div class="banner-right">Confidence: ${confPct}%</div>
@@ -357,6 +455,9 @@
           return;
         } else {
           // If a threat is found, add/upgrade the top email alert banner
+          pageThreatCount++;
+          renderOrUpdateFloatingGuard();
+
           let banner = mailContainer.querySelector('.shieldai-email-banner');
           if (!banner) {
             banner = document.createElement('div');
@@ -374,6 +475,25 @@
             <div class="banner-right">Risk Tier: ${level.toUpperCase()}</div>
           `;
         }
+      }
+    } else {
+      if (badgeClass === 'badge-safe') {
+        renderOrUpdateFloatingGuard();
+      } else if (badgeClass !== 'badge-purple') {
+        pageThreatCount++;
+        renderOrUpdateFloatingGuard();
+      }
+    }
+
+    // ON GENERAL WEBSITES (e.g. matrice.ai, articles, portals):
+    // Never inject inline [✓ SAFE] pills onto normal paragraphs, list items, or buttons!
+    // The Floating Corner Guard already confirms the page is verified safe.
+    // Inline badges are reserved strictly for actual THREATS (or dedicated chat apps if enabled).
+    if (badgeClass === 'badge-safe') {
+      const isExplicitChatMessage = Boolean(element.closest('.chat-message, .message-content, .msg-text, [data-message], .message-bubble, .message-body'));
+      element.setAttribute('data-shieldai-badged', 'true');
+      if (!showSafeBadges || !isExplicitChatMessage) {
+        return;
       }
     }
 
