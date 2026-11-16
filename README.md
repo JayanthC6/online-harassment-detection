@@ -1,4 +1,4 @@
-# ShieldAI — Cyber Threat Intelligence & Online Harassment Detection Platform
+# ShieldAI - Cyber Threat Intelligence & Online Harassment Detection Platform
 
 > **MCA Final-Year Capstone Project | Master of Computer Applications**  
 > **Student:** Jayanth C  
