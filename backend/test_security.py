@@ -101,8 +101,8 @@ def test_self_serve_isolation(client):
     assert len(data["profiles"]) == 0
 
 def test_data_ownership(client):
-    user1_token = generate_token(role="User", user="user1")
-    user2_token = generate_token(role="User", user="user2")
+    user1_token = generate_token(role="User", user="owner_user1")
+    user2_token = generate_token(role="User", user="owner_user2")
     
     h1 = {"Authorization": f"Bearer {user1_token}"}
     h2 = {"Authorization": f"Bearer {user2_token}"}

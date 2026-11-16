@@ -60,7 +60,7 @@ def submit_complaint(token_data=None):
 def get_my_history(token_data):
     """Users view their own analysis history"""
     user_id = token_data.get("user")
-    res = db_instance.get_reports(page=1, page_size=100, user_id=user_id, source="self_serve")
+    res = db_instance.get_reports(page=1, page_size=100, user_id=user_id, source="self_serve", include_clean=True)
     complaints = res.get("reports", [])
     return jsonify({"complaints": complaints})
 

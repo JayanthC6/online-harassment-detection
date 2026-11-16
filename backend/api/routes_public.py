@@ -41,6 +41,7 @@ def _handle_scan_persistence(result: dict, text: str, token_data: dict, persist:
     Saves public and authenticated scans unless 'persist' is False (Private Scan).
     Public scans from unauthenticated users are logged to the database/queue (as source='public_submission')
     with PII masked for privacy, ensuring they appear in the moderator queue and offender intelligence.
+    Authenticated standard user scans are logged as source='self_serve' so they populate "My History".
     """
     if not persist:
         result["saved"] = False
@@ -51,15 +52,23 @@ def _handle_scan_persistence(result: dict, text: str, token_data: dict, persist:
     actor = actor_id or result.get("actor_id") or (token_data.get("user") if token_data else "Anonymous")
     result["actor_id"] = actor
 
+    if is_admin:
+        assigned_source = "platform"
+    elif token_data and token_data.get("user"):
+        assigned_source = "self_serve"
+    else:
+        assigned_source = "public_submission"
+
     history_entry = {
         "actor_id": actor,
         "user_id": token_data.get("user") if token_data else "public",
-        "source": "platform" if is_admin else "public_submission",
+        "source": assigned_source,
         "type": source_type,
         "content": text,
         "ai_analysis": result,
         **result
     }
+    history_entry["source"] = assigned_source
 
     if not is_admin:
         history_entry["text_preview"] = mask_pii(history_entry.get("text_preview", ""))
@@ -367,28 +376,34 @@ def predict_audio(token_data):
     import tempfile
     from ml.transcribe import transcribe
     
-    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}") as tmp:
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=f".{ext}")
+    tmp.close()  # Close immediately to release Windows file lock
+
+    try:
         file.save(tmp.name)
         file_size_mb = os.path.getsize(tmp.name) / (1024 * 1024)
         if file_size_mb > MAX_AUDIO_SIZE_MB:
-            os.remove(tmp.name)
             return jsonify({"error": f"File too large ({file_size_mb:.1f}MB). Max {MAX_AUDIO_SIZE_MB}MB."}), 413
 
-        try:
-            transcript_data = transcribe(tmp.name)
-            transcript_text = transcript_data["text"]
-        except Exception as e:
-            os.remove(tmp.name)
-            return jsonify({"error": f"Transcription failed: {str(e)}"}), 500
-
-    os.remove(tmp.name)
+        transcript_data = transcribe(tmp.name)
+        transcript_text = transcript_data.get("text", "")
+    except Exception as e:
+        return jsonify({"error": f"Transcription failed: {str(e)}"}), 500
+    finally:
+        if os.path.exists(tmp.name):
+            try:
+                os.remove(tmp.name)
+            except Exception:
+                pass
 
     if not transcript_text:
         return jsonify({"error": "Could not detect any speech in the file."}), 400
 
     result = PredictionService.classify_text(transcript_text)
     result["pii_categories"] = extract_pii(transcript_text)
-    result["text_preview"] = transcript_text[:120]
+    result["text_preview"] = f"[{file.filename}] {transcript_text[:120]}"
+    result["text_full"] = transcript_text
+    result["filename"] = file.filename
     result["timestamp"] = datetime.utcnow().isoformat()
     result["transcript"] = transcript_text
     actor_id = request.form.get("actor_id", "Anonymous")
